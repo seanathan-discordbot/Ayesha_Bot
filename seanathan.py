@@ -21,5 +21,5 @@ def commands(TOKEN):
     client.run(TOKEN)
  
 if __name__ == "__main__":
-    TOKEN="NzY3MjM0NzAzMTYxMjk0ODU4.X4u8_w.NFBGhog1Mwkqf0fu-Q9FMZA1TJI"
+    TOKEN
     commands(TOKEN)
