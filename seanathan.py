@@ -17,7 +17,9 @@ def commands(TOKEN):
             await message.channel.send('Hello!')
         elif message.content.startswith('$sean'):
             await message.channel.send('Sean is short for Seanathan')
-            
+     @client.command(aliases=['bs','bull'])
+        async def bullshit(ctx):
+        await ctx.send('https://i.imgur.com/yk3hiuc.png') 
     client.run(TOKEN)
  
 if __name__ == "__main__":
