@@ -16,7 +16,7 @@ async def on_message(message):
     if message.content.startswith('$hello'):
         await message.channel.send('Hello!')
 
-    elif message.content.startswith('sean'):
+    elif message.content.startswith('$sean'):
         await message.channel.send('Sean is short for Seanathan')
         
 client.run(TOKEN)
