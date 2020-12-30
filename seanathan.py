@@ -4,11 +4,13 @@ from discord.ext import commands
 Token
 client=commands.Bot(command_prefix="!")
 
+#allows us to load cogs that we have revised while the bot is online
 @client.command()
 async def load(ctx,extension):
     await ctx.message.channel.send('loaded')
     client.load_extension(f'cogs.{extension}')
-
+ 
+#allows us to unload cogs that we have revised while the bot is online
 @client.command()
 async def unload(ctx,extension):
     await.ctx.message.send('unloaded')
