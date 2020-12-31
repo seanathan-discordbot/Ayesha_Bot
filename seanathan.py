@@ -1,28 +1,24 @@
-import discord
+
+import discord 
+import os 
 from discord.ext import commands
-import os
+Token
+client=commands.Bot(command_prefix="!")
 
-client = commands.Bot(command_prefix = '$')
+#allows us to load cogs that we have revised while the bot is online
+@client.command()
+async def load(ctx,extension):
+    await ctx.message.channel.send('loaded')
+    client.load_extension(f'cogs.{extension}')
+ 
+#allows us to unload cogs that we have revised while the bot is online
+@client.command()
+async def unload(ctx,extension):
+    await.ctx.message.send('unloaded')
+    client.unload_extension(f'cogs.{extension}')
 
-@client.event
-async def on_ready():
-    print('We have logged in as {0.user}'.format(client))
-
-@client.event
-async def on_message(message): #sean what is this
-    if message.author == client.user:
-        return
-
-    if message.content.startswith('$hello'):
-        await message.channel.send('Hello!')
-    elif message.content.startswith('$sean'):
-        await message.channel.send('Sean is short for Seanathan')
-
-def is_owner(idNum):
-    return idNum == 325080171591761921 #Sean
-
-admins = [196465885148479489, 530760994289483790, 465388103792590878] #Ara, Demi, Bort
-def is_admin(idNum):
-    for i in range(len(admins)):
-        if idNum == admins[i]:
-            return True
+# Runs at bot startup to load all cogs
+for filename in os.listdir(r'C:\Users\rowlas2\Documents\Seanathan\cogs'): #replace with your path
+    if filename.endswith('.py'): 
+        client.load_extension(f'cogs.{filename[:-3]}')
+client.run(Token)
