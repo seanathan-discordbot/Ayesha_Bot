@@ -1,7 +1,7 @@
 import discord
 import os
 from discord.ext import commands
-Token='NzY3NTQ2Njc4ODQ0NDU3MDMy.X4zfjA.sCv_ohI9n9MrXcOWq-dUQqCcPh8'
+Token
 client=commands.Bot(command_prefix="!")
 admins = [196465885148479489, 325080171591761921, 530760994289483790, 145339105239105537] #Aramy, Sean, Demi, Roberto
 def is_admin(ctx):
