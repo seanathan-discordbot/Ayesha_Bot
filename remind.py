@@ -1,5 +1,5 @@
 """
-A remind command for a discord bot
+A remind command for a discord bot and some commands that build up to it
 """
 import discord
 from discord.ext import commands
