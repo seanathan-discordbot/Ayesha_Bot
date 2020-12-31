@@ -20,5 +20,10 @@ class Misc(commands.Cog):
     async def echo(self,ctx, *, returnStatement):
         await ctx.send(returnStatement)
 
+    @commands.command()
+    async def ping(self,ctx):
+        await ctx.send(f'Pong!{self.client.latency}')
+
+
 def setup(client):
     client.add_cog(Misc(client))
