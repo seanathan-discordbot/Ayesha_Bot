@@ -15,6 +15,12 @@ async def load(ctx, extension):
 
 @client.command()
 @commands.check(is_admin)
+async def unload(ctx, extension):
+    client.unload_extension(f'cogs.{extension}')
+    await ctx.channel.send('Unloaded.')
+
+@client.command()
+@commands.check(is_admin)
 async def reload(ctx, extension):
     client.unload_extension(f'cogs.{extension}')
     client.load_extension(f'cogs.{extension}')
