@@ -1,55 +1,27 @@
-import discord
-def commands(TOKEN):
 
+import discord 
+import os 
+from discord.ext import commands
+Token
+client=commands.Bot(command_prefix="!")
 
-    client = discord.Client()
-
-
-
-
-TOKEN
-    client = discord.Client()
-
-client = discord.Client()
-
-    @client.event
-    async def on_ready():
-        print('We have logged in as {0.user}'.format(client))
-
-@client.event
-async def on_ready():
-    print('We have logged in as {0.user}'.format(client))
-
-    @client.event
-    async def on_message(message):
-        if message.author == client.user:
-            return
-
-
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
-
-    if message.content.startswith('$hello'):
-        await message.channel.send('Hello!')
-    elif message.content.startswith('$sean'):
-        await message.channel.send('Sean is short for Seanathan')
-client.run(TOKEN)
-
-        if message.content.startswith('$hello'):
-            await message.channel.send('Hello!')
-        elif message.content.startswith('$sean'):
-            await message.channel.send('Sean is short for Seanathan')
-     @client.command(aliases=['bs','bull'])
-        async def bullshit(ctx):
-        await ctx.send('https://i.imgur.com/yk3hiuc.png') 
-    client.run(TOKEN)
-
+#allows us to load cogs that we have revised while the bot is online
+@client.command()
+async def load(ctx,extension):
+    await ctx.message.channel.send('loaded')
+    client.load_extension(f'cogs.{extension}')
  
-if __name__ == "__main__":
-    TOKEN
-    commands(TOKEN)
+#allows us to unload cogs that we have revised while the bot is online
+@client.command()
+async def unload(ctx,extension):
+    await ctx.message.send('unloaded')
+    client.unload_extension(f'cogs.{extension}')
+
+# Runs at bot startup to load all cogs
+for filename in os.listdir(r'C:\Users\rowlas2\Documents\Seanathan\cogs'): #replace with your path
+    if filename.endswith('.py'): 
+        client.load_extension(f'cogs.{filename[:-3]}')
+client.run(Token)
 
 
 
