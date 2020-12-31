@@ -14,7 +14,7 @@ async def load(ctx,extension):
 #allows us to unload cogs that we have revised while the bot is online
 @client.command()
 async def unload(ctx,extension):
-    await.ctx.message.send('unloaded')
+    await ctx.message.send('unloaded')
     client.unload_extension(f'cogs.{extension}')
 
 # Runs at bot startup to load all cogs
