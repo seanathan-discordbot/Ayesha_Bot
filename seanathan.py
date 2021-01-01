@@ -4,9 +4,11 @@ from discord.ext import commands
 Token
 client=commands.Bot(command_prefix="!")
 admins = [196465885148479489, 325080171591761921, 530760994289483790, 145339105239105537] #Aramy, Sean, Demi, Roberto
+
 def is_admin(ctx):
         if ctx.author.id in admins:
             return True
+
 @client.command()
 @commands.check(is_admin)
 async def load(ctx, extension):
