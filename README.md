@@ -3,5 +3,5 @@
 Required libraries:
 discord.py 1.5.1
 youtube_dl
-buttons.py
+discord.ext.menus
 also required is python 3.7
