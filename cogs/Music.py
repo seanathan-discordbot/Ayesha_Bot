@@ -145,10 +145,10 @@ class Music(commands.Cog):
         return timerStr
     
     def npEmbed(self, ctx, player):
-        sean = time.time() - player.timer
-        elapsed = time.strftime("%M:%S", time.gmtime(sean))
+        elapsedRaw = time.time() - player.timer
+        elapsed = time.strftime("%M:%S", time.gmtime(elapsedRaw))
         length = time.strftime("%M:%S", time.gmtime(player.audioSource.data['duration']))
-        timerStr = self.timerString(ctx, sean, player.audioSource.data['duration'])
+        timerStr = self.timerString(ctx, elapsedRaw, player.audioSource.data['duration'])
         
         embed = discord.Embed(color=0xBEDCF6)
         embed.set_thumbnail(url=f"{player.audioSource.data['thumbnail']}")
