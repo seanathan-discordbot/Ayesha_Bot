@@ -200,22 +200,6 @@ class Music(commands.Cog):
         else:
             embed.set_footer(text=f"Total length of this queue is {len(player)} song, {duration}")
         return embed
-    
-#    def listQueueEmbed(self, ctx, pQueue):
-#        lengths = []
-#        for i in range(len(pQueue)):
-#            lengths.append(time.strftime("%M:%S", time.gmtime(pQueue[i].audioSource.data['duration'])))
-#
-#        embed = discord.Embed(color=0xBEDCF6)
-#        embed.set_thumbnail(url=f"{pQueue[0].audioSource.data['thumbnail']}")
-#        embed.set_footer(text=f"Queue only displays up to 10 entries.")
-#        for i in range(10 if len(pQueue)>10 else len(pQueue)):
-#            embed.add_field(name=f"{i+1}: {pQueue[i].audioSource.title}", value=f"""
-#                            By `{pQueue[i].audioSource.data['uploader']}`
-#                            Length: `{lengths[i]}`
-#                            Added by `{pQueue[i].requester}`""", 
-#                            inline=False)
-#        return embed
         
     def getServerQueue(self, ctx):
         #Get the player for the server
@@ -305,22 +289,7 @@ class Music(commands.Cog):
             await ctx.send("Not in a vc")
         else:
             player = self.getServerQueue(ctx)
-            await ctx.send(embed=self.npEmbed(ctx, player.queueInput))
-            
-#    @commands.command()
-#    async def queue(self,ctx):
-#        if not ctx.voice_client:
-#            await ctx.send("Not in a vc")
-#        else:    
-#            serverQueue = self.getServerQueue(ctx)
-#            if serverQueue.queue.empty():
-#                await ctx.send("No q")
-#            else:
-#                embed = self.listQueueEmbed(ctx, serverQueue.pQueue) 
-#                await ctx.send(embed=embed)
-#                
-#
-#        return embed           
+            await ctx.send(embed=self.npEmbed(ctx, player.queueInput))      
                 
     @commands.command(aliases=['q','songs'])
     async def queue(self, ctx):
