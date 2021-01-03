@@ -222,7 +222,7 @@ class Music(commands.Cog):
             pass
 
     #COMMANDS
-    @commands.command(pass_context=True)
+    @commands.command(pass_context=True, brief='<str>', description='Plays some music. You can use either a name or url.')
     async def play(self, ctx, *, url):
         #Will join vc from joinVoice function
         #await ctx.send("Joined vc")
@@ -245,7 +245,7 @@ class Music(commands.Cog):
             serverQueue.pQueue.append(player)
             await ctx.send(embed = self.queueEmbed(ctx, player))
         
-    @commands.command(name='leave', aliases = ["stop"], description='leave')
+    @commands.command(aliases = ["stop"], brief=None, description='Leaves current voice channel')
     async def leave(self, ctx):
         if ctx.voice_client:
 #            await ctx.voice_client.disconnect() # I realize now that I am an idiot
@@ -253,7 +253,7 @@ class Music(commands.Cog):
         else:
             await ctx.send("wyd")
             
-    @commands.command()
+    @commands.command(brief=None, description='Pauses or unpauses audio')
     async def pause(self, ctx):
         if  ctx.voice_client.is_playing():
             ctx.voice_client.pause()
@@ -262,14 +262,14 @@ class Music(commands.Cog):
         else:
             await ctx.send("yeet")
 
-    @commands.command()
+    @commands.command(brief=None, description='Resumes paused audio')
     async def resume(self, ctx):
         if ctx.voice_client.is_paused():
             ctx.voice_client.resume()
         else:
             await ctx.send("Nothing to unpause")
             
-    @commands.command()
+    @commands.command(brief=None, description='Skips the playing track')
     async def skip(self, ctx):
         if not ctx.voice_client:
             await ctx.send("I refuse.")
@@ -283,7 +283,7 @@ class Music(commands.Cog):
         else:
             await ctx.send("I am confused.")
         
-    @commands.command(aliases = ['np','nowplaying'])
+    @commands.command(aliases = ['np','nowplaying'], brief=None, description='Shows the currently playing track')
     async def now_playing(self, ctx):
         if not ctx.voice_client:
             await ctx.send("Not in a vc")
@@ -291,7 +291,7 @@ class Music(commands.Cog):
             player = self.getServerQueue(ctx)
             await ctx.send(embed=self.npEmbed(ctx, player.queueInput))      
                 
-    @commands.command(aliases=['q','songs'])
+    @commands.command(aliases=['q','songs'], brief=None, description='Shows the queue')
     async def queue(self, ctx):
         if not ctx.voice_client:
             await ctx.send("I am not in a voice channel.")
