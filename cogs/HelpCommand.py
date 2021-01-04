@@ -16,13 +16,6 @@ class HelpPaginator(menus.ListPageSource):
         super().__init__(data, per_page=1)
     
     async def format_page(self, menu, entries):
-#        offset = menu.current_page * self.per_page
-##        return '\n'.join(f'{i}. {v}' for i, v in enumerate(entries, start=offset))
-#        for i, v in enumerate(entries, start=offset):
-#            helpEmbed = discord.Embed(title='NguyenBot Help: New Commands', color=0xBEDCF6)
-##            helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
-#            helpEmbed.add_field(name=f'{i}',value=f'{v}',inline=False)
-#        return helpEmbed
         return entries
 
 class HelpCommand(commands.Cog):
@@ -31,7 +24,7 @@ class HelpCommand(commands.Cog):
         self.client = client
         
     def write(self, ctx, start, entries, cog):
-        helpEmbed = discord.Embed(title=f'NguyenBot Help: {cog}', color=0xBEDCF6)
+        helpEmbed = discord.Embed(title=f'Seanathan Help: {cog}', color=0xBEDCF6)
         helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
         
         iteration = 0
@@ -76,23 +69,16 @@ class HelpCommand(commands.Cog):
             helpEmbed.set_author(name='NguyenBot Help')
             helpEmbed.add_field(
                 name = f'Please enter `{prefix}help <Module>` for more info on that module',
-                value = """
-**NewCommands: ** Fun random commands used in testing
-**Stuff: ** Some advanced commands I've made
-**EmbedMaker: ** Commands where I tested embeds
-**Music: ** NguyenBot's own music player! (it sucks)
-**PaginatorTesting: ** The spawn of Hell""", inline=False
+                value = """<Placeholder>""", inline=False #LIST THE COGS
             )
             
             embed = discord.Embed(color=0xBEDCF6)
             embed.set_thumbnail(url=ctx.author.avatar_url)
-            embed.set_author(name='NguyenBot Help: Logistics')
+            embed.set_author(name='Seanathan Help: Logistics')
             embed.add_field(name='changeprefix', #CHANGEPREFIX
                 value='`changeprefix <str>`\nChanges the server prefix to <str>', 
                 inline=False)    
-            embed.add_field(name='itme', #ITME
-                value='`itme`\nFor owner only', 
-                inline=False)
+            # ADD MORE FIELDS FOR THE OTHER COMMANDS IN SEANATHAN.PY
             
             entries = [helpEmbed, embed]
                 
