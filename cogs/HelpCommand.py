@@ -9,7 +9,9 @@ import discord
 from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
-import NguyenBot
+import seanathan
+
+
 
 class HelpPaginator(menus.ListPageSource):
     def __init__(self, data):
