@@ -5,6 +5,25 @@ import discord
 from discord.ext import commands
 import asyncio
 
+def seconds(a):
+    first = ''
+    seconds=0
+    for char in a:
+        if char.isdigit():
+            first += char
+        if char.isalpha():
+            first = int(first)
+            if char=='h':
+                seconds+=(first*60)*60
+                first=''
+            elif char=='m':
+                seconds+=first*60
+                first=''
+            elif char=='s':
+                seconds+=first
+                first=''
+    return seconds
+
 class Remind(commands.Cog):
     def __init__(self,client):
         self.client=client
@@ -28,11 +47,8 @@ class Remind(commands.Cog):
 
     @commands.command() #work on this tommorow
     async def remind(self,ctx,*,returnStatement):
-        if returnStatement.isdigit()==False:
-            await ctx.send('Please enter a number')
-        else:
             await ctx.send("I'll remind you in "+returnStatement)
-            pause=int(returnStatement)
+            pause=seconds(returnStatement)
             await asyncio.sleep(pause)
             await ctx.send(ctx.author.mention+" your reminder")
 
