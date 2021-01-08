@@ -6,7 +6,7 @@ from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 import aiosqlite
 
-PATH = r'C:\Users\sebas\OneDrive\NguyenBot\Database\AlphaDB.db'
+PATH = 'PATH'
 
 occupations = {
     'Soldier' : 'You are a retainer of a local lord, trained in the discipline of swordsmanship.\nYou have an increased character attack',
