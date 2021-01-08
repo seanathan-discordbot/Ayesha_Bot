@@ -5,7 +5,7 @@ from discord.ext import commands, menus
 
 import aiosqlite
 
-PATH = r'C:\Users\sebas\OneDrive\NguyenBot\Database\AlphaDB.db'
+PATH = 'PATH'
 
 async def not_player(ctx):
     query = (ctx.author.id,)
