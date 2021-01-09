@@ -15,10 +15,26 @@ def get_prefix(client, message):
 
 client = commands.Bot(command_prefix=get_prefix, help_command=None)
 
-admins = [196465885148479489, 325080171591761921, 530760994289483790, 145339105239105537] #Aramy, Sean, Demi, Roberto
+admins = [196465885148479489, 325080171591761921, 530760994289483790, 465388103792590878] #Seb, Sean, Demi, Bort
 def is_admin(ctx):
         if ctx.author.id in admins:
             return True
+        
+#Create bot cooldown
+_cd = commands.CooldownMapping.from_cooldown(1, 2.5, commands.BucketType.user) 
+
+@client.check
+async def cooldown_check(ctx):
+    bucket = _cd.get_bucket(ctx.message)
+    retry_after = bucket.update_rate_limit()
+    if retry_after:
+        raise commands.CommandOnCooldown(bucket, retry_after)
+    return True
+
+@client.event
+async def on_ready():
+    await client.change_presence(activity=discord.Game('Sean is short for Seanathan.'))
+    print('Hi my name is Seanathan.')        
 
 # ----- PREFIX CHANGES ------
 @client.event #the default prefix is %
