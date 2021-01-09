@@ -5,7 +5,7 @@ from discord.ext import commands, menus
 
 import aiosqlite
 
-PATH = r'C:\Users\sebas\OneDrive\NguyenBot\Database\AlphaDB.db'
+PATH = 'PATH'
 
 async def createItem(weapontype, owner_id, attack, name, rarity):
     async with aiosqlite.connect(PATH) as conn:
