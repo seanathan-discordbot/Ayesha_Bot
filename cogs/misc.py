@@ -19,10 +19,11 @@ class Misc(commands.Cog):
     @commands.command()
     async def echo(self,ctx, *, returnStatement):
         await ctx.send(returnStatement)
-
-    @commands.command()
-    async def ping(self,ctx):
-        await ctx.send(f'Pong!{self.client.latency}')
+        
+    @commands.command(brief=None, description='Ping to see if bot is working')
+    async def ping(self, ctx):
+        embed = discord.Embed(title="Pong!", description=f"Latency is {self.client.latency * 1000:.2f} ms", color=0xBEDCF6)
+        await ctx.send(embed=embed)
 
 
 def setup(client):
