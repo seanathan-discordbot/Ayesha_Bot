@@ -7,7 +7,7 @@ from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 import aiosqlite
 from Utilities import Checks, AssetCreation
 
-PATH = r'F:\OneDrive\NguyenBot\Database\AlphaDB.db'
+PATH = 'PATH'
 
 class YesNo(menus.Menu):
     def __init__(self, ctx, embed):
