@@ -22,5 +22,3 @@ async def is_player(ctx):
         result = await c.fetchone()
         if result is not None: #Then there is a char for this id
             return True
-        else:
-            return False
