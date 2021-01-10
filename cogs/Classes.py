@@ -6,7 +6,7 @@ from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 import aiosqlite
 
-PATH = 'PATH'
+PATH = r'F:\OneDrive\NguyenBot\Database\AlphaDB.db'
 
 occupations = {
     'Soldier' : 'You are a retainer of a local lord, trained in the discipline of swordsmanship.\nYou have an increased character attack',
@@ -69,7 +69,7 @@ class Classes(commands.Cog):
             embed = discord.Embed(title='Class Selection Menu', color=0xBEDCF6)
             embed.add_field(name=f'{job}: Choose \u2705 to take this class!', value=f'{occupations[job]}')
             entries.append(embed)
-        message = await ctx.send(embed=entries[0])
+        message = await ctx.reply(embed=entries[0])
         await message.add_reaction('\u23EE') #Left
         await message.add_reaction('\u2705') #Check
         await message.add_reaction('\u274E') #X
@@ -119,7 +119,7 @@ class Classes(commands.Cog):
             embed = discord.Embed(title='Background Selection Menu', color=0xBEDCF6)
             embed.add_field(name=f'{place}: Choose \u2705 if you like this place!', value=f'{origins[place]}')
             entries.append(embed)
-        message = await ctx.send(embed=entries[0])
+        message = await ctx.reply(embed=entries[0])
         await message.add_reaction('\u23EE') #Left
         await message.add_reaction('\u2705') #Check
         await message.add_reaction('\u274E') #X
