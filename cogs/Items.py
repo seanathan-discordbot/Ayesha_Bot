@@ -7,7 +7,7 @@ from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 import aiosqlite
 from Utilities import Checks, AssetCreation, PageSourceMaker
 
-PATH = r'F:\OneDrive\NguyenBot\Database\AlphaDB.db'
+PATH = 'PATH'
 
 class CharacterCreation(commands.Cog):
 
