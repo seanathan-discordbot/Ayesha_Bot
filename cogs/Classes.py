@@ -42,7 +42,7 @@ occ = list(occ)
 # 3. Hunter - increased travelling/(hunting?) rewards
 # 4. Merchant - increased income from selling items
 # 5. Traveler - increased travelling rewards
-# 6. Leatherworker/Tailor - increased HP (or DEF if added)
+# 6. Leatherworker - increased HP (or DEF if added)
 # 7. Butcher - increased healing effectiveness
 # 8. Engineer/Mechanic - buff association bonuses slightly
 # 9. Scribe - increased crit rate
