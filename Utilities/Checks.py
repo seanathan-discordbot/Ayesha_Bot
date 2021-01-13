@@ -22,3 +22,13 @@ async def is_player(ctx):
         result = await c.fetchone()
         if result is not None: #Then there is a char for this id
             return True
+
+async def has_char(user : discord.user):
+    query = (user.id,)
+    async with aiosqlite.connect(PATH) as conn:
+        c = await conn.execute('SELECT * FROM players WHERE user_id = ?', query)
+        result = await c.fetchone()
+        if result is not None: #Then there is a char for this id
+            return True
+        else:
+            return False

@@ -5,7 +5,9 @@ from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 import aiosqlite
-from Utilities import Checks
+from Utilities import Checks, AssetCreation
+
+import math
 
 PATH = 'PATH'
 
@@ -51,17 +53,7 @@ class CharacterCreation(commands.Cog):
                 VALUES (?, ?)""",
                 user)
             await conn.commit()
-        await self.createItem('Spear', ctx.author.id, 20, 'Wooden Spear', 'Common')
-
-
-    async def createItem(self, weapontype, owner_id, attack, name, rarity):
-        async with aiosqlite.connect(PATH) as conn:
-            item = (weapontype, owner_id, attack, name, rarity)
-            await conn.execute("""
-                INSERT INTO items (weapontype, owner_id, attack, weapon_name, rarity)
-                VALUES (?, ?, ?, ?, ?)""",
-                item)
-            await conn.commit()
+        await AssetCreation.createItem(ctx.author.id, 20, 'Common', crit=0, weaponname='Wooden Spear', weapontype='Spear')
 
     #COMMANDS
     @commands.command(aliases=['begin','create'], brief='<name : str>', description='Start the game of Seanathan')
@@ -73,70 +65,83 @@ class CharacterCreation(commands.Cog):
                 await ctx.send("Name can only be up to 32 characters")
         else:
             prefix = await self.client.get_prefix(ctx.message)
-            embed = discord.Embed(title='Start the game of Seanathan?')
+            embed = discord.Embed(title='Start the game of Seanathan?', color=0xBEDCF6)
             embed.add_field(name=f'Your Name: {name}', value=f'You can customize your name by doing `{prefix}start <name>`')
             start = await YesNo(ctx, embed).prompt(ctx)
             if start:
                 await ctx.send(f'Your Name: {name}')
                 await self.createCharacter(ctx, name)
-                await ctx.send("Success")  
+                await ctx.reply("Success! Use the `tutorial` command to get started!")  
 
-    @commands.command(aliases=['i', 'inv'], description='View your inventory of items')
-    @commands.check(Checks.is_player)
-    async def inventory(self, ctx):
-        user = (ctx.author.id,)
+    @commands.command(aliases=['p'], description='View your profile')
+    async def profile(self, ctx, player : commands.MemberConverter = None):
+        #Make sure targeted person is a player
+        if player is None: #return author profile
+            if not await Checks.has_char(ctx.author):
+                await ctx.reply('You don\'t have a character. Do `start` to make one!')
+                return
+            else:
+                player = ctx.author
+        else:
+            if not await Checks.has_char(player):
+                await ctx.reply('This person does not have a character')
+                return
+        #Otherwise target is a player and we can access their profile
+        attack, crit = await AssetCreation.getAttack(ctx.author.id)
+        query = (player.id,)
         async with aiosqlite.connect(PATH) as conn:
-            c = await conn.execute("""
-                SELECT * FROM Items
-                WHERE owner_id = ?""",
-                user)
-            inv = await c.fetchall()
-        for row in inv:
-            await ctx.send(row)
+            c = await conn.execute('SELECT * FROM players WHERE user_id = ?', query)
+            profile = await c.fetchone()
+            # level = AssetCreation.getLevel(profile[2])
+            if profile[13] == 0:
+                pvpwins = 0
+            else:
+                pvpwins = profile[12]/profile[13]*100
+            if profile[15] == 0:
+                bosswins = 0
+            else:
+                bosswins = profile[14]/profile[15]*100
+            d = await conn.execute('SELECT * FROM Items WHERE item_id = ?', (profile[4],))
+            item = await d.fetchone()
+            #Create Embed
+            embed = discord.Embed(title=f'{player.display_name}\'s Profile: {profile[1]}', color=0xBEDCF6)
+            embed.set_thumbnail(url=f'{player.avatar_url}')
+            embed.add_field(
+                name='Character Info',
+                value=f'Money: `{profile[8]}`\nClass: `{profile[9]}`\nOrigin: `{profile[10]}`\nLocation: `{profile[11]}`\nAssociation: `{profile[7]}`',
+                inline=True)
+            embed.add_field(
+                name='Character Stats',
+                value=f'Level: `{profile[3]}`\nAttack: `{attack}`\nCrit: `{crit}%`\nPvP Winrate: `{pvpwins:.0f}%`\nBoss Winrate: `{bosswins:.0f}%`',
+                inline=True)
+            if item is not None:
+                embed.add_field(
+                    name='Party',
+                    value=f'Item: `{item[5]} ({item[6]})`\nAcolyte: `{profile[5]}`\nAcolyte: `{profile[6]}`',
+                    inline=True)
+            else:
+                embed.add_field(
+                    name='Party',
+                    value=f'Item: `None`\nAcolyte: `{profile[5]}`\nAcolyte: `{profile[6]}`',
+                    inline=True)
+            await ctx.reply(embed=embed)
 
-    @commands.command(brief='<item_id : int>', description='Equip an item from your inventory using its ID')
+    @commands.command(aliases=['xp'], description='Check your xp and level.')
     @commands.check(Checks.is_player)
-    async def equip(self, ctx, item_id : int):
-        query = (item_id, ctx.author.id) # Make sure that 1. item exists 2. they own this item
+    async def level(self, ctx):
         async with aiosqlite.connect(PATH) as conn:
-            c = await conn.execute("""
-                SELECT * FROM items
-                WHERE item_id = ? AND owner_id = ?""", 
-                query)
-            item = await c.fetchone()
-            if item is None:
-                await ctx.send("No.")
-            else: #Equip new item, update new item, update old item
-                user = (ctx.author.id,)
-                c = await conn.execute("""
-                SELECT item_id, owner_id, is_equipped
-                FROM Items
-                WHERE owner_id = ?
-                AND is_equipped = 1""", user)
-                olditem = await c.fetchone()
-                if olditem is not None: #Skip updating old item if there is no old item
-                    if olditem[0] == item_id: #If they try to re-equip their item
-                        await ctx.send("This item is already equipped")
-                        return
-                    else:
-                        await conn.execute("""
-                        UPDATE Items
-                        SET is_equipped = 0
-                        WHERE item_id = ?""", (olditem[0],))
-                await conn.execute("""
-                UPDATE Items
-                SET is_equipped = 1
-                WHERE item_id = ?""", (query[0],))
-                await conn.execute("""
-                UPDATE Players
-                SET equipped_item = ?
-                WHERE user_id = ?""", query)
-                if olditem is not None:
-                    await ctx.send(f'Unequipped item {olditem[0]} and equipped {item_id}')
-                else:
-                    await ctx.send(f'Equipped item {item_id}')
-            await conn.commit()
-        
+            c = await conn.execute('SELECT level, xp FROM players WHERE user_id = ?', (ctx.author.id,))
+            level, xp = await c.fetchone()
+            tonext = math.floor(10000000 * math.cos(((level+1)/64)+3.14) + 10000000 - 600) - xp
+
+        embed = discord.Embed(color=0xBEDCF6)
+        embed.add_field(name='Level', value=f'{level}')
+        embed.add_field(name='EXP', value=f'{xp}')
+        embed.add_field(name=f'EXP until Level {level+1}', value=f'{tonext}')
+        await ctx.reply(embed=embed)
+
+    #Add a tutorial command at the end of alpha
+
 
 
 def setup(client):
