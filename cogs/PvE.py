@@ -10,7 +10,7 @@ from Utilities import Checks, AssetCreation, PageSourceMaker
 import random
 import math
 
-PATH = 'PATH'
+PATH = r'F:\OneDrive\NguyenBot\Database\AlphaDB.db'
 
 # List Level, Name, LowAtk, HighAtk, LowHP, HighHP, Special Abilities (if any)
 bounty_levels = {
@@ -161,11 +161,25 @@ class PvE(commands.Cog):
 
     def __init__(self, client):
         self.client = client
+        self.players = {}
 
     #EVENTS
     @commands.Cog.listener() # needed to create event in cog
     async def on_ready(self): # YOU NEED SELF IN COGS
         print('PvE is ready.')
+
+    def getPlayer(self, ctx): #This command ensures someone doesn't play multiple PvEs at once
+        try:
+            return self.players[ctx.author.id]
+        except KeyError:
+            self.players[ctx.author.id] = 1
+            return
+
+    def deletePlayer(self, ctx):
+        try:
+            del self.players[ctx.author.id]
+        except KeyError:
+            pass
 
     def getBossAction(self, level):
         action = {'Action' : None, 'Damage' : None, 'DamageTaken' : 1}
@@ -282,8 +296,12 @@ class PvE(commands.Cog):
             await ctx.reply('Please supply a valid level.')
             ctx.command.reset_cooldown(ctx)
             return
+        #Make sure they're not already playing a game
+        is_playing = self.getPlayer(ctx)
+        if is_playing is not None:
+            await ctx.reply('You\'re already in a game.')
+            return
         #Get the player's info and load stats
-        pass
         attack, crit, hp = await AssetCreation.getAttack(ctx.author.id, returnhp=True)
         enemyhp = random.randint(bounty_levels[level]['LowHP'], bounty_levels[level]['HighHP'])
         # Create the embed
@@ -466,6 +484,8 @@ class PvE(commands.Cog):
                 readReactions = not readReactions
                 await ctx.send('Timed out.')
                 await message.delete()
+
+        self.deletePlayer(ctx) # Remove their playing entry
 
 
 def setup(client):
