@@ -185,16 +185,16 @@ class PvE(commands.Cog):
 
     async def checkEndGame(self, ctx, message, level, hp, enemyhp):
         if enemyhp <= 0: #give them a win in the event of a tie
-            vict = await self.doVictory(ctx.author.id, level, hp)
+            vict, acolyte1, acolyte2 = await self.doVictory(ctx.author.id, level, hp)
             await message.clear_reactions()
             await message.edit(embed=vict)
-            await AssetCreation.checkLevel(ctx, ctx.author.id)
+            await AssetCreation.checkLevel(ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
             return True
         elif hp <= 0: #loss
-            loss = await self.doDefeat(ctx.author.id, level, enemyhp)
+            loss, acolyte1, acolyte2 = await self.doDefeat(ctx.author.id, level, enemyhp)
             await message.clear_reactions()
             await message.edit(embed=loss)
-            await AssetCreation.checkLevel(ctx, ctx.author.id)
+            await AssetCreation.checkLevel(ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
             return True
         else:
             return None
@@ -221,7 +221,7 @@ class PvE(commands.Cog):
         xp = math.floor(2**(level/7) * ((level+10)**2) * ((hp/1000) + .5))
         #Give rewards
         async with aiosqlite.connect(PATH) as conn:
-            c = await conn.execute('SELECT instance_id FROM Acolytes WHERE owner_id = ? AND is_equipped = 1', (player,))
+            c = await conn.execute('SELECT instance_id FROM Acolytes WHERE owner_id = ? AND (is_equipped = 1 OR is_equipped = 2)', (player,))
             acolytes = await c.fetchall()
             if len(acolytes) == 1:
                 await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (xp, acolytes[0][0]))
@@ -237,14 +237,20 @@ class PvE(commands.Cog):
             embed.add_field(name=f'You had {hp} hp remaining', value=f'You received {gold} gold and {xp} xp from the battle.\nYou also gained an item. Check your `inventory` to see it!')
         else:
             embed.add_field(name=f'You had {hp} hp remaining', value=f'You received {gold} gold and {xp} xp from the battle.')
-        return embed
+        # Also returns the acolytes to check their level
+        if len(acolytes) == 1:
+            return embed, acolytes[0][0], None
+        elif len(acolytes) == 2:
+            return embed, acolytes[0][0], acolytes[1][0]
+        else:
+            return embed, None, None
 
     async def doDefeat(self, player, level, enemyhp):
         #Calculate xp, acolyte xp rewards: xp greatly reduced
         xp = 5 * level + 20
         #Give rewards
         async with aiosqlite.connect(PATH) as conn:
-            c = await conn.execute('SELECT instance_id FROM Acolytes WHERE owner_id = ? AND is_equipped = 1', (player,))
+            c = await conn.execute('SELECT instance_id FROM Acolytes WHERE owner_id = ? AND (is_equipped = 1 OR is_equipped = 2)', (player,))
             acolytes = await c.fetchall()
             if len(acolytes) == 1:
                 await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (xp, acolytes[0][0]))
@@ -256,11 +262,16 @@ class PvE(commands.Cog):
         #Return an embed to send
         embed = discord.Embed(title=f"The {bounty_levels[level]['Name']} has shown its superiority", color=0xBEDCF6)
         embed.add_field(name='You fled the battlefield', value=f'Boss HP: `{enemyhp}`\nYou received {xp} xp from the battle.')
-        return embed
+        # Also returns the acolytes to check their level
+        if len(acolytes) == 1:
+            return embed, acolytes[0][0], None
+        elif len(acolytes) == 2:
+            return embed, acolytes[0][0], acolytes[1][0]
+        else:
+            return embed, None, None
 
     #COMMANDS
-    @commands.command(aliases=['pve', 'fight', 'boss'], brief='<level>', description='Fight an enemy for rewards! Can only be played twice per hour')
-    # @cooldown(1, 1800, BucketType.user)
+    @commands.command(aliases=['pve', 'fight', 'boss'], brief='<level>', description='Fight an enemy for rewards!')
     @commands.check(Checks.is_player)
     async def bounty(self, ctx, level : int = 0):
         if level == 0:
