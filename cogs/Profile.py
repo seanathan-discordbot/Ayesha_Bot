@@ -87,7 +87,7 @@ class Profile(commands.Cog):
                 await ctx.reply('This person does not have a character')
                 return
         #Otherwise target is a player and we can access their profile
-        attack, crit = await AssetCreation.getAttack(ctx.author.id)
+        attack, crit = await AssetCreation.getAttack(player.id)
         query = (player.id,)
         async with aiosqlite.connect(PATH) as conn:
             c = await conn.execute('SELECT * FROM players WHERE user_id = ?', query)
@@ -104,19 +104,23 @@ class Profile(commands.Cog):
                 bosswins = profile[14]/profile[15]*100
             d = await conn.execute('SELECT * FROM Items WHERE item_id = ?', (profile[4],))
             item = await d.fetchone()
+            if profile[7] is not None:
+                guild = await AssetCreation.getGuildByID(profile[7])
+            else:
+                guild = {'Name' : 'None'}
             #Display the acolyte name and rarity rather than ID. Tuple converted to list because of this
             if profile[5] is not None:
                 acolyte1 = await AssetCreation.getAcolyteByID(profile[5])
-                profile[5] = f"{acolyte1['Name']} ({acolyte1['Rarity']})"
+                profile[5] = f"{acolyte1['Name']} ({acolyte1['Rarity']}⭐)"
             if profile[6] is not None:   
                 acolyte2 = await AssetCreation.getAcolyteByID(profile[6])
-                profile[6] = f"{acolyte2['Name']} ({acolyte2['Rarity']})"
+                profile[6] = f"{acolyte2['Name']} ({acolyte2['Rarity']}⭐)"
             #Create Embed
             embed = discord.Embed(title=f'{player.display_name}\'s Profile: {profile[1]}', color=0xBEDCF6)
             embed.set_thumbnail(url=f'{player.avatar_url}')
             embed.add_field(
                 name='Character Info',
-                value=f'Money: `{profile[8]}`\nClass: `{profile[9]}`\nOrigin: `{profile[10]}`\nLocation: `{profile[11]}`\nAssociation: `{profile[7]}`',
+                value=f"Money: `{profile[8]}`\nClass: `{profile[9]}`\nOrigin: `{profile[10]}`\nLocation: `{profile[11]}`\nAssociation: `{guild['Name']}`",
                 inline=True)
             embed.add_field(
                 name='Character Stats',
@@ -147,6 +151,17 @@ class Profile(commands.Cog):
         embed.add_field(name='EXP', value=f'{xp}')
         embed.add_field(name=f'EXP until Level {level+1}', value=f'{tonext}')
         await ctx.reply(embed=embed)
+
+    @commands.command(brief='<name>', description='Change your character name.')
+    @commands.check(Checks.is_player)
+    async def rename(self, ctx, *, name):
+        if len(name) > 32:
+            await ctx.reply('Name max 32 characters.')
+            return
+        async with aiosqlite.connect(PATH) as conn:
+            await conn.execute('UPDATE Players SET user_name = ? WHERE user_id = ?', (name, ctx.author.id))
+            await conn.commit()
+            await ctx.reply(f'Name changed to `{name}`')
 
     #Add a tutorial command at the end of alpha
 
