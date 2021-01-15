@@ -5,6 +5,7 @@ from discord.ext import commands, menus
 
 import aiosqlite
 
+import json
 import random
 import math
 
@@ -12,7 +13,9 @@ PATH = 'PATH'
 
 weapontypes = ['Spear', 'Sword', 'Dagger', 'Bow', 'Trebuchet', 'Gauntlets', 'Staff', 'Greatsword', 'Axe', 'Sling', 'Javelin', 'Falx', 'Mace']
 
-
+dashes = []
+for i in range(0,10):
+    dashes.append("".join(["▬"]*i))
 
 async def createItem(owner_id, attack, rarity, crit = None, weaponname = None, weapontype=None):
     if crit is None:
@@ -49,7 +52,7 @@ async def checkAcolyteLevel(ctx, instance_id):
     async with aiosqlite.connect(PATH) as conn:
         c = await conn.execute('SELECT acolyte_name, level, xp FROM Acolytes WHERE instance_id = ?', (instance_id,))
         current = await c.fetchone()
-        if current[1] < getLevel(current[2]):
+        if current[1] < getAcolyteLevel(current[2]):
             await conn.execute('UPDATE Acolytes SET level = level + 1 WHERE instance_id = ?', (instance_id,))
             await conn.commit()
             await ctx.send(f'{current[0]} levelled up to level {current[1] + 1}!')
@@ -73,11 +76,11 @@ async def checkLevel(ctx, user_id, aco1=None, aco2=None):
     if aco2 is not None:
         await checkAcolyteLevel(ctx, aco2)
 
-def getLevel(xp):
+def getAcolyteLevel(xp):
     level = 0
 
     def f(x):
-        w = 10000000
+        w = 3000000
         y = math.floor(w * math.cos((x/64)+3.14) + w - 600)
         return y 
     
@@ -85,10 +88,31 @@ def getLevel(xp):
         level += 1
     level -= 1
 
+    if level > 30:
+        level = 30
+
     return level
 
-async def getAttack(user_id, returnhp = False):
-    charattack, weaponattack, acolyteattack, attack, crit, hp = 0, 0, 0, 0, 0, 1000
+def getLevel(xp):
+    level = 0
+
+    def f(x):
+        w = 6000000
+        y = math.floor(w * math.cos((x/64)+3.14) + w - 600)
+        return y 
+    
+    while(xp >= f(level)):
+        level += 1
+    level -= 1
+
+    if level > 100:
+        level = 100
+
+    return level
+
+async def getAttack(user_id, returnothers = False):
+    charattack, weaponattack, acolyteattack, attack, crit, hp = 0, 0, 0, 0, 0, 500
+    acolyte1, acolyte2 = None, None
     async with aiosqlite.connect(PATH) as conn:
         c = await conn.execute('SELECT level, equipped_item, acolyte1, acolyte2, class FROM Players WHERE user_id = ?', (user_id,))
         char = await c.fetchone()
@@ -98,10 +122,12 @@ async def getAttack(user_id, returnhp = False):
             acolyte1 = await getAcolyteByID(char[2])
             acolyteattack = acolyteattack + acolyte1['Attack'] + (acolyte1['Scale'] * acolyte1['Level'])
             crit = crit + acolyte1['Crit']
+            hp = hp + acolyte1['HP']
         if char[3] is not None:
             acolyte2 = await getAcolyteByID(char[3])
             acolyteattack = acolyteattack + acolyte2['Attack'] + (acolyte2['Scale'] * acolyte2['Level'])
             crit = crit + acolyte2['Crit']
+            hp = hp + acolyte2['HP']
         charattack = 20 + char[0] * 2
         if item is not None:
             weaponattack = item[0]
@@ -119,13 +145,16 @@ async def getAttack(user_id, returnhp = False):
         if char[4] == 'Leatherworker':
             hp += 200
         
-        if not returnhp:
+        if not returnothers:
             return int(attack), crit
         else:
-            return int(attack), crit, hp
+            return int(attack), crit, hp, char[4], acolyte1, acolyte2 #returns Class, then acolytes
 
 def getAcolyteByName(name : str):
-    return acolyte_list[name]
+    with open(r'F:\OneDrive\NguyenBot\Assets\Acolyte_List.json', 'r') as acolyte_list:
+        acolytes = json.load(acolyte_list) #acolytes is a dict
+        acolyte_list.close()
+    return acolytes[name]
 
 async def getAcolyteByID(instance : int):
     async with aiosqlite.connect(PATH) as conn:
@@ -136,23 +165,37 @@ async def getAcolyteByID(instance : int):
         acolyte.__setitem__('Level', level)
         return acolyte
 
-acolyte_list = {
-    'Test' : {
-        'Attack' : 16,
-        'Scale' : 1.5,
-        'Crit' : 2,
-        'Rarity' : 3,
-        'Effect' : None,
-        'Story' : 'Let\'s go Sean',
-        'Image' : None
-    },
-    'Seanus' : {
-        'Attack' : 4,
-        'Scale' : 1,
-        'Crit' : 1,
-        'Rarity' : 4,
-        'Effect' : None,
-        'Story' : 'Sean is short for Seanathan',
-        'Image' : None
-    },
-}
+async def getGuildFromPlayer(user_id : int):
+    async with aiosqlite.connect(PATH) as conn:
+        c = await conn.execute('SELECT guild FROM players WHERE user_id = ?', (user_id,)) 
+        guild_id = await c.fetchone()
+        return await getGuildByID(guild_id[0])
+
+async def getGuildByID(guild_id : int):
+    async with aiosqlite.connect(PATH) as conn:
+        c = await conn.execute('SELECT * FROM guilds WHERE guild_id = ?', (guild_id,))
+        info = await c.fetchone()
+        guild = {
+            'ID' : info[0],
+            'Name' : info[1],
+            'Type' : info[2],
+            'XP' : info[3],
+            'Leader' : info[4],
+            'Desc' : info[5],
+            'Icon' : info[6]
+        }
+        return guild
+
+async def getGuildLevel(guild_id : int, returnline = False):
+    async with aiosqlite.connect(PATH) as conn:
+        c = await conn.execute('SELECT guild_xp FROM guilds WHERE guild_id = ?', (guild_id,))
+        xp = await c.fetchone()
+        #Make each level 100k. So level 1 is 100k xp, 2 is 200k, until lvl 10 at 1m
+        level = int(xp[0] / 100000)
+
+        if returnline: #Also create a string to show progress
+            progress = int((xp[0] % 100000) / 20000)
+            progressStr = dashes[progress]+'◆'+dashes[4-progress]
+            return level, progressStr
+        else:
+            return level

@@ -3,6 +3,8 @@ import asyncio
 
 from discord.ext import commands, menus
 
+from Utilities import AssetCreation
+
 import aiosqlite
 
 PATH = 'PATH'
@@ -32,3 +34,60 @@ async def has_char(user : discord.user):
             return True
         else:
             return False
+
+async def not_in_guild(ctx):
+    async with aiosqlite.connect(PATH) as conn:
+        c = await conn.execute('SELECT guild FROM players WHERE user_id = ?', (ctx.author.id,))
+        guild = await c.fetchone()
+        if guild[0] is None:
+            return True
+
+async def target_not_in_guild(user : discord.user):
+    async with aiosqlite.connect(PATH) as conn:
+        c = await conn.execute('SELECT guild FROM players WHERE user_id = ?', (user.id,))
+        guild = await c.fetchone()
+        if guild[0] is None:
+            return True
+
+async def in_brotherhood(ctx):
+    async with aiosqlite.connect(PATH) as conn:
+        c = await conn.execute('SELECT guild FROM players WHERE user_id = ?', (ctx.author.id,))
+        guild = await c.fetchone()
+        if guild[0] is None:
+            return
+        else:
+            c = await conn.execute('SELECT guild_type FROM guilds WHERE guild_id = ?', (guild[0],))
+            guild_type = await c.fetchone()
+            if guild_type[0] == 'Brotherhood':
+                return True
+
+async def in_guild(ctx):
+    async with aiosqlite.connect(PATH) as conn:
+        c = await conn.execute('SELECT guild FROM players WHERE user_id = ?', (ctx.author.id,))
+        guild = await c.fetchone()
+        if guild is None:
+            return
+        else:
+            c = await conn.execute('SELECT guild_type FROM guilds WHERE guild_id = ?', (guild[0]))
+            guild_type = await c.fetchone()
+            if guild_type == 'Guild':
+                return True     
+
+async def guild_can_be_created(ctx, name):
+    async with aiosqlite.connect(PATH) as conn:
+        c = await conn.execute('SELECT guild_id FROM guilds WHERE guild_name = ?', (name,))
+        is_taken = await c.fetchone()
+        if is_taken is not None:
+            await ctx.reply('This name is already taken.')
+            return
+        c = await conn.execute('SELECT gold FROM players WHERE user_id = ?', (ctx.author.id,))
+        gold = await c.fetchone()
+        if gold[0] < 15000:
+            await ctx.reply('You don\'t have enough money form a brotherhood.')
+            return
+        return True #Otherwise we're good to go
+
+async def is_guild_leader(ctx):
+    player_guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
+    if ctx.author.id == player_guild['Leader']:
+        return True
