@@ -139,7 +139,7 @@ class Items(commands.Cog):
         query = (ctx.author.id,)
         async with aiosqlite.connect(PATH) as conn:
             c = await conn.execute('SELECT equipped_item FROM Players WHERE user_id = ?', query)
-            equipped = c.fetchone()
+            equipped = await c.fetchone()
             if equipped is None:
                 await ctx.reply('You don\'t have an item equipped.')
                 return
@@ -150,14 +150,16 @@ class Items(commands.Cog):
             await ctx.reply('Unequipped your item')
 
 
-    @commands.command(brief='<item_id : int>', description='Sell an item for a random price')
+    @commands.command(brief='<item_id : int>', description='Sell an item for a random price.')
     @commands.check(Checks.is_player)
     async def sell(self, ctx, item_id : int):
         query = (item_id, ctx.author.id) #Make sure that item exists and author owns it
         async with aiosqlite.connect(PATH) as conn:
             c = await conn.execute("""SELECT item_id, owner_id, is_equipped, rarity FROM Items
                 WHERE item_id = ? AND owner_id = ?""", query)
+            d = await conn.execute('SELECT class FROM players WHERE user_id = ?', (ctx.author.id,))
             item = await c.fetchone()
+            playerjob = await d.fetchone()
             try:
                 if item[2] == 1:
                     await ctx.reply('You can\'t sell your equipped item.')
@@ -166,6 +168,8 @@ class Items(commands.Cog):
                 for i in range(0,5):
                     if item[3] == WeaponValues[i][0]: 
                         gold = random.randint(WeaponValues[i][1], WeaponValues[i][2])
+                        if playerjob == 'Merchant':
+                            gold = int(gold * 1.5)
                         await conn.execute('UPDATE players SET gold = gold + ? WHERE user_id = ?', (gold, ctx.author.id))
                         await conn.execute('DELETE FROM Items WHERE item_id = ?', (item_id,))
                         await conn.commit()
@@ -173,6 +177,48 @@ class Items(commands.Cog):
                         break
             except TypeError:
                 await ctx.reply('You don\'t own this item')
+
+    @commands.command(brief='<items>', description='Sell multiple items for random prices.')
+    @commands.check(Checks.is_player)
+    async def sellmultiple(self, ctx, *, items : str):
+        itemlist = items.split()
+        errors = ''
+        total = 0
+        async with aiosqlite.connect(PATH) as conn:
+            d = await conn.execute('SELECT class FROM players WHERE user_id = ?', (ctx.author.id,))
+            playerjob = await d.fetchone()
+            for item_id in itemlist:
+                try:
+                    query = (int(item_id), ctx.author.id)
+                except ValueError:
+                    errors = errors + f'`{item_id}` '
+
+                c = await conn.execute("""SELECT item_id, owner_id, is_equipped, rarity FROM Items
+                    WHERE item_id = ? AND owner_id = ?""", query)
+                item = await c.fetchone()
+
+                try:
+                    if item[2] == 1:
+                        errors = errors + f'`{item_id}` '
+                        continue
+                    # Otherwise item is owned and can be deleted
+                    for i in range(0,5):
+                        if item[3] == WeaponValues[i][0]: 
+                            gold = random.randint(WeaponValues[i][1], WeaponValues[i][2])
+                            if playerjob == 'Merchant':
+                                gold = int(gold * 1.5)
+                            total = total + gold
+                            await conn.execute('DELETE FROM Items WHERE item_id = ?', (item_id,))
+                            break 
+                except TypeError:
+                    errors = errors + f'`{item_id}` '
+
+            await conn.execute('UPDATE players SET gold = gold + ? WHERE user_id = ?', (total, ctx.author.id))
+            await conn.commit()
+            if len(errors) == 0:
+                await ctx.reply(f'You received {total} gold for selling these items.')
+            else:
+                await ctx.reply(f'You received {total} gold for selling these items. Did not sell items {errors}')
 
     @commands.command(brief='<player> <item_id : int> <price : int>', description='Sell an item to someone')
     @commands.check(Checks.is_player)
@@ -226,9 +272,11 @@ class Items(commands.Cog):
                     await conn.execute('UPDATE Players SET gold = gold - ? WHERE user_id = ?', (price, player.id))
                     await conn.commit()
                     await ctx.send(f'Successfully sold `{weapon_name}` for `{price}` gold')
+                    break
                 if str(reaction) == '\u274E':
                     await message.delete()
                     await ctx.send('They declined your offer.')
+                    break
 
                 try:
                     reaction, user = await self.client.wait_for('reaction_add', check=check, timeout=15.0)

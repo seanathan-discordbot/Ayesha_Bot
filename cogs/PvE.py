@@ -34,64 +34,64 @@ bounty_levels = {
         'Name' : 'Roadside Brigands',
         'LowATK' : 40,
         'HighATK' : 60,
-        'LowHP' : 1200,
-        'HighHP' : 1400,
+        'LowHP' : 700,
+        'HighHP' : 900,
         'Image' : None
     },
     4 : {
         'Name' : 'Eques Maledicens',
         'LowATK' : 50,
         'HighATK' : 70,
-        'LowHP' : 1250,
-        'HighHP' : 1500,
+        'LowHP' : 750,
+        'HighHP' : 1000,
         'Image' : None
     },
     5 : { 
         'Name' : 'Sean', #SPECIAL: 50% INCREASED ATTACK
         'LowATK' : 5,
         'HighATK' : 10,
-        'LowHP' : 1000,
-        'HighHP' : 1000,
+        'LowHP' : 500,
+        'HighHP' : 500,
         'Image' : None
     },
     6 : {
         'Name' : 'Rabid Bear',
         'LowATK' : 300,
         'HighATK' : 350,
-        'LowHP' : 300,
-        'HighHP' : 500,
+        'LowHP' : 200,
+        'HighHP' : 400,
         'Image' : None
     },
     7 : {
         'Name' : 'Maritimialan Shaman', #SPECIAL: ATTACK REDUCED BY 20%
         'LowATK' : 110,
         'HighATK' : 150,
-        'LowHP' : 400,
-        'HighHP' : 1000,
+        'LowHP' : 250,
+        'HighHP' : 500,
         'Image' : None
     },
     8 : {
         'Name' : 'Apprenticeship Loan Debt Collector',
         'LowATK' : 130,
         'HighATK' : 150,
-        'LowHP' : 900,
-        'HighHP' : 1000,
+        'LowHP' : 600,
+        'HighHP' : 800,
         'Image' : None
     },
     9 : {
         'Name' : 'Moonlight Wolf Pack', #SPECIAL: NO HEALING
         'LowATK' : 120,
         'HighATK' : 140,
-        'LowHP' : 1400,
-        'HighHP' : 1800,
+        'LowHP' : 1100,
+        'HighHP' : 1500,
         'Image' : None
     },
     10 : {
         'Name' : 'Crumidian Warriors', 
         'LowATK' : 140,
         'HighATK' : 150,
-        'LowHP' : 1400,
-        'HighHP' : 1800,
+        'LowHP' : 1100,
+        'HighHP' : 1500,
         'Image' : None
     },
     11 : {
@@ -161,11 +161,25 @@ class PvE(commands.Cog):
 
     def __init__(self, client):
         self.client = client
+        self.players = {}
 
     #EVENTS
     @commands.Cog.listener() # needed to create event in cog
     async def on_ready(self): # YOU NEED SELF IN COGS
         print('PvE is ready.')
+
+    def getPlayer(self, ctx): #This command ensures someone doesn't play multiple PvEs at once
+        try:
+            return self.players[ctx.author.id]
+        except KeyError:
+            self.players[ctx.author.id] = 1
+            return
+
+    def deletePlayer(self, ctx):
+        try:
+            del self.players[ctx.author.id]
+        except KeyError:
+            pass
 
     def getBossAction(self, level):
         action = {'Action' : None, 'Damage' : None, 'DamageTaken' : 1}
@@ -180,26 +194,26 @@ class PvE(commands.Cog):
         else:
             action['Action'] = 'blocked'
             action['Damage'] = math.floor(random.randint(bounty_levels[level]['LowATK'], bounty_levels[level]['HighATK']) / 100)
-            action['DamageTaken'] = .01
+            action['DamageTaken'] = .05
         return action
 
-    async def checkEndGame(self, ctx, message, level, hp, enemyhp):
+    async def checkEndGame(self, ctx, message, level, hp, enemyhp, acolyte1, acolyte2):
         if enemyhp <= 0: #give them a win in the event of a tie
-            vict = await self.doVictory(ctx.author.id, level, hp)
+            vict, acolyte1, acolyte2 = await self.doVictory(ctx.author.id, level, hp, acolyte1, acolyte2)
             await message.clear_reactions()
             await message.edit(embed=vict)
-            await AssetCreation.checkLevel(ctx, ctx.author.id)
+            await AssetCreation.checkLevel(ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
             return True
         elif hp <= 0: #loss
-            loss = await self.doDefeat(ctx.author.id, level, enemyhp)
+            loss, acolyte1, acolyte2 = await self.doDefeat(ctx.author.id, level, enemyhp, acolyte1, acolyte2)
             await message.clear_reactions()
             await message.edit(embed=loss)
-            await AssetCreation.checkLevel(ctx, ctx.author.id)
+            await AssetCreation.checkLevel(ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
             return True
         else:
             return None
 
-    async def doVictory(self, player, level, hp):
+    async def doVictory(self, player, level, hp, acolyte1, acolyte2):
         getweapon = False
         #Calculate chance of receiving a weapon: 25%
         if random.randint(1,4) == 1:
@@ -219,9 +233,14 @@ class PvE(commands.Cog):
         #Calculate gold, xp, acolyte xp rewards
         gold = random.randint(gold_rewards[level]['Min'], gold_rewards[level]['Max'])
         xp = math.floor(2**(level/7) * ((level+10)**2) * ((hp/1000) + .5))
+        try:
+            if acolyte1['Name'] == 'Sean' or acolyte2['Name'] == 'Sean':
+                xp = math.floor(xp * 1.1)
+        except TypeError:
+            pass
         #Give rewards
         async with aiosqlite.connect(PATH) as conn:
-            c = await conn.execute('SELECT instance_id FROM Acolytes WHERE owner_id = ? AND is_equipped = 1', (player,))
+            c = await conn.execute('SELECT instance_id FROM Acolytes WHERE owner_id = ? AND (is_equipped = 1 OR is_equipped = 2)', (player,))
             acolytes = await c.fetchall()
             if len(acolytes) == 1:
                 await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (xp, acolytes[0][0]))
@@ -237,14 +256,25 @@ class PvE(commands.Cog):
             embed.add_field(name=f'You had {hp} hp remaining', value=f'You received {gold} gold and {xp} xp from the battle.\nYou also gained an item. Check your `inventory` to see it!')
         else:
             embed.add_field(name=f'You had {hp} hp remaining', value=f'You received {gold} gold and {xp} xp from the battle.')
-        return embed
+        # Also returns the acolytes to check their level
+        if len(acolytes) == 1:
+            return embed, acolytes[0][0], None
+        elif len(acolytes) == 2:
+            return embed, acolytes[0][0], acolytes[1][0]
+        else:
+            return embed, None, None
 
-    async def doDefeat(self, player, level, enemyhp):
+    async def doDefeat(self, player, level, enemyhp, acolyte1, acolyte2):
         #Calculate xp, acolyte xp rewards: xp greatly reduced
         xp = 5 * level + 20
+        try:
+            if acolyte1['Name'] == 'Sean' or acolyte2['Name'] == 'Sean':
+                xp = math.floor(xp * 1.1)
+        except TypeError:
+            pass
         #Give rewards
         async with aiosqlite.connect(PATH) as conn:
-            c = await conn.execute('SELECT instance_id FROM Acolytes WHERE owner_id = ? AND is_equipped = 1', (player,))
+            c = await conn.execute('SELECT instance_id FROM Acolytes WHERE owner_id = ? AND (is_equipped = 1 OR is_equipped = 2)', (player,))
             acolytes = await c.fetchall()
             if len(acolytes) == 1:
                 await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (xp, acolytes[0][0]))
@@ -256,11 +286,39 @@ class PvE(commands.Cog):
         #Return an embed to send
         embed = discord.Embed(title=f"The {bounty_levels[level]['Name']} has shown its superiority", color=0xBEDCF6)
         embed.add_field(name='You fled the battlefield', value=f'Boss HP: `{enemyhp}`\nYou received {xp} xp from the battle.')
-        return embed
+        # Also returns the acolytes to check their level
+        if len(acolytes) == 1:
+            return embed, acolytes[0][0], None
+        elif len(acolytes) == 2:
+            return embed, acolytes[0][0], acolytes[1][0]
+        else:
+            return embed, None, None
+
+    def checkCrit(self, level, crit, damage, enemyhp, attack, acolyte1, acolyte2):
+        is_crit = random.choices(['Normal', 'Crit'], [100-crit, crit])
+        if is_crit[0] == 'Crit':
+            if level == 13: #Lvl 13 special prevents crits
+                damage = 0
+                enemyhp += 50
+            else:
+                damage = damage * 2
+
+            try:
+                if acolyte1['Name'] == 'Aulus' or acolyte2['Name'] == 'Aulus': #Aulus gives crit bonuses
+                    attack += 50
+            except TypeError:
+                pass
+
+        try:
+            if acolyte1['Name'] == 'Paterius' or acolyte2['Name'] == 'Paterius': #Doesn't need a crit, but placed here for brevity
+                damage += 10
+        except TypeError:
+            pass
+
+        return crit, is_crit[0], damage, enemyhp, attack
 
     #COMMANDS
-    @commands.command(aliases=['pve', 'fight', 'boss'], brief='<level>', description='Fight an enemy for rewards! Can only be played twice per hour')
-    # @cooldown(1, 1800, BucketType.user)
+    @commands.command(aliases=['pve', 'fight', 'boss'], brief='<level>', description='Fight an enemy for rewards!')
     @commands.check(Checks.is_player)
     async def bounty(self, ctx, level : int = 0):
         if level == 0:
@@ -271,13 +329,20 @@ class PvE(commands.Cog):
             await ctx.reply('Please supply a valid level.')
             ctx.command.reset_cooldown(ctx)
             return
+        #Make sure they're not already playing a game
+        is_playing = self.getPlayer(ctx)
+        if is_playing is not None:
+            await ctx.reply('You\'re already in a game.')
+            return
         #Get the player's info and load stats
-        pass
-        attack, crit, hp = await AssetCreation.getAttack(ctx.author.id, returnhp=True)
+        attack, crit, hp, playerjob, acolyte1, acolyte2 = await AssetCreation.getAttack(ctx.author.id, returnothers=True)
+        if level == 5:
+            attack = math.floor(attack * 1.5)
+        if level == 7:
+            attack = math.floor(attack * (4/5))
         enemyhp = random.randint(bounty_levels[level]['LowHP'], bounty_levels[level]['HighHP'])
         # Create the embed
         embed = discord.Embed(title=f"{bounty_levels[level]['Name']} attacks!", color=0xBEDCF6)
-        # embed.set_image(url=f'{ctx.author.avatar_url}')
         embed.add_field(name='Attack', value=f'{attack}') #field 0
         embed.add_field(name='Crit Rate', value=f'{crit}%') #field 1
         embed.add_field(name='HP', value=f'{hp}') #field 2
@@ -304,13 +369,10 @@ class PvE(commands.Cog):
                 #Do Calcs
                 bossaction = self.getBossAction(level)
                 damage = math.floor(random.randint(attack, attack+10) * bossaction['DamageTaken'])
-                is_crit = random.choices(['Normal', 'Crit'], [100-crit, crit])
-                if is_crit == 'Crit':
-                    if level == 13:
-                        damage = 0
-                        enemyhp += 50
-                    else:
-                        damage = damage * 2
+
+                #Critical Strike handling - implement bonuses for having certain acolytes
+                crit, is_crit, damage, enemyhp, attack = self.checkCrit(level, crit, damage, enemyhp, attack, acolyte1, acolyte2)
+
                 enemyhp = enemyhp - damage
                 if level == 14:
                     hp = hp - (bossaction['Damage'] + math.floor(damage / 20))
@@ -321,27 +383,28 @@ class PvE(commands.Cog):
                 turnCounter += 1
 
                 #Check to see if hp falls below 0
-                doEnd = await self.checkEndGame(ctx, message, level, hp, enemyhp)
+                doEnd = await self.checkEndGame(ctx, message, level, hp, enemyhp, acolyte1, acolyte2)
                 if doEnd:
                     break
 
                 #Send new embed if game continues
+                embed.set_field_at(0, name='Attack', value=f'{attack}')
                 embed.set_field_at(2, name='HP', value=f'{hp}')
                 embed.set_field_at(3, name=f'Enemy HP: `{enemyhp}`', value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', inline=False)
-                embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You hit for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {bossaction['Damage']} damage.", inline=False)
+                if is_crit == 'Normal':
+                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You hit for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {bossaction['Damage']} damage.", inline=False)
+                else:
+                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You critically striked for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {bossaction['Damage']} damage.", inline=False)
                 await message.edit(embed=embed)
 
             if str(reaction) == '\N{SHIELD}': #block
                 #Do Calcs
                 bossaction = self.getBossAction(level)
                 damage = math.floor((random.randint(attack, attack+10)/10) * bossaction['DamageTaken'])
-                is_crit = random.choices(['Normal', 'Crit'], [100-crit, crit])
-                if is_crit == 'Crit':
-                    if level == 13:
-                        damage = 0
-                        enemyhp += 50
-                    else:
-                        damage = damage * 2
+
+                #Critical Strike handling - implement bonuses for having certain acolytes
+                crit, is_crit, damage, enemyhp, attack = self.checkCrit(level, crit, damage, enemyhp, attack, acolyte1, acolyte2)
+
                 enemyhp = enemyhp - damage
                 if level == 14:
                     your_damage = math.floor((bossaction['Damage'] / 20) + (damage / 20))
@@ -353,27 +416,28 @@ class PvE(commands.Cog):
                 turnCounter += 1
 
                 #Check to see if hp falls below 0
-                doEnd = await self.checkEndGame(ctx, message, level, hp, enemyhp)
+                doEnd = await self.checkEndGame(ctx, message, level, hp, enemyhp, acolyte1, acolyte2)
                 if doEnd:
                     break
 
                 #Send new embed
+                embed.set_field_at(0, name='Attack', value=f'{attack}')
                 embed.set_field_at(2, name='HP', value=f'{hp}')
                 embed.set_field_at(3, name=f'Enemy HP: `{enemyhp}`', value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', inline=False)
-                embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You blocked and dealt {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", inline=False)
+                if is_crit == 'Normal':
+                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You blocked and dealt {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", inline=False)
+                else:
+                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You critically striked for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", inline=False)
                 await message.edit(embed=embed)
 
             if str(reaction) == '\N{CROSSED SWORDS}': #parry
                 #Do Calcs
                 bossaction = self.getBossAction(level)
                 damage = math.floor((random.randint(attack, attack+10) * bossaction['DamageTaken'])/2)
-                is_crit = random.choices(['Normal', 'Crit'], [100-crit, crit])
-                if is_crit == 'Crit':
-                    if level == 13:
-                        damage = 0
-                        enemyhp += 50
-                    else:
-                        damage = damage * 2
+
+                #Critical Strike handling - implement bonuses for having certain acolytes
+                crit, is_crit, damage, enemyhp, attack = self.checkCrit(level, crit, damage, enemyhp, attack, acolyte1, acolyte2)
+
                 enemyhp = enemyhp - damage
                 if level == 14:
                     your_damage = math.floor(bossaction['Damage']/2 + damage/20)
@@ -386,14 +450,18 @@ class PvE(commands.Cog):
                 turnCounter += 1
 
                 #Check to see if hp falls below 0
-                doEnd = await self.checkEndGame(ctx, message, level, hp, enemyhp)
+                doEnd = await self.checkEndGame(ctx, message, level, hp, enemyhp, acolyte1, acolyte2)
                 if doEnd:
                     break
 
                 #Send new embed
+                embed.set_field_at(0, name='Attack', value=f'{attack}')
                 embed.set_field_at(2, name='HP', value=f'{hp}')
                 embed.set_field_at(3, name=f'Enemy HP: `{enemyhp}`', value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', inline=False)
-                embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You parried for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", inline=False)
+                if is_crit == 'Normal':
+                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You parried for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", inline=False)
+                else:
+                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You critically striked for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", inline=False)
                 await message.edit(embed=embed)
 
             if str(reaction) == '\u2764': #heal
@@ -401,6 +469,8 @@ class PvE(commands.Cog):
                 bossaction = self.getBossAction(level)
                 hp = hp - bossaction['Damage']
                 heal = math.floor((1000 - hp) / 8)
+                if playerjob == 'Butcher':
+                    heal = heal * 2
                 if level == 9:
                     heal = 0
                 hp = hp + heal
@@ -409,11 +479,12 @@ class PvE(commands.Cog):
                 turnCounter += 1
 
                 #Check to see if hp falls below 0
-                doEnd = await self.checkEndGame(ctx, message, level, hp, enemyhp)
+                doEnd = await self.checkEndGame(ctx, message, level, hp, enemyhp, acolyte1, acolyte2)
                 if doEnd:
                     break
 
                 #Send new embed
+                embed.set_field_at(0, name='Attack', value=f'{attack}')
                 embed.set_field_at(2, name='HP', value=f'{hp}')
                 embed.set_field_at(3, name=f'Enemy HP: `{enemyhp}`', value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', inline=False)
                 embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You healed {heal} hp. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {bossaction['Damage']} damage.", inline=False)
@@ -430,7 +501,7 @@ class PvE(commands.Cog):
                 turnCounter += 1
 
                 #Check to see if hp falls below 0
-                doEnd = await self.checkEndGame(ctx, message, level, hp, enemyhp)
+                doEnd = await self.checkEndGame(ctx, message, level, hp, enemyhp, acolyte1, acolyte2)
                 if doEnd:
                     break
 
@@ -442,9 +513,9 @@ class PvE(commands.Cog):
                 await message.edit(embed=embed)
 
             if turnCounter == 51: #100 turn limit
-                loss = await self.doDefeat(ctx.author.id, level, enemyhp)
+                loss = await self.doDefeat(ctx.author.id, level, enemyhp, acolyte1, acolyte2)
                 await message.clear_reactions()
-                await message.edit(embed=loss)
+                await message.edit(embed=loss[0])
                 break                
 
             try:
@@ -455,6 +526,8 @@ class PvE(commands.Cog):
                 readReactions = not readReactions
                 await ctx.send('Timed out.')
                 await message.delete()
+
+        self.deletePlayer(ctx) # Remove their playing entry
 
 
 def setup(client):

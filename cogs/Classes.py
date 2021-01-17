@@ -94,6 +94,7 @@ class Classes(commands.Cog):
             if str(reaction) == '\u274E':
                 await message.delete()
                 await ctx.send('No class chosen.')
+                ctx.command.reset_cooldown(ctx)
                 break
             if str(reaction) == '\u2705': # Then change class
                 role = occ[page][1]
