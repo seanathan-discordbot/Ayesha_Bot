@@ -273,6 +273,31 @@ class Associations(commands.Cog):
             await conn.commit()
             await ctx.reply(f'`{player.name}` is now an `{rank}`.')
 
+    @brotherhood.command(brief='<player>', description='Demote a member of your guild back to member.')
+    @commands.check(Checks.is_guild_leader)
+    async def demote(self, ctx, player : commands.MemberConverter):
+        #Otherwise check if player is in guild -> also not the leader
+        if ctx.author == player:
+            await ctx.reply('I don\'t think so.')
+            return
+        if not await Checks.has_char(player):
+            await ctx.reply('This person does not have a character.')
+            return
+        if await Checks.target_not_in_guild(player):
+            await ctx.reply('This person is not in your brotherhood.')
+            return
+        leader_guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
+        target_guild = await AssetCreation.getGuildFromPlayer(player.id)
+        if leader_guild['ID'] != target_guild['ID']:
+            await ctx.reply('This person is not in your brotherhood.')
+            return
+        #Then give them their role
+        async with aiosqlite.connect(PATH) as conn:
+            await conn.execute('UPDATE players SET guild_rank = "Member" WHERE user_id = ?', (player.id,))
+            await conn.commit()
+            await ctx.reply(f'`{player.name}` has been demoted to `Member`.')
+
+
 
         
     
