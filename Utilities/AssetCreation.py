@@ -10,6 +10,7 @@ import random
 import math
 
 PATH = 'PATH'
+ACOLYTE_PATH = 'PATH'
 
 weapontypes = ['Spear', 'Sword', 'Dagger', 'Bow', 'Trebuchet', 'Gauntlets', 'Staff', 'Greatsword', 'Axe', 'Sling', 'Javelin', 'Falx', 'Mace']
 
@@ -61,7 +62,7 @@ async def checkLevel(ctx, user_id, aco1=None, aco2=None):
     async with aiosqlite.connect(PATH) as conn:
         c = await conn.execute('SELECT level, xp, user_name FROM Players WHERE user_id = ?', (user_id,))
         current = await c.fetchone()
-        if current[0] < getLevel(current[1]):
+        if current[0] < calcLevel(current[1]):
             #Give some rewards
             gold = (current[0] + 1) * 500
             rubidic = math.ceil((current[0] + 1) / 10)
@@ -93,7 +94,7 @@ def getAcolyteLevel(xp):
 
     return level
 
-def getLevel(xp):
+def calcLevel(xp):
     level = 0
 
     def f(x):
@@ -109,6 +110,12 @@ def getLevel(xp):
         level = 100
 
     return level
+
+async def getLevel(user_id : int):
+    async with aiosqlite.connect(PATH) as conn:
+        c = await conn.execute('SELECT level FROM Players WHERE user_id = ?', (user_id,))
+        level = await c.fetchone()
+        return level[0]
 
 async def getAttack(user_id, returnothers = False):
     charattack, weaponattack, acolyteattack, attack, crit, hp = 0, 0, 0, 0, 0, 500
@@ -151,7 +158,7 @@ async def getAttack(user_id, returnothers = False):
             return int(attack), crit, hp, char[4], acolyte1, acolyte2 #returns Class, then acolytes
 
 def getAcolyteByName(name : str):
-    with open(r'F:\OneDrive\NguyenBot\Assets\Acolyte_List.json', 'r') as acolyte_list:
+    with open(ACOLYTE_PATH, 'r') as acolyte_list:
         acolytes = json.load(acolyte_list) #acolytes is a dict
         acolyte_list.close()
     return acolytes[name]
@@ -182,20 +189,33 @@ async def getGuildByID(guild_id : int):
             'XP' : info[3],
             'Leader' : info[4],
             'Desc' : info[5],
-            'Icon' : info[6]
+            'Icon' : info[6],
+            'Join' : info[7]
         }
         return guild
 
 async def getGuildLevel(guild_id : int, returnline = False):
     async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT guild_xp FROM guilds WHERE guild_id = ?', (guild_id,))
-        xp = await c.fetchone()
-        #Make each level 100k. So level 1 is 100k xp, 2 is 200k, until lvl 10 at 1m
-        level = int(xp[0] / 100000)
+        c = await conn.execute('SELECT level FROM guild_levels WHERE guild_id = ?', (guild_id,))
+        level = await c.fetchone()
 
         if returnline: #Also create a string to show progress
+            c = await conn.execute('SELECT guild_xp FROM guilds WHERE guild_id = ?', (guild_id,))
+            xp = await c.fetchone()
             progress = int((xp[0] % 100000) / 20000)
             progressStr = dashes[progress]+'◆'+dashes[4-progress]
-            return level, progressStr
+            return level[0], progressStr
         else:
-            return level
+            return level[0]
+
+async def getGuildMemberCount(guild_id : int):
+    async with aiosqlite.connect(PATH) as conn:
+        c = await conn.execute('SELECT member_count FROM guild_membercount WHERE guild_id = ?', (guild_id,))
+        count = await c.fetchone()
+        return count[0]
+
+async def getGuildCapacity(guild_id : int):
+    async with aiosqlite.connect(PATH) as conn:
+        c = await conn.execute('SELECT capacity FROM guild_capacities WHERE guild_id = ?', (guild_id,))
+        capacity = await c.fetchone()
+        return capacity[0]
