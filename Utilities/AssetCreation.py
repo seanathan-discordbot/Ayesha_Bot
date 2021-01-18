@@ -118,7 +118,7 @@ async def getLevel(user_id : int):
         return level[0]
 
 async def getAttack(user_id, returnothers = False):
-    charattack, weaponattack, acolyteattack, attack, crit, hp = 0, 0, 0, 0, 0, 500
+    charattack, weaponattack, guildattack, acolyteattack, attack, crit, hp = 0, 0, 0, 0, 0, 0, 500
     acolyte1, acolyte2 = None, None
     async with aiosqlite.connect(PATH) as conn:
         c = await conn.execute('SELECT level, equipped_item, acolyte1, acolyte2, class FROM Players WHERE user_id = ?', (user_id,))
@@ -142,7 +142,15 @@ async def getAttack(user_id, returnothers = False):
             charattack = math.floor(charattack * 1.2) + 10
         if char[4] == 'Blacksmith':
             weaponattack = math.floor(weaponattack * 1.1) + 10
-        attack = charattack + weaponattack + acolyteattack
+        guild = await getGuildFromPlayer(user_id)
+        try:
+            guild_level = await getGuildLevel(guild['ID'])
+            if guild['Type'] == 'Brotherhood':
+                guildattack = guild_level * (guild_level + 1) / 2
+                crit = crit + guild_level
+        except TypeError:
+            pass
+        attack = charattack + weaponattack + acolyteattack + guildattack
         if item is not None:
             crit = crit + 5 + item[1]
         else:
