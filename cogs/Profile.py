@@ -90,51 +90,52 @@ class Profile(commands.Cog):
         attack, crit = await AssetCreation.getAttack(player.id)
         query = (player.id,)
         async with aiosqlite.connect(PATH) as conn:
-            c = await conn.execute('SELECT * FROM players WHERE user_id = ?', query)
-            profile = await c.fetchone()
-            profile = list(profile) #Allow editing of this for acolytes
+            c = await conn.execute("""SELECT user_name, level, equipped_item, acolyte1, acolyte2, guild, gold, class, origin, location, 
+                pvpwins, pvpfights, bosswins, bossfights
+                FROM players WHERE user_id = ?""", query)
+            user_name, level, equipped, acolyte1, acolyte2, guild, gold, job, origin, location, pvpwins, pvpfights, bosswins, bossfights = await c.fetchone()
             #Calc pvp and boss wins. If 0, hardcode to 0 to prevent div 0
-            if profile[13] == 0: 
-                pvpwins = 0
+            if pvpfights == 0: 
+                pvpwinrate = 0
             else:
-                pvpwins = profile[12]/profile[13]*100
-            if profile[15] == 0:
-                bosswins = 0
+                pvpwinrate = pvpwins/pvpfights*100
+            if bossfights == 0:
+                bosswinrate = 0
             else:
-                bosswins = profile[14]/profile[15]*100
-            d = await conn.execute('SELECT * FROM Items WHERE item_id = ?', (profile[4],))
+                bosswinrate = bosswins/bossfights*100
+            d = await conn.execute('SELECT * FROM Items WHERE item_id = ?', (equipped,)) #Change the * later
             item = await d.fetchone()
-            if profile[7] is not None:
-                guild = await AssetCreation.getGuildByID(profile[7])
+            if guild is not None:
+                guild = await AssetCreation.getGuildByID(guild)
             else:
                 guild = {'Name' : 'None'}
-            #Display the acolyte name and rarity rather than ID. Tuple converted to list because of this
-            if profile[5] is not None:
-                acolyte1 = await AssetCreation.getAcolyteByID(profile[5])
-                profile[5] = f"{acolyte1['Name']} ({acolyte1['Rarity']}⭐)"
-            if profile[6] is not None:   
-                acolyte2 = await AssetCreation.getAcolyteByID(profile[6])
-                profile[6] = f"{acolyte2['Name']} ({acolyte2['Rarity']}⭐)"
+            #Create the strings for acolytes
+            if acolyte1 is not None:
+                acolyte1 = await AssetCreation.getAcolyteByID(acolyte1)
+                acolyte1 = f"{acolyte1['Name']} ({acolyte1['Rarity']}⭐)"
+            if acolyte2 is not None:   
+                acolyte2 = await AssetCreation.getAcolyteByID(acolyte2)
+                acolyte2 = f"{acolyte2['Name']} ({acolyte2['Rarity']}⭐)"
             #Create Embed
-            embed = discord.Embed(title=f'{player.display_name}\'s Profile: {profile[1]}', color=0xBEDCF6)
+            embed = discord.Embed(title=f'{player.display_name}\'s Profile: {user_name}', color=0xBEDCF6)
             embed.set_thumbnail(url=f'{player.avatar_url}')
             embed.add_field(
                 name='Character Info',
-                value=f"Money: `{profile[8]}`\nClass: `{profile[9]}`\nOrigin: `{profile[10]}`\nLocation: `{profile[11]}`\nAssociation: `{guild['Name']}`",
+                value=f"Money: `{gold}`\nClass: `{job}`\nOrigin: `{origin}`\nLocation: `{location}`\nAssociation: `{guild['Name']}`",
                 inline=True)
             embed.add_field(
                 name='Character Stats',
-                value=f'Level: `{profile[3]}`\nAttack: `{attack}`\nCrit: `{crit}%`\nPvP Winrate: `{pvpwins:.0f}%`\nBoss Winrate: `{bosswins:.0f}%`',
+                value=f'Level: `{level}`\nAttack: `{attack}`\nCrit: `{crit}%`\nPvP Winrate: `{pvpwinrate:.0f}%`\nBoss Winrate: `{bosswinrate:.0f}%`',
                 inline=True)
             if item is not None:
                 embed.add_field(
                     name='Party',
-                    value=f'Item: `{item[5]} ({item[6]})`\nAcolyte: `{profile[5]}`\nAcolyte: `{profile[6]}`',
+                    value=f"Item: `{item[5]} ({item[6]})`\nAcolyte: `{acolyte1}`\nAcolyte: `{acolyte2}`",
                     inline=True)
             else:
                 embed.add_field(
                     name='Party',
-                    value=f'Item: `None`\nAcolyte: `{profile[5]}`\nAcolyte: `{profile[6]}`',
+                    value=f"Item: `None`\nAcolyte: `{acolyte1}`\nAcolyte: `{acolyte2}`",
                     inline=True)
             await ctx.reply(embed=embed)
 
