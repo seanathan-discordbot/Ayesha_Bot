@@ -123,7 +123,7 @@ class Associations(commands.Cog):
             await conn.commit()
             await ctx.reply('You left your brotherhood.')
 
-    @brotherhood.command(aliases=['donate', 'invest'], brief='<money : int>', description='Donate to your association, increasing its xp!')
+    @brotherhood.command(aliases=['donate'], brief='<money : int>', description='Donate to your association, increasing its xp!')
     @commands.check(Checks.in_brotherhood)
     async def contribute(self, ctx, donation : int):
         #Make sure they have the money they're paying and that the guild is <lvl 10
@@ -313,7 +313,7 @@ class Associations(commands.Cog):
                 await message.delete()
                 await ctx.send('They did not respond to your invitation.')
 
-    @guild.command(aliases=['donate', 'invest'], brief='<money : int>', description='Donate to your association, increasing its xp!')
+    @guild.command(aliases=['donate'], brief='<money : int>', description='Donate to your association, increasing its xp!')
     @commands.check(Checks.in_brotherhood)
     async def contribute(self, ctx, donation : int):
         #Make sure they have the money they're paying and that the guild is <lvl 10
@@ -374,6 +374,45 @@ class Associations(commands.Cog):
         menu = PaginatedMenu(ctx)
         menu.add_pages(member_list)
         await menu.open()
+
+    @guild.command(brief='<gold : int>', description='Invest in a project at a random location and gain/lose some money. 2 hour cooldown.')
+    @commands.check(Checks.in_guild)
+    @cooldown(1, 7200, BucketType.user)
+    async def invest(self, ctx, capital : int):
+        #Ensure they have enough money to invest
+        async with aiosqlite.connect(PATH) as conn:
+            c = await conn.execute('SELECT gold FROM players WHERE user_id = ?', (ctx.author.id,))
+            gold = await c.fetchone()
+            if gold[0] < capital:
+                await ctx.reply('You don\'t have enough money to invest that much.')
+                return
+            #Get a random multplier of the money
+            initial = capital
+            result = random.randint(100,175) / 100
+            outcome = random.randint(1,10)
+            if outcome == 1: #Player loses money 10% of the time.
+                result *= .25
+                capital = int(capital * result)
+            elif outcome < 10: #Player gains a fair amount 80% of the time.
+                capital = int(capital * result)
+            else: #Player gets a good amount
+                result *= 2
+                capital = int(capital * result)
+            #Choose a random project and location
+            projects = ('a museum', 'a church', 'a residence', 'a fishing company', 'a game company', 'a guild', 'a boat', 'road construction')
+            locations = ('Aramithea', 'Riverburn', 'Thenuille', 'the Mythic Forest', 'Fernheim', 'Thanderlands Marsh', 'Glakelys', 'Croire', 'Crumidia', 'Mooncastle', 'Felescity', 'Mysteria', 'a local village', 'your hometown', 'Oshwega')
+            project = random.choice(projects)
+            location = random.choice(locations)
+            #Update player's money and send output
+            if capital > initial:
+                money = capital - initial
+                await conn.execute('UPDATE players SET gold = gold + ? WHERE user_id = ?', (money, ctx.author.id))
+                await conn.commit()
+            elif capital < initial:
+                money = initial - capital
+                await conn.execute('UPDATE players SET gold = gold - ? WHERE user_id = ?', (money, ctx.author.id))
+                await conn.commit()
+        await ctx.reply(f'You invested `{initial}` gold in {project} in {location} and earned a return of `{capital}` gold.')
 
     # THESE COMMANDS ARE COMMON TO BOTH GUILDS AND BROTHERHOODS, AND THUS ARE NOT GROUPED WITH EITHER
 
@@ -546,7 +585,7 @@ class Associations(commands.Cog):
     @guild.command(aliases=['help'], description='Shows this command.')
     async def _help(self, ctx):
         def write(ctx, start, entries):
-            helpEmbed = Page(title=f'NguyenBot Help: Guilds', description='Brotherhoods are a finance-oriented association. Its members [bonus]', color=0xBEDCF6)
+            helpEmbed = Page(title=f'NguyenBot Help: Guilds', description='Guilds are a finance-oriented association. Its members gain a bonus when selling items. They also have access to the `invest` command.', color=0xBEDCF6)
             helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
             
             iteration = 0
