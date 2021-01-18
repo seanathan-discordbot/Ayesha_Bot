@@ -66,9 +66,9 @@ async def in_guild(ctx):
         if guild is None:
             return
         else:
-            c = await conn.execute('SELECT guild_type FROM guilds WHERE guild_id = ?', (guild[0]))
+            c = await conn.execute('SELECT guild_type FROM guilds WHERE guild_id = ?', (guild[0],))
             guild_type = await c.fetchone()
-            if guild_type == 'Guild':
+            if guild_type[0] == 'Guild':
                 return True     
 
 async def guild_can_be_created(ctx, name): #NOT A CHECK
