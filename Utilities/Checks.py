@@ -32,8 +32,6 @@ async def has_char(user : discord.user): #NOT A CHECK --> in-function version of
         result = await c.fetchone()
         if result is not None: #Then there is a char for this id
             return True
-        else:
-            return False
 
 async def not_in_guild(ctx):
     async with aiosqlite.connect(PATH) as conn:
@@ -96,6 +94,15 @@ async def is_not_guild_leader(ctx):
     player_guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
     if ctx.author.id != player_guild['Leader']:
         return True
+
+async def is_guild_officer(ctx):
+    async with aiosqlite.connect(PATH) as conn:
+        c = await conn.execute('SELECT guild_rank FROM players WHERE user_id = ?', (ctx.author.id,))
+        rank = await c.fetchone()
+        if rank[0] == 'Officer' or rank[0]:
+            return True
+        elif is_guild_leader(ctx):
+            return True
 
 async def guild_has_vacancy(ctx): 
     guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
