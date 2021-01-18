@@ -47,7 +47,7 @@ class Associations(commands.Cog):
         embed.set_footer(text=f"Guild ID: {info['ID']}")
         await ctx.reply(embed=embed)
 
-    @brotherhood.command(brief='<name>', description='Found a brotherhood. Costs 15,000 gold.')
+    @brotherhood.command(aliases=['found', 'establish', 'form', 'make'], brief='<name>', description='Found a brotherhood. Costs 15,000 gold.')
     @commands.check(Checks.not_in_guild)
     async def create(self, ctx, *, name : str):
         if len(name) > 32:
@@ -65,7 +65,7 @@ class Associations(commands.Cog):
             await conn.commit()
         await ctx.reply('Brotherhood founded. Do `brotherhood` to see it or `brotherhood help` for more commands!')
 
-    @brotherhood.command(brief='<desc', description='Change your brotherhood\'s description [GUILD LEADER ONLY]')
+    @brotherhood.command(aliases=['desc'], brief='<desc>', description='Change your brotherhood\'s description. [GUILD LEADER ONLY]')
     # @commands.check(Checks.is_guild_leader) <-- Next check covers leaders too
     @commands.check(Checks.is_guild_officer)
     async def description(self, ctx, *, desc : str):
@@ -80,7 +80,7 @@ class Associations(commands.Cog):
             await conn.commit()
         await ctx.reply('Description updated!')
 
-    @brotherhood.command(brief='<url>', description='Invite a player to your guild')
+    @brotherhood.command(aliases=['inv'], brief='<url>', description='Invite a player to your guild.')
     @commands.check(Checks.is_guild_officer)
     @commands.check(Checks.guild_has_vacancy)
     async def invite(self, ctx, player : commands.MemberConverter):
@@ -174,7 +174,7 @@ class Associations(commands.Cog):
             await conn.commit()
             await ctx.reply('You left your brotherhood.')
 
-    @brotherhood.command(brief='<money : int>', description='Donate to your association, increasing its xp!')
+    @brotherhood.command(aliases=['donate', 'invest'], brief='<money : int>', description='Donate to your association, increasing its xp!')
     @commands.check(Checks.in_brotherhood)
     async def contribute(self, ctx, donation : int):
         #Make sure they have the money they're paying and that the guild is <lvl 10
@@ -297,7 +297,36 @@ class Associations(commands.Cog):
             await conn.commit()
             await ctx.reply(f'`{player.name}` has been demoted to `Member`.')
 
+    @brotherhood.command(description='Shows this command.')
+    async def help(self, ctx):
+        def write(ctx, start, entries):
+            helpEmbed = Page(title=f'NguyenBot Help: Brotherhoods', description='Brotherhoods are a pvp-oriented association. Its members gain an ATK and CRIT bonus depending on its level. They also gain access to the `steal` command.', color=0xBEDCF6)
+            helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
+            
+            iteration = 0
+            while start < len(entries) and iteration < 5: #Will loop until 5 entries are processed or there's nothing left in the queue
+                if entries[start].brief and entries[start].aliases:
+                    helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', inline=False)
+                elif entries[start].brief and not entries[start].aliases:
+                    helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', value=f'{entries[start].description}', inline=False)
+                elif not entries[start].brief and entries[start].aliases:
+                    helpEmbed.add_field(name=f'{entries[start].name}', value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', inline=False)
+                else:
+                    helpEmbed.add_field(name=f'{entries[start].name}', value=f'{entries[start].description}', inline=False)
+                iteration += 1
+                start +=1 
+                
+            return helpEmbed
 
+        cmds, embeds = [], []
+        for command in self.client.get_command('brotherhood').walk_commands():
+            cmds.append(command)
+        for i in range(0, len(cmds), 5):
+            embeds.append(write(ctx, i, cmds))
+
+        menu = PaginatedMenu(ctx)
+        menu.add_pages(embeds)
+        await menu.open()
 
         
     
