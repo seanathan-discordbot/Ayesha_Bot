@@ -20,6 +20,7 @@ bounty_levels = {
         'HighATK' : 30,
         'LowHP' : 50,
         'HighHP' : 100,
+        'Effect' : None,
         'Image' : None
     },
     2 : {
@@ -28,6 +29,7 @@ bounty_levels = {
         'HighATK' : 100,
         'LowHP' : 50,
         'HighHP' : 100,
+        'Effect' : None,
         'Image' : None
     },
     3 : {
@@ -36,6 +38,7 @@ bounty_levels = {
         'HighATK' : 60,
         'LowHP' : 700,
         'HighHP' : 900,
+        'Effect' : None,
         'Image' : None
     },
     4 : {
@@ -44,6 +47,7 @@ bounty_levels = {
         'HighATK' : 70,
         'LowHP' : 750,
         'HighHP' : 1000,
+        'Effect' : None,
         'Image' : None
     },
     5 : { 
@@ -52,6 +56,7 @@ bounty_levels = {
         'HighATK' : 10,
         'LowHP' : 500,
         'HighHP' : 500,
+        'Effect' : 'Players gain 50% attack when fighting this boss.',
         'Image' : None
     },
     6 : {
@@ -60,6 +65,7 @@ bounty_levels = {
         'HighATK' : 350,
         'LowHP' : 200,
         'HighHP' : 400,
+        'Effect' : None,
         'Image' : None
     },
     7 : {
@@ -68,6 +74,7 @@ bounty_levels = {
         'HighATK' : 150,
         'LowHP' : 250,
         'HighHP' : 500,
+        'Effect' : 'Players have 20% reduced attack when fighting this boss.',
         'Image' : None
     },
     8 : {
@@ -76,6 +83,7 @@ bounty_levels = {
         'HighATK' : 150,
         'LowHP' : 600,
         'HighHP' : 800,
+        'Effect' : None,
         'Image' : None
     },
     9 : {
@@ -84,6 +92,7 @@ bounty_levels = {
         'HighATK' : 140,
         'LowHP' : 1100,
         'HighHP' : 1500,
+        'Effect' : 'Players cannot heal when fighting this boss.',
         'Image' : None
     },
     10 : {
@@ -92,6 +101,7 @@ bounty_levels = {
         'HighATK' : 150,
         'LowHP' : 1100,
         'HighHP' : 1500,
+        'Effect' : None,
         'Image' : None
     },
     11 : {
@@ -100,6 +110,7 @@ bounty_levels = {
         'HighATK' : 800,
         'LowHP' : 1000,
         'HighHP' : 1200,
+        'Effect' : 'Players take 80% reduced damage instead of 50% when parrying this boss\' attacks.',
         'Image' : None
     },
     12 : {
@@ -108,6 +119,7 @@ bounty_levels = {
         'HighATK' : 190,
         'LowHP' : 1000,
         'HighHP' : 1000,
+        'Effect' : None,
         'Image' : None
     },
     13 : {
@@ -116,6 +128,7 @@ bounty_levels = {
         'HighATK' : 250,
         'LowHP' : 1100,
         'HighHP' : 1300,
+        'Effect' : 'L. Porcius Magnus heals 50 HP instead of taking damage when struck by a critical strike.',
         'Image' : None
     },
     14 : {
@@ -124,6 +137,7 @@ bounty_levels = {
         'HighATK' : 250,
         'LowHP' : 1500,
         'HighHP' : 2000,
+        'Effect' : 'Laidirix reflects 5% of all damage taken.',
         'Image' : None
     },
     15 : {
@@ -132,6 +146,7 @@ bounty_levels = {
         'HighATK' : 250,
         'LowHP' : 5000,
         'HighHP' : 5000,
+        'Effect' : 'The Draconicus Rex heals 100 HP every turn.',
         'Image' : None
     },
 }
@@ -317,14 +332,28 @@ class PvE(commands.Cog):
 
         return crit, is_crit[0], damage, enemyhp, attack
 
+    def showBounties(self):
+        embeds = []
+        for i in range(1,16):
+            embed = discord.Embed(title=f"Level {i}: {bounty_levels[i]['Name']}", color=0xBEDCF6)
+            embed.add_field(name='Attack Range', value=f"{bounty_levels[i]['LowATK']} - {bounty_levels[i]['HighATK']}")
+            embed.add_field(name='HP Range', value=f"{bounty_levels[i]['LowHP']} - {bounty_levels[i]['HighHP']}")
+            if bounty_levels[i]['Effect'] is not None:
+                embed.add_field(name='Special Effect', value=f"{bounty_levels[i]['Effect']}", inline=False)
+            embeds.append(embed)
+        return embeds
+
     #COMMANDS
     @commands.command(aliases=['pve', 'fight', 'boss'], brief='<level>', description='Fight an enemy for rewards!')
     @commands.check(Checks.is_player)
     async def bounty(self, ctx, level : int = 0):
         if level == 0:
-            pass
+            levels = self.showBounties()
+            pages = menus.MenuPages(source=PageSourceMaker.PageMaker(levels), clear_reactions_after=True, delete_message_after=True)
+            await pages.start(ctx)
             #Show the list of enemies
             ctx.command.reset_cooldown(ctx)
+            return
         if level < 1 or level > 15:
             await ctx.reply('Please supply a valid level.')
             ctx.command.reset_cooldown(ctx)
