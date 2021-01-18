@@ -9,6 +9,7 @@ import aiosqlite
 from Utilities import Checks, AssetCreation, PageSourceMaker
 
 import random
+import math
 
 PATH = 'PATH'
 
@@ -296,6 +297,38 @@ class Associations(commands.Cog):
             await conn.execute('UPDATE players SET guild_rank = "Member" WHERE user_id = ?', (player.id,))
             await conn.commit()
             await ctx.reply(f'`{player.name}` has been demoted to `Member`.')
+
+    @brotherhood.command(description='Steal 5% of a random player\'s cash. The probability of stealing is about your brotherhood\'s level * .1. 30 minute cooldown.')
+    @commands.check(Checks.in_brotherhood)
+    @cooldown(1, 1800, BucketType.user)
+    async def steal(self, ctx):
+        guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
+        level = await AssetCreation.getGuildLevel(guild['ID'])
+        if random.randint(0,100) >= level*10: #Then failure
+            await ctx.reply('You were caught and had to flee.')
+            return
+        # Otherwise get a random player and steal 5% of their money
+        async with aiosqlite.connect(PATH) as conn:
+            c = await conn.execute('SELECT COUNT(*) FROM Players')
+            records = await c.fetchone()
+            victim_num = random.randint(1, records[0] - 1)
+            c = await conn.execute('SELECT gold, user_id, user_name FROM players WHERE num = ?', (victim_num,))
+            victim_gold, victim, victim_name = await c.fetchone()
+            # Make sure they don't rob themself
+            if ctx.author.id == victim:
+                await ctx.reply('You were caught and had to flee.')
+                return
+            # 50 gold minimum steal. If they don't have 1000, just add 50 to the econ.
+            if victim_gold < 1000:
+                await conn.execute('UPDATE players SET gold = gold + 50 WHERE user_id = ?', (ctx.author.id,))
+                await conn.commit()
+                stolen_amount = 50
+            else:
+                stolen_amount = math.floor(victim_gold / 20)
+                await conn.execute('UPDATE players SET gold = gold + ? WHERE user_id = ?', (stolen_amount, ctx.author.id))
+                await conn.execute('UPDATE players SET gold = gold - ? WHERE user_id = ?', (stolen_amount, victim))
+                await conn.commit()
+            await ctx.reply(f'You stole {stolen_amount} from {victim_name}.')
 
     @brotherhood.command(description='Shows this command.')
     async def help(self, ctx):
