@@ -12,7 +12,7 @@ PATH = 'PATH'
 async def not_player(ctx):
     query = (ctx.author.id,)
     async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT * FROM players WHERE user_id = ?', query)
+        c = await conn.execute('SELECT user_id FROM players WHERE user_id = ?', query)
         result = await c.fetchone()
         if result is None: #Then there is no char for this id
             return True
@@ -20,15 +20,15 @@ async def not_player(ctx):
 async def is_player(ctx):
     query = (ctx.author.id,)
     async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT * FROM players WHERE user_id = ?', query)
+        c = await conn.execute('SELECT user_id FROM players WHERE user_id = ?', query)
         result = await c.fetchone()
         if result is not None: #Then there is a char for this id
             return True
 
-async def has_char(user : discord.user):
+async def has_char(user : discord.user): #NOT A CHECK --> in-function version of is_player
     query = (user.id,)
     async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT * FROM players WHERE user_id = ?', query)
+        c = await conn.execute('SELECT user_id FROM players WHERE user_id = ?', query)
         result = await c.fetchone()
         if result is not None: #Then there is a char for this id
             return True
@@ -42,7 +42,7 @@ async def not_in_guild(ctx):
         if guild[0] is None:
             return True
 
-async def target_not_in_guild(user : discord.user):
+async def target_not_in_guild(user : discord.user): #NOT A CHECK --> in-function version of not_in_guilf
     async with aiosqlite.connect(PATH) as conn:
         c = await conn.execute('SELECT guild FROM players WHERE user_id = ?', (user.id,))
         guild = await c.fetchone()
@@ -73,7 +73,7 @@ async def in_guild(ctx):
             if guild_type == 'Guild':
                 return True     
 
-async def guild_can_be_created(ctx, name):
+async def guild_can_be_created(ctx, name): #NOT A CHECK
     async with aiosqlite.connect(PATH) as conn:
         c = await conn.execute('SELECT guild_id FROM guilds WHERE guild_name = ?', (name,))
         is_taken = await c.fetchone()
@@ -90,4 +90,23 @@ async def guild_can_be_created(ctx, name):
 async def is_guild_leader(ctx):
     player_guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
     if ctx.author.id == player_guild['Leader']:
+        return True
+
+async def is_not_guild_leader(ctx):
+    player_guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
+    if ctx.author.id != player_guild['Leader']:
+        return True
+
+async def guild_has_vacancy(ctx): 
+    guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
+    members = await AssetCreation.getGuildMemberCount(guild['ID'])
+    capacity = await AssetCreation.getGuildCapacity(guild['ID'])
+    if members < capacity:
+        return True
+
+async def target_guild_has_vacancy(guild_id : int): #NOT A CHECK. ALT VERSION OF guild_has_vacancy
+    guild = await AssetCreation.getGuildByID(guild_id)
+    members = await AssetCreation.getGuildMemberCount(guild['ID'])
+    capacity = await AssetCreation.getGuildCapacity(guild['ID'])
+    if members < capacity:
         return True
