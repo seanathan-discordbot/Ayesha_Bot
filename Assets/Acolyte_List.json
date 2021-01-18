@@ -1,0 +1,112 @@
+{
+    "Aulus": {
+        "Name" : "Aulus",
+        "Attack": 5,
+        "Scale": 1,
+        "Crit": 10,
+        "HP": 150,
+        "Rarity": 5,
+        "Effect": "Crit hits increase attack by 50 for the remainder of the battle.",
+        "Story": null,
+        "Image": null
+    },
+    "Paterius": {
+        "Name" : "Paterius",
+        "Attack": 25,
+        "Scale": 1,
+        "Crit": 0,
+        "HP": 300,
+        "Rarity": 5,
+        "Effect": "Each attack, block, or parry does an additional 10 damage.",
+        "Story": null,
+        "Image": null
+    },
+    "Sean": {
+        "Name" : "Sean",
+        "Attack": 0,
+        "Scale": 0,
+        "Crit": 0,
+        "HP": 100,
+        "Rarity": 5,
+        "Effect": "Gain an extra 10% xp from bounties.",
+        "Story": "Sean is short for Seanathan",
+        "Image": null
+    },
+    "Octavia": {
+        "Name" : "Octavia",
+        "Attack": 10,
+        "Scale": 0.5,
+        "Crit": 3,
+        "HP": 250,
+        "Rarity": 4,
+        "Effect": null,
+        "Story": null,
+        "Image": null
+    },
+    "Billiam": {
+        "Name" : "Billiam",
+        "Attack": 13,
+        "Scale": 0.25,
+        "Crit": 5,
+        "HP": 250,
+        "Rarity": 4,
+        "Effect": null,
+        "Story": null,
+        "Image": null
+    },
+    "Alia": {
+        "Name" : "Alia",
+        "Attack": 5,
+        "Scale": 0.25,
+        "Crit": 8,
+        "HP": 200,
+        "Rarity": 4,
+        "Effect": null,
+        "Story": null,
+        "Image": null
+    },
+    "Layla": {
+        "Name" : "Layla",
+        "Attack": 0,
+        "Scale": 0.5,
+        "Crit": 1,
+        "HP": 150,
+        "Rarity": 3,
+        "Effect": null,
+        "Story": null,
+        "Image": null
+    },
+    "Kai": {
+        "Name" : "Kai",
+        "Attack": 5,
+        "Scale": 0.25,
+        "Crit": 2,
+        "HP": 200,
+        "Rarity": 3,
+        "Effect": null,
+        "Story": null,
+        "Image": null
+    },
+    "Bort": {
+        "Name" : "Bort",
+        "Attack": 5,
+        "Scale": 0.25,
+        "Crit": 1,
+        "HP": 50,
+        "Rarity": 2,
+        "Effect": null,
+        "Story": null,
+        "Image": null
+    },
+    "PrxRdr": {
+        "Name" : "PrxRdr",
+        "Attack": 5,
+        "Scale": 0,
+        "Crit": 0,
+        "HP": 50,
+        "Rarity": 1,
+        "Effect": null,
+        "Story": null,
+        "Image": null
+    }
+}
