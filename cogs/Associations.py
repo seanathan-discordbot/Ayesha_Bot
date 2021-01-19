@@ -183,6 +183,8 @@ class Associations(commands.Cog):
 
         menu = PaginatedMenu(ctx)
         menu.add_pages(member_list)
+        menu.set_timeout(30)
+        menu.show_command_message()
         await menu.open()
 
     @brotherhood.command(description='Steal 5% of a random player\'s cash. The probability of stealing is about your brotherhood\'s level * .1. 30 minute cooldown.')
@@ -238,9 +240,9 @@ class Associations(commands.Cog):
         embed.set_footer(text=f"Guild ID: {info['ID']}")
         await ctx.reply(embed=embed)
 
-    @guild.command(aliases=['found', 'establish', 'form', 'make'], brief='<name>', description='Found a guild. Costs 15,000 gold.')
+    @guild.command(aliases=['create', 'found', 'establish', 'form', 'make'], brief='<name>', description='Found a guild. Costs 15,000 gold.')
     @commands.check(Checks.not_in_guild)
-    async def create(self, ctx, *, name : str):
+    async def _create(self, ctx, *, name : str):
         if len(name) > 32:
             await ctx.reply('Name max 32 characters')
             return
@@ -259,16 +261,16 @@ class Associations(commands.Cog):
     @guild.command(description='Leave your brotherhood.')
     @commands.check(Checks.in_brotherhood)
     @commands.check(Checks.is_not_guild_leader)
-    async def leave(self, ctx):
+    async def _leave(self, ctx):
         async with aiosqlite.connect(PATH) as conn:
             await conn.execute('UPDATE Players SET guild = NULL, guild_rank = NULL WHERE user_id = ?', (ctx.author.id,))
             await conn.commit()
             await ctx.reply('You left your guild.')
 
-    @guild.command(aliases=['inv'], brief='<url>', description='Invite a player to your guild.')
+    @guild.command(aliases=['invite','inv'], brief='<url>', description='Invite a player to your guild.')
     @commands.check(Checks.is_guild_officer)
     @commands.check(Checks.guild_has_vacancy)
-    async def invite(self, ctx, player : commands.MemberConverter):
+    async def _invite(self, ctx, player : commands.MemberConverter):
         #Ensure target player has a character and is not in a guild
         if not await Checks.has_char(player):
             await ctx.reply('This person does not have a character.')
@@ -313,9 +315,9 @@ class Associations(commands.Cog):
                 await message.delete()
                 await ctx.send('They did not respond to your invitation.')
 
-    @guild.command(aliases=['donate'], brief='<money : int>', description='Donate to your association, increasing its xp!')
+    @guild.command(aliases=['contribute','donate'], brief='<money : int>', description='Donate to your association, increasing its xp!')
     @commands.check(Checks.in_brotherhood)
-    async def contribute(self, ctx, donation : int):
+    async def _contribute(self, ctx, donation : int):
         #Make sure they have the money they're paying and that the guild is <lvl 10
         guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
         level = await AssetCreation.getGuildLevel(guild['ID'])
@@ -338,9 +340,9 @@ class Associations(commands.Cog):
             needed = 100000 - (xp[0] % 100000)
             await ctx.reply(f'You contributed `{donation}` gold to your brotherhood. It will become level `{level+1}` at `{needed}` more xp.')
 
-    @guild.command(description='View the other members of your guild.')
+    @guild.command(aliases=['members'], description='View the other members of your guild.')
     @commands.check(Checks.in_guild)
-    async def members(self, ctx):
+    async def _members(self, ctx):
         # Get the list of members, theoretically sorted by rank
         guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
         async with aiosqlite.connect(PATH) as conn:

@@ -49,7 +49,7 @@ location_dict = {
     'Thanderlans' : {
         'Biome' : 'Marsh', 
         'CD' : 7200,
-        'Drops' : 'You can `hunt` and `forage` here for `fur`, `bone`, and `reeds`.'
+        'Drops' : 'You can `forage` here for `reeds`.'
         },
     'Glakelys' : {
         'Biome' : 'Grassland', 
@@ -121,6 +121,8 @@ class Travel(commands.Cog):
             locations = self.write()
             menu = PaginatedMenu(ctx)
             menu.add_pages(locations)
+            menu.set_timeout(30)
+            menu.show_command_message()
             await menu.open()
             return
 
@@ -246,8 +248,166 @@ class Travel(commands.Cog):
                 await conn.commit()
                 await ctx.reply('You decided not to travel.')
 
-    
+    @commands.command(description='Hunt for food. You may get fur and bone, which is needed to buff your acolytes.')
+    @commands.check(Checks.is_player)
+    @cooldown(1, 15, type=BucketType.user)
+    async def hunt(self, ctx):
+        #Make sure they're in hunting territory
+        location = await AssetCreation.getLocation(ctx.author.id)
+        biome = location_dict[location]['Biome']
+        if biome != 'Grassland' and biome != 'Forest' and biome != 'Taiga': # These are the biomes you can hunt in
+            await ctx.reply(f'You cannot hunt at {location}. Move to a grassland, forest, or taiga.')
+            return
 
+        #Otherwise calculate some stuff
+        #Since hunt is such a common command, rewards are low, and lower in taiga
+        result = random.choices(['success', 'critical success', 'failure'], [80,12,8])
+        if result[0] == 'success':
+            gold = random.randint(20,100)
+            fur = random.randint(6,12)
+            bone = int(fur / 3)
+
+        elif result[0] == 'critical':
+            gold = random.randint(100, 150)
+            fur = random.randint(12,18)
+            bone = int(fur/3)
+
+        else:
+            gold = 10
+            fur = 0
+            bone = 0
+
+        async with aiosqlite.connect(PATH) as conn:
+            await conn.execute('UPDATE players SET gold = gold + ? WHERE user_id = ?', (gold, ctx.author.id))
+            await conn.execute('UPDATE resources SET fur = fur + ?, bone = bone + ? WHERE user_id = ?', (fur, bone, ctx.author.id))
+            await conn.commit()
+
+        await ctx.reply(f'Your hunting trip was a {result[0]}! You got `{gold}` gold, `{fur}` furs, and `{bone}` bones.')
+
+    @commands.command(description='Mine for ore. You may get iron or silver, which is needed to buff your acolytes.')
+    @commands.check(Checks.is_player)
+    @cooldown(1, 30, type=BucketType.user)
+    async def mine(self, ctx):
+        #Make sure they're in mining territory
+        location = await AssetCreation.getLocation(ctx.author.id)
+        biome = location_dict[location]['Biome']
+        if biome != 'Hills': # These are the biomes you can hunt in
+            await ctx.reply(f'You cannot mine at {location}. Move to a hills biome.')
+            return
+
+        #Otherwise calc
+        result = random.choices(['success', 'critical success', 'failure'], [45,35,20])
+        if result[0] == 'success':
+            gold = random.randint(20,100)
+            iron = random.randint(20,30)
+            silver = random.randint(0,2)
+
+        elif result[0] == 'critical':
+            gold = random.randint(100, 150)
+            iron = random.randint(20,30)
+            silver =  random.randint(10,20)
+
+        else:
+            gold = random.randint(10,30)
+            iron = random.randint(10,20)
+            silver = 0
+
+        async with aiosqlite.connect(PATH) as conn:
+            await conn.execute('UPDATE players SET gold = gold + ? WHERE user_id = ?', (gold, ctx.author.id))
+            await conn.execute('UPDATE resources SET iron = iron + ?, silver = silver + ? WHERE user_id = ?', (iron, silver, ctx.author.id))
+            await conn.commit()
+
+        await ctx.reply(f'Your mining expedition was a {result[0]}! You got `{gold}` gold, `{iron}` iron, and `{silver}` silver.')
+
+    @commands.command(description='Forage for materials depending on your location. These materials may buff your acolytes.')
+    @commands.check(Checks.is_player)
+    @cooldown(1, 60, type=BucketType.user)
+    async def forage(self, ctx):
+        #Get player location and materials.
+        location = await AssetCreation.getLocation(ctx.author.id)
+        try:
+            biome = location_dict[location]['Biome']
+        except TypeError:
+            await ctx.reply('Move to a location before foraging!')
+            return
+
+        if biome == 'City' or biome == 'Town':
+            await ctx.reply(f'You can\'t forage here at {location}! Get outside of an urban area.')
+            return
+        elif location == 'Fernheim' or location == 'Croire':
+            mat = 'wheat'
+            amount = random.randint(20,50)
+        elif location == 'Sunset Prairie' or location =='Glakelys':
+            mat = 'oat'
+            amount = random.randint(5,20)
+        elif biome == 'Forest':
+            mat = 'wood'
+            amount = random.randint(10,30)
+        elif biome == 'Marsh':
+            mat = 'reeds'
+            amount = random.randint(40,80)
+        elif biome == 'Taiga':
+            material = random.choices(['pine', 'moss'], [66, 33])
+            mat = material[0]
+            if mat == 'pine':
+                amount = random.randint(30,40)
+            else:
+                amount = random.randint(10,20)
+        elif biome == 'Hills':
+            mat = 'iron'
+            amount = random.randint(5,10)
+        elif biome == 'Jungle':
+            mat = 'cacao'
+            amount = random.randint(3,7)
+
+        await AssetCreation.giveMat(mat, amount, ctx.author.id)
+
+        await ctx.reply(f'You received `{amount} {mat}` while foraging in `{location}`.')
+
+    @commands.command(aliases=['pack'], description='See how many materials you have.')
+    @commands.check(Checks.is_player)
+    async def backpack(self, ctx):
+        async with aiosqlite.connect(PATH) as conn:
+            c = await conn.execute('SELECT fur, bone, iron, silver, wood, wheat, oat, reeds, pine, moss, cacao FROM resources WHERE user_id = ?', (ctx.author.id,))
+            backpack = await c.fetchone()
+            mats = ('Fur', 'Bone', 'Iron', 'Silver', 'Wood', 'Wheat', 'Oat', 'Reeds', 'Pine', 'Moss', 'Cacao')
+
+            embed = discord.Embed(title='Your Backpack', color=0xBEDCF6)
+            for i in range(len(backpack)):
+                embed.add_field(name=f'{mats[i]}', value=f'{backpack[i]}')
        
+        await ctx.reply(embed=embed)
+
+    @commands.command(description='Fish for food.')
+    @commands.check(Checks.is_player)
+    @cooldown(1,15,type=BucketType.user)
+    async def fish(self, ctx):
+        #Fishing only in Thenuille
+        location = await AssetCreation.getLocation(ctx.author.id)
+        if location != 'Thenuille':
+            await ctx.reply('You can\'t fish here. Go to Thenuille.')
+            return
+
+        result = random.choices(['🐟','🐠','🐡','🦈','🦦','nothing'], [35, 20, 3, 1, 1, 40])
+        fish = result[0]
+
+        if fish == 'nothing':
+            await ctx.reply('You waited but didn\'t catch anything.')
+        elif fish == '🦦':
+            await AssetCreation.giveGold(1, ctx.author.id)
+            await ctx.reply(f'You caught {fish}? It gave you a gold coin before jumping back into the water.')
+        else: #give them some gold
+            if fish == '🐟':
+                gold = random.randint(10,20)
+            elif fish == '🐠':
+                gold = random.randint(20,40)
+            elif fish == '🐡':
+                gold = random.randint(20,30)
+            elif fish == '🦈':
+                gold = random.randint(200,300)
+            
+            await AssetCreation.giveGold(gold, ctx.author.id)
+            await ctx.reply(f'You caught a {fish}! You sold your prize for `{gold}` gold.')
+
 def setup(client):
     client.add_cog(Travel(client))

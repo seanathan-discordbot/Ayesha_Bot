@@ -9,16 +9,16 @@ import aiosqlite
 PATH = 'PATH'
 
 occupations = {
-    'Soldier' : 'You are a retainer of a local lord, trained in the discipline of swordsmanship.\nYou have an increased character attack',
-    'Blacksmith' : 'You\'ve spent years as the apprentice of a hardy blacksmith, and now a master in the art of forging.\n You gain a bonus in weapon attack',
+    'Soldier' : 'You are a retainer of a local lord, trained in the discipline of swordsmanship.\nYour base character ATK is boosted by 20% and you get a bonus 10 ATK.',
+    'Blacksmith' : 'You\'ve spent years as the apprentice of a hardy blacksmith, and now a master in the art of forging.\nYour weapon ATK is boosted by 10% and you get a bonus 10 ATK.',
     'Farmer' : 'You are a lowly farmer, but farming is no easy job.\nYou gain increased resources from labor commands.',
     'Hunter' : 'The wild is your domain; no game unconquerable.\nYou gain increased rewards from hunting.',
-    'Merchant' : 'Screw you, exploiter of others\' labor.\nYou gain increased income from selling items.',
+    'Merchant' : 'Screw you, exploiter of others\' labor.\nYou gain 50% increased income from selling items.',
     'Traveler' : 'The wild forests up north await, as do the raging seas to the south. What will you discover?\nYou gain increased rewards from travel.',
-    'Leatherworker' : 'The finest protective gear, saddles, and equipment have your name on it.\nYou have increased HP',
-    'Butcher' : 'Meat. What would one do without it?\nYou have increased healing effectiveness.',
+    'Leatherworker' : 'The finest protective gear, saddles, and equipment have your name on it.\nYou have 200 increased HP.',
+    'Butcher' : 'Meat. What would one do without it?\nYou have double healing effectiveness.',
     'Engineer' : 'Your lord praises the seemingly impossible design of his new manor.\nYou will gain increased compensation from your association',
-    'Scribe' : 'Despite the might of your lord, you\'ve learned a little bit about everything too.\nYou have an increased crit rate'
+    'Scribe' : 'Despite the might of your lord, you\'ve learned a little bit about everything too.\nYou have an additional 10% crit rate.'
 }
 
 origins = {
