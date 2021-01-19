@@ -142,8 +142,8 @@ async def getAttack(user_id, returnothers = False):
             charattack = math.floor(charattack * 1.2) + 10
         if char[4] == 'Blacksmith':
             weaponattack = math.floor(weaponattack * 1.1) + 10
-        guild = await getGuildFromPlayer(user_id)
         try:
+            guild = await getGuildFromPlayer(user_id)
             guild_level = await getGuildLevel(guild['ID'])
             if guild['Type'] == 'Brotherhood':
                 guildattack = guild_level * (guild_level + 1) / 2
@@ -245,3 +245,31 @@ async def getLocation(user_id : int):
         c = await conn.execute('SELECT location FROM players WHERE user_id = ?', (user_id,))
         location = await c.fetchone()
         return location[0]
+
+async def giveMat(material : str, amount : int, user_id : int):
+    async with aiosqlite.connect(PATH) as conn:
+        query = (amount, user_id)
+
+        if material == 'wheat':
+            await conn.execute('UPDATE resources SET wheat = wheat + ? WHERE user_id = ?', query)
+        if material == 'oat':
+            await conn.execute('UPDATE resources SET oat = oat + ? WHERE user_id = ?', query)
+        if material == 'wood':
+            await conn.execute('UPDATE resources SET wood = wood + ? WHERE user_id = ?', query)
+        if material == 'reeds':
+            await conn.execute('UPDATE resources SET reeds = reeds + ? WHERE user_id = ?', query)
+        if material == 'pine':
+            await conn.execute('UPDATE resources SET pine = pine + ? WHERE user_id = ?', query)
+        if material == 'moss':
+            await conn.execute('UPDATE resources SET moss = moss + ? WHERE user_id = ?', query)
+        if material == 'iron':
+            await conn.execute('UPDATE resources SET iron = iron + ? WHERE user_id = ?', query)
+        if material == 'cacao':
+            await conn.execute('UPDATE resources SET cacao = cacao + ? WHERE user_id = ?', query)
+
+        await conn.commit()
+
+async def giveGold(amount : int, user_id : int):
+    async with aiosqlite.connect(PATH) as conn:
+        await conn.execute('UPDATE players SET gold = gold + ? WHERE user_id = ?', (amount, user_id))
+        await conn.commit()
