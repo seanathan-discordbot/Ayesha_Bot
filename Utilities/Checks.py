@@ -117,3 +117,4 @@ async def target_guild_has_vacancy(guild_id : int): #NOT A CHECK. ALT VERSION OF
     capacity = await AssetCreation.getGuildCapacity(guild['ID'])
     if members < capacity:
         return True
+
