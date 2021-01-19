@@ -496,7 +496,6 @@ class PvE(commands.Cog):
                 await message.edit(embed=embed)
 
             if str(reaction) == '\u2764': #heal
-                #Do Calcs
                 bossaction = self.getBossAction(level)
                 hp = hp - bossaction['Damage']
                 heal = math.floor((1000 - hp) / 8)
