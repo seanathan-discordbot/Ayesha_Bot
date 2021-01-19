@@ -42,16 +42,14 @@ class Profile(commands.Cog):
     #EVENTS
     @commands.Cog.listener() # needed to create event in cog
     async def on_ready(self): # YOU NEED SELF IN COGS
-        print('CC is ready.')
+        print('Profile is ready.')
 
     #INVISIBLE
     async def createCharacter(self, ctx, name):
         user = (ctx.author.id, name)
         async with aiosqlite.connect(PATH) as conn:
-            await conn.execute("""
-                INSERT INTO players (user_id, user_name)
-                VALUES (?, ?)""",
-                user)
+            await conn.execute('INSERT INTO players (user_id, user_name) VALUES (?, ?)', user)
+            await conn.execute('INSERT INTO resources (user_id) VALUES (?)', (ctx.author.id,))
             await conn.commit()
         await AssetCreation.createItem(ctx.author.id, 20, 'Common', crit=0, weaponname='Wooden Spear', weapontype='Spear')
 
@@ -165,6 +163,14 @@ class Profile(commands.Cog):
             await ctx.reply(f'Name changed to `{name}`')
 
     #Add a tutorial command at the end of alpha
+    @commands.command(description='Learn the game')
+    async def tutorial(self, ctx):
+        await ctx.reply("""I'm currently trying to write a better tutorial. Ping Aramythia for help.
+Otherwise use the `help` command and look at the modules existing: Profile, PvE, Travel, Associations are the big ones.
+Do `create` to create a character, and `help Profile` to see how to customize it.
+Do `pve <level>` to fight bosses. This is the bread and butter of the game so far.
+Do `travel` to change the location in your profile. It gives limited rewards, but is currently being expanded greatly.
+This is a gacha game. We are implementing acolytes and weapons.""")
 
 
 

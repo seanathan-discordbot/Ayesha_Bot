@@ -180,6 +180,12 @@ async def getAcolyteByID(instance : int):
         acolyte.__setitem__('Level', level)
         return acolyte
 
+async def getAcolyteFromPlayer(user_id : int):
+    async with aiosqlite.connect(PATH) as conn:
+        c = await conn.execute('SELECT acolyte1, acolyte2 FROM players WHERE user_id = ?', (user_id,))
+        acolyte1, acolyte2 = await c.fetchone()
+        return acolyte1, acolyte2
+
 async def getGuildFromPlayer(user_id : int):
     async with aiosqlite.connect(PATH) as conn:
         c = await conn.execute('SELECT guild FROM players WHERE user_id = ?', (user_id,)) 
@@ -227,3 +233,15 @@ async def getGuildCapacity(guild_id : int):
         c = await conn.execute('SELECT capacity FROM guild_capacities WHERE guild_id = ?', (guild_id,))
         capacity = await c.fetchone()
         return capacity[0]
+
+async def getAdventure(user_id : int):
+    async with aiosqlite.connect(PATH) as conn:
+        c = await conn.execute('SELECT adventure, destination FROM players WHERE user_id = ?', (user_id,))
+        adventure = await c.fetchone()
+        return adventure
+
+async def getLocation(user_id : int):
+    async with aiosqlite.connect(PATH) as conn:
+        c = await conn.execute('SELECT location FROM players WHERE user_id = ?', (user_id,))
+        location = await c.fetchone()
+        return location[0]
