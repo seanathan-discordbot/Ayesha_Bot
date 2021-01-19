@@ -585,7 +585,7 @@ class Associations(commands.Cog):
     @guild.command(aliases=['help'], description='Shows this command.')
     async def _help(self, ctx):
         def write(ctx, start, entries):
-            helpEmbed = Page(title=f'NguyenBot Help: Guilds', description='Brotherhoods are a finance-oriented association. Its members gain a bonus when selling items. They also have access to the `invest` command.', color=0xBEDCF6)
+            helpEmbed = Page(title=f'NguyenBot Help: Guilds', description='Guilds are a finance-oriented association. Its members gain a bonus when selling items. They also have access to the `invest` command.', color=0xBEDCF6)
             helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
             
             iteration = 0
