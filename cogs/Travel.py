@@ -84,14 +84,14 @@ class Travel(commands.Cog):
             acolyte_xp = math.floor(xp / 10)
             getWeapon = random.randint(1,10)
             if getWeapon == 1:
-                AssetCreation.createItem(ctx.author.id, random.randint(15, 40), "Common")
+                await AssetCreation.createItem(ctx.author.id, random.randint(15, 40), "Common")
 
             #Also give bonuses to acolytes if any
             acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(ctx.author.id)
 
             async with aiosqlite.connect(PATH) as conn:
                 await conn.execute("""UPDATE players SET 
-                    xp = ?, gold = ?, location = ?, 
+                    xp = xp + ?, gold = gold + ?, location = ?, 
                     adventure = NULL, destination = NULL 
                     WHERE user_id = ?""", (xp, gold, adv[1], ctx.author.id))
 

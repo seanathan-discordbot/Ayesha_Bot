@@ -253,15 +253,16 @@ class PvE(commands.Cog):
                 xp = math.floor(xp * 1.1)
         except TypeError:
             pass
+        acolyte_xp = math.ceil(xp / 10)
         #Give rewards
         async with aiosqlite.connect(PATH) as conn:
             c = await conn.execute('SELECT instance_id FROM Acolytes WHERE owner_id = ? AND (is_equipped = 1 OR is_equipped = 2)', (player,))
             acolytes = await c.fetchall()
             if len(acolytes) == 1:
-                await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (xp, acolytes[0][0]))
+                await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (acolyte_xp, acolytes[0][0]))
             elif len(acolytes) == 2:
-                await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (xp, acolytes[0][0]))
-                await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (xp, acolytes[1][0]))
+                await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (acolyte_xp, acolytes[0][0]))
+                await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (acolyte_xp, acolytes[1][0]))
             await conn.execute('UPDATE Players SET gold = gold + ?, xp = xp + ?, bosswins = bosswins + 1, bossfights = bossfights + 1 WHERE user_id = ?', (gold, xp, player))
             await conn.commit()
         #Return an embed to send
@@ -287,15 +288,16 @@ class PvE(commands.Cog):
                 xp = math.floor(xp * 1.1)
         except TypeError:
             pass
+        acolyte_xp = math.ceil(xp / 10)
         #Give rewards
         async with aiosqlite.connect(PATH) as conn:
             c = await conn.execute('SELECT instance_id FROM Acolytes WHERE owner_id = ? AND (is_equipped = 1 OR is_equipped = 2)', (player,))
             acolytes = await c.fetchall()
             if len(acolytes) == 1:
-                await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (xp, acolytes[0][0]))
+                await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (acolyte_xp, acolytes[0][0]))
             elif len(acolytes) == 2:
-                await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (xp, acolytes[0][0]))
-                await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (xp, acolytes[1][0]))
+                await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (acolyte_xp, acolytes[0][0]))
+                await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (acolyte_xp, acolytes[1][0]))
             await conn.execute('UPDATE Players SET xp = xp + ?, bossfights = bossfights + 1 WHERE user_id = ?', (xp, player))
             await conn.commit()
         #Return an embed to send
