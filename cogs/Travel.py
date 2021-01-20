@@ -409,5 +409,71 @@ class Travel(commands.Cog):
             await AssetCreation.giveGold(gold, ctx.author.id)
             await ctx.reply(f'You caught a {fish}! You sold your prize for `{gold}` gold.')
 
+    @commands.command(brief='<item id>', description='Upgrade the ATK stat of a weapon.')
+    @commands.check(Checks.is_player)
+    # @cooldown(1,1800,type=BucketType.user)
+    async def upgrade(self, ctx, item_id : int):
+        #Upgrade only in Cities or Towns
+        location = await AssetCreation.getLocation(ctx.author.id)
+        if location != 'Thenuille' and location != 'Aramithea' and location != 'Riverburn':
+            await ctx.reply('You can only upgrade your items in an urban center!')
+            return
+
+        #Make sure the item exists and that they own it
+        async with aiosqlite.connect(PATH) as conn:
+            c = await conn.execute('SELECT item_id, attack, rarity, weapon_name FROM items WHERE item_id = ? AND owner_id = ?', (item_id, ctx.author.id))
+            item = await c.fetchone()
+            if item is None:
+                await ctx.reply("No such item of yours exists.")
+                return
+
+            #Get the item's rarity and prevent them from upgrading it past the limit (50 for commons, +25 for each above)
+            if item[2] == 'Common':
+                if item[1] >= 50:
+                    await ctx.reply('A common weapon can have a maximum ATK stat of 50.')
+                    return
+
+            elif item[2] == 'Uncommon':
+                if item[1] >= 75:
+                    await ctx.reply('An uncommon weapon can have a maximum ATK stat of 75.')
+                    return
+
+            elif item[2] == 'Rare':
+                if item[1] >= 100:
+                    await ctx.reply('A rare weapon can have a maximum ATK stat of 100.')
+                    return
+
+            elif item[2] == 'Epic':
+                if item[1] >= 125:
+                    await ctx.reply('An epic weapon can have a maximum ATK stat of 125.')
+                    return
+
+            elif item[2] == 'Legendary':
+                if item[1] >= 160:
+                    await ctx.reply('A legendary weapon can have a maximum ATK stat of 160.')
+                    return
+
+            #Ensure they have the ore and gold to upgrade this weapon
+            #Upgrade costs: 3 * (ATK + 1) iron; 20 * (ATK + 1) gold
+            iron_cost = 3 * (item[1] + 1)
+            gold_cost = 20 * (item[1] + 1)
+
+            c = await conn.execute("""SELECT gold, iron FROM players 
+                INNER JOIN resources WHERE players.user_id = resources.user_id
+                AND players.user_id = ?""", (ctx.author.id,))
+            gold, iron = await c.fetchone()
+            
+            if gold < gold_cost or iron < iron_cost:
+                await ctx.reply(f'Upgrading this item to `{item[1]+1}` ATK costs `{iron_cost}` iron and `{gold_cost}` gold. You don\'t have enough resources.')
+                return
+
+            #Upgrade the weapon
+            await conn.execute('UPDATE items SET attack = attack + 1 WHERE item_id = ?', (item_id,))
+            await conn.execute('UPDATE players SET gold = gold - ? WHERE user_id = ?', (gold_cost, ctx.author.id))
+            await conn.execute('UPDATE resources SET iron = iron - ? WHERE user_id = ?', (iron_cost, ctx.author.id))
+            await conn.commit()
+            await ctx.reply(f'Success! You consumed `{gold_cost}` gold and `{iron_cost}` iron to upgrade your `{item[3]}` to `{item[1]+1}` ATK.')
+
+
 def setup(client):
     client.add_cog(Travel(client))
