@@ -86,5 +86,6 @@ async def reload(ctx, extension):
 
 # Runs at bot startup to load all cogs
 for filename in os.listdir(r'C:\Users\rowlas2\Documents\Seanathan\cogs'):
-        client.load_extension(f'cogs.{filename[:-3]}')
+        if filename.endswith(".py"):
+            client.load_extension(f'cogs.{filename[:-3]}')
 client.run(Token)
