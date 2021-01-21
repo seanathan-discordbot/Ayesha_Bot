@@ -24,7 +24,10 @@ class Misc(commands.Cog):
     async def ping(self, ctx):
         embed = discord.Embed(title="Pong!", description=f"Latency is {self.client.latency * 1000:.2f} ms", color=0xBEDCF6)
         await ctx.send(embed=embed)
-
+    @commands.command()
+    async def report(self,ctx):
+        embed=discord.Embed(title="bug reporter", url="https://github.com/seanathan-discordbot/seanathan/issues", description="If you encounter what you believe to be a bug while using our bot please report it here", color=discord.Color.red())
+        await ctx.send(embed=embed)
 
 def setup(client):
     client.add_cog(Misc(client))
