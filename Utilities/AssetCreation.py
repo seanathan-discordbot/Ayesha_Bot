@@ -82,15 +82,15 @@ def getAcolyteLevel(xp):
 
     def f(x):
         w = 3000000
-        y = math.floor(w * math.cos((x/64)+3.14) + w - 600)
+        y = math.floor(w * math.cos((x/64)+3.14) + w)
         return y 
     
     while(xp >= f(level)):
         level += 1
     level -= 1
 
-    if level > 30:
-        level = 30
+    if level > 100:
+        level = 100
 
     return level
 
@@ -99,7 +99,7 @@ def calcLevel(xp):
 
     def f(x):
         w = 6000000
-        y = math.floor(w * math.cos((x/64)+3.14) + w - 600)
+        y = math.floor(w * math.cos((x/64)+3.14) + w)
         return y 
     
     while(xp >= f(level)):
@@ -269,7 +269,64 @@ async def giveMat(material : str, amount : int, user_id : int):
 
         await conn.commit()
 
+async def takeMat(material : str, amount : int, user_id : int):
+    async with aiosqlite.connect(PATH) as conn:
+        query = (amount, user_id)
+
+        if material == 'wheat':
+            await conn.execute('UPDATE resources SET wheat = wheat - ? WHERE user_id = ?', query)
+        if material == 'oat':
+            await conn.execute('UPDATE resources SET oat = oat - ? WHERE user_id = ?', query)
+        if material == 'wood':
+            await conn.execute('UPDATE resources SET wood = wood - ? WHERE user_id = ?', query)
+        if material == 'reeds':
+            await conn.execute('UPDATE resources SET reeds = reeds - ? WHERE user_id = ?', query)
+        if material == 'pine':
+            await conn.execute('UPDATE resources SET pine = pine - ? WHERE user_id = ?', query)
+        if material == 'moss':
+            await conn.execute('UPDATE resources SET moss = moss - ? WHERE user_id = ?', query)
+        if material == 'iron':
+            await conn.execute('UPDATE resources SET iron = iron - ? WHERE user_id = ?', query)
+        if material == 'cacao':
+            await conn.execute('UPDATE resources SET cacao = cacao - ? WHERE user_id = ?', query)
+
+        await conn.commit()
+
+async def getPlayerMat(material : str, user_id : int):
+    async with aiosqlite.connect(PATH) as conn:
+        if material == 'wheat':
+            c = await conn.execute('SELECT wheat FROM resources WHERE user_id = ?', (user_id,))
+        if material == 'oat':
+            c = await conn.execute('SELECT oat FROM resources WHERE user_id = ?', (user_id,))
+        if material == 'wood':
+            c = await conn.execute('SELECT wood FROM resources WHERE user_id = ?', (user_id,))
+        if material == 'reeds':
+            c = await conn.execute('SELECT reeds FROM resources WHERE user_id = ?', (user_id,))
+        if material == 'pine':
+            c = await conn.execute('SELECT pine FROM resources WHERE user_id = ?', (user_id,))
+        if material == 'moss':
+            c = await conn.execute('SELECT moss FROM resources WHERE user_id = ?', (user_id,))
+        if material == 'iron':
+            c = await conn.execute('SELECT iron FROM resources WHERE user_id = ?', (user_id,))
+        if material == 'cacao':
+            c = await conn.execute('SELECT cacao FROM resources WHERE user_id = ?', (user_id,))
+        if material == 'fur':
+            c = await conn.execute('SELECT fur FROM resources WHERE user_id = ?', (user_id,))
+        if material == 'bone':
+            c = await conn.execute('SELECT bone FROM resources WHERE user_id = ?', (user_id,))
+        if material == 'silver':
+            c = await conn.execute('SELECT silver FROM resources WHERE user_id = ?', (user_id,))
+
+        mat = await c.fetchone()
+        return mat[0]
+
 async def giveGold(amount : int, user_id : int):
     async with aiosqlite.connect(PATH) as conn:
         await conn.execute('UPDATE players SET gold = gold + ? WHERE user_id = ?', (amount, user_id))
         await conn.commit()
+
+async def getGold(user_id : int):
+    async with aiosqlite.connect(PATH) as conn:
+        c = await conn.execute('SELECT gold FROM players WHERE user_id = ?', (user_id,))
+        gold = await c.fetchone()
+        return gold[0]

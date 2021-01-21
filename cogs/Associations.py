@@ -187,13 +187,13 @@ class Associations(commands.Cog):
         menu.show_command_message()
         await menu.open()
 
-    @brotherhood.command(description='Steal 5% of a random player\'s cash. The probability of stealing is about your brotherhood\'s level * .1. 30 minute cooldown.')
+    @brotherhood.command(description='Steal 5% of a random player\'s cash. The probability of stealing is about your brotherhood\'s level * .05 + .2. 30 minute cooldown.')
     @commands.check(Checks.in_brotherhood)
     @cooldown(1, 1800, BucketType.user)
     async def steal(self, ctx):
         guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
         level = await AssetCreation.getGuildLevel(guild['ID'])
-        if random.randint(0,100) >= level*10: #Then failure
+        if random.randint(0,100) >= 20 + level*5: #Then failure
             await ctx.reply('You were caught and had to flee.')
             return
         # Otherwise get a random player and steal 5% of their money
@@ -202,7 +202,13 @@ class Associations(commands.Cog):
             records = await c.fetchone()
             victim_num = random.randint(1, records[0] - 1)
             c = await conn.execute('SELECT gold, user_id, user_name FROM players WHERE num = ?', (victim_num,))
-            victim_gold, victim, victim_name = await c.fetchone()
+            try: #there might be deleted chars - just give them 100 gold lmao
+                victim_gold, victim, victim_name = await c.fetchone()
+            except TypeError:
+                await conn.execute('UPDATE players SET gold = gold + 100 WHERE user_id = ?', (ctx.author.id,))
+                await conn.commit()
+                await ctx.reply('You stole `100` gold from a `random guy`.')
+                return
             # Make sure they don't rob themself
             if ctx.author.id == victim:
                 await ctx.reply('You were caught and had to flee.')
