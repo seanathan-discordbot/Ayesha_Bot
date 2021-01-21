@@ -9,8 +9,6 @@ from Utilities import Checks, AssetCreation, PageSourceMaker
 
 import random
 
-PATH = 'PATH'
-
 WeaponValues = (
     ('Common', 1, 20),
     ('Uncommon', 15, 30),
@@ -69,7 +67,7 @@ class Items(commands.Cog):
     @commands.check(Checks.is_player)
     async def inventory(self, ctx):
         user = (ctx.author.id,)
-        async with aiosqlite.connect(PATH) as conn:
+        async with aiosqlite.connect(AssetCreation.PATH) as conn:
             c = await conn.execute("""
                 SELECT * FROM Items
                 WHERE owner_id = ? AND is_equipped = 1""",
@@ -94,7 +92,7 @@ class Items(commands.Cog):
     @commands.check(Checks.is_player)
     async def equip(self, ctx, item_id : int):
         query = (item_id, ctx.author.id) # Make sure that 1. item exists 2. they own this item
-        async with aiosqlite.connect(PATH) as conn:
+        async with aiosqlite.connect(AssetCreation.PATH) as conn:
             c = await conn.execute("""
                 SELECT * FROM items
                 WHERE item_id = ? AND owner_id = ?""", 
@@ -137,7 +135,7 @@ class Items(commands.Cog):
     @commands.check(Checks.is_player)
     async def unequip(self, ctx):
         query = (ctx.author.id,)
-        async with aiosqlite.connect(PATH) as conn:
+        async with aiosqlite.connect(AssetCreation.PATH) as conn:
             c = await conn.execute('SELECT equipped_item FROM Players WHERE user_id = ?', query)
             equipped = await c.fetchone()
             if equipped is None:
@@ -154,7 +152,7 @@ class Items(commands.Cog):
     @commands.check(Checks.is_player)
     async def sell(self, ctx, item_id : int):
         query = (item_id, ctx.author.id) #Make sure that item exists and author owns it
-        async with aiosqlite.connect(PATH) as conn:
+        async with aiosqlite.connect(AssetCreation.PATH) as conn:
             c = await conn.execute("""SELECT item_id, owner_id, is_equipped, rarity FROM Items
                 WHERE item_id = ? AND owner_id = ?""", query)
             d = await conn.execute('SELECT class FROM players WHERE user_id = ?', (ctx.author.id,))
@@ -194,7 +192,7 @@ class Items(commands.Cog):
         itemlist = items.split()
         errors = ''
         total = 0
-        async with aiosqlite.connect(PATH) as conn:
+        async with aiosqlite.connect(AssetCreation.PATH) as conn:
             d = await conn.execute('SELECT class FROM players WHERE user_id = ?', (ctx.author.id,))
             playerjob = await d.fetchone()
             #Bonuses for members of guilds
@@ -253,7 +251,7 @@ class Items(commands.Cog):
             await ctx.reply('This person does not have a character.')
             return
         query = (item_id, ctx.author.id) #Make sure that item exists and author owns it
-        async with aiosqlite.connect(PATH) as conn:
+        async with aiosqlite.connect(AssetCreation.PATH) as conn:
             c = await conn.execute("""SELECT is_equipped, attack, rarity, weapon_name, weapontype FROM Items
                 WHERE item_id = ? AND owner_id = ?""", query)
             try:
@@ -315,7 +313,7 @@ class Items(commands.Cog):
             await ctx.reply('Name can only be 20 characters or less.')
             return
         query = (item_id, ctx.author.id) #Make sure that item exists and author owns it
-        async with aiosqlite.connect(PATH) as conn:
+        async with aiosqlite.connect(AssetCreation.PATH) as conn:
             c = await conn.execute("""SELECT item_id, owner_id, weapon_name FROM Items
                 WHERE item_id = ? AND owner_id = ?""", query)
             item = await c.fetchone()

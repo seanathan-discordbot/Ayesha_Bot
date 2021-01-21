@@ -330,3 +330,8 @@ async def getGold(user_id : int):
         c = await conn.execute('SELECT gold FROM players WHERE user_id = ?', (user_id,))
         gold = await c.fetchone()
         return gold[0]
+
+async def giveRubidics(amount : int, user_id : int):
+    async with aiosqlite.connect(PATH) as conn:
+        await conn.execute('UPDATE players SET rubidic = rubidic + ? WHERE user_id = ?', (amount, user_id))
+        await conn.commit()
