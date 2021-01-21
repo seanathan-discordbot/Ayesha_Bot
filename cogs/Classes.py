@@ -6,7 +6,7 @@ from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 import aiosqlite
 
-PATH = 'PATH'
+from Utilities import Checks, AssetCreation, PageSourceMaker
 
 occupations = {
     'Soldier' : 'You are a retainer of a local lord, trained in the discipline of swordsmanship.\nYour base character ATK is boosted by 20% and you get a bonus 10 ATK.',
@@ -99,7 +99,7 @@ class Classes(commands.Cog):
             if str(reaction) == '\u2705': # Then change class
                 role = occ[page][1]
                 query = (role, ctx.author.id)
-                async with aiosqlite.connect(PATH) as conn:
+                async with aiosqlite.connect(AssetCreation.PATH) as conn:
                     await conn.execute("UPDATE Players SET class = $1 WHERE user_id = $2;", query)
                     await conn.commit()
                 await ctx.send(f'{ctx.author.mention}, you are now a {role}!')
@@ -149,7 +149,7 @@ class Classes(commands.Cog):
             if str(reaction) == '\u2705': # Then change class
                 place = ori[page][1]
                 query = (place, ctx.author.id)
-                async with aiosqlite.connect(PATH) as conn:
+                async with aiosqlite.connect(AssetCreation.PATH) as conn:
                     await conn.execute("UPDATE Players SET origin = $1 WHERE user_id = $2;", query)
                     await conn.commit()
                 await ctx.send(f'{ctx.author.mention}, you are from {place}!')
