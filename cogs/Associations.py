@@ -187,7 +187,7 @@ class Associations(commands.Cog):
         menu.show_command_message()
         await menu.open()
 
-    @brotherhood.command(description='Steal 5% of a random player\'s cash. The probability of stealing is about your brotherhood\'s level * .1. 30 minute cooldown.')
+    @brotherhood.command(description='Steal 5% of a random player\'s cash. The probability of stealing is about your brotherhood\'s level * .05 + .2. 30 minute cooldown.')
     @commands.check(Checks.in_brotherhood)
     @cooldown(1, 1800, BucketType.user)
     async def steal(self, ctx):
