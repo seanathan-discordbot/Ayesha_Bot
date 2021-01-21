@@ -149,5 +149,43 @@ class Acolytes(commands.Cog):
             removed = await AssetCreation.getAcolyteByID(equipped[0])
             await ctx.reply(f"Dismissed acolyte `{equipped[0]}: {removed['Name']}`")
 
+    @commands.command(brief='<acolyte id>', description='Train your acolyte, giving it xp and potentially levelling it up!')
+    @commands.check(Checks.is_player)
+    async def train(self, ctx, instance_id : int):
+        #Make sure the acolyte exists and they own it
+        async with aiosqlite.connect(PATH) as conn:
+            c = await conn.execute('SELECT acolyte_name, level FROM Acolytes WHERE instance_id = ? AND owner_id = ?', (instance_id, ctx.author.id))
+            try:
+                name, level = await c.fetchone()
+            except TypeError: 
+                await ctx.reply("This acolyte isn\'t in your tavern.")
+                return
+
+            #Make sure acolyte is not at max level
+            if level >= 100:
+                await ctx.reply(f'{name} is already at maximum level!')
+                return
+
+            #Make sure player has the resources and gold to train
+            #5000 xp = 50 of the mat + 250 gold
+            acolyte = await AssetCreation.getAcolyteByID(instance_id)
+            material = await AssetCreation.getPlayerMat(acolyte['Mat'], ctx.author.id)
+            gold = await AssetCreation.getGold(ctx.author.id)
+
+            if material < 50 or gold < 250:
+                await ctx.reply(f"Training your acolyte costs `50` {acolyte['Mat']} and `250` gold. You don\'t have enough resources to train.")
+                return
+
+            #Update acolyte and player resources
+            await conn.execute('UPDATE acolytes SET xp = xp + 5000 WHERE instance_id = ?', (instance_id,))
+            await conn.execute('UPDATE players SET gold = gold - 250 WHERE user_id = ?', (ctx.author.id,))
+            await conn.commit()
+            await AssetCreation.takeMat(acolyte['Mat'], 50, ctx.author.id)
+
+            await ctx.reply(f"You trained with `{name}`, consuming `50` {acolyte['Mat']} and `250` gold in the process. As a result, {name} gained 5,000 exp!")
+            await AssetCreation.checkAcolyteLevel(ctx, instance_id)
+            
+
+
 def setup(client):
     client.add_cog(Acolytes(client))

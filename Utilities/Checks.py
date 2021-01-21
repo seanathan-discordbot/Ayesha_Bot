@@ -32,8 +32,6 @@ async def has_char(user : discord.user): #NOT A CHECK --> in-function version of
         result = await c.fetchone()
         if result is not None: #Then there is a char for this id
             return True
-        else:
-            return False
 
 async def not_in_guild(ctx):
     async with aiosqlite.connect(PATH) as conn:
@@ -68,9 +66,9 @@ async def in_guild(ctx):
         if guild is None:
             return
         else:
-            c = await conn.execute('SELECT guild_type FROM guilds WHERE guild_id = ?', (guild[0]))
+            c = await conn.execute('SELECT guild_type FROM guilds WHERE guild_id = ?', (guild[0],))
             guild_type = await c.fetchone()
-            if guild_type == 'Guild':
+            if guild_type[0] == 'Guild':
                 return True     
 
 async def guild_can_be_created(ctx, name): #NOT A CHECK
@@ -97,6 +95,15 @@ async def is_not_guild_leader(ctx):
     if ctx.author.id != player_guild['Leader']:
         return True
 
+async def is_guild_officer(ctx):
+    async with aiosqlite.connect(PATH) as conn:
+        c = await conn.execute('SELECT guild_rank FROM players WHERE user_id = ?', (ctx.author.id,))
+        rank = await c.fetchone()
+        if rank[0] == 'Officer' or rank[0]:
+            return True
+        elif is_guild_leader(ctx):
+            return True
+
 async def guild_has_vacancy(ctx): 
     guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
     members = await AssetCreation.getGuildMemberCount(guild['ID'])
@@ -110,3 +117,4 @@ async def target_guild_has_vacancy(guild_id : int): #NOT A CHECK. ALT VERSION OF
     capacity = await AssetCreation.getGuildCapacity(guild['ID'])
     if members < capacity:
         return True
+

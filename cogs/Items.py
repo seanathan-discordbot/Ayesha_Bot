@@ -160,6 +160,15 @@ class Items(commands.Cog):
             d = await conn.execute('SELECT class FROM players WHERE user_id = ?', (ctx.author.id,))
             item = await c.fetchone()
             playerjob = await d.fetchone()
+            #Bonuses for members of guilds
+            guild_bonus = 1
+            try:
+                guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
+                if guild['Type'] == 'Guild':
+                    guild_level = await AssetCreation.getGuildLevel(guild['ID'])
+                    guild_bonus = 1.5 + (guild_level * .25)
+            except TypeError:
+                pass   
             try:
                 if item[2] == 1:
                     await ctx.reply('You can\'t sell your equipped item.')
@@ -170,6 +179,7 @@ class Items(commands.Cog):
                         gold = random.randint(WeaponValues[i][1], WeaponValues[i][2])
                         if playerjob == 'Merchant':
                             gold = int(gold * 1.5)
+                        gold = int(gold * guild_bonus)
                         await conn.execute('UPDATE players SET gold = gold + ? WHERE user_id = ?', (gold, ctx.author.id))
                         await conn.execute('DELETE FROM Items WHERE item_id = ?', (item_id,))
                         await conn.commit()
@@ -187,6 +197,16 @@ class Items(commands.Cog):
         async with aiosqlite.connect(PATH) as conn:
             d = await conn.execute('SELECT class FROM players WHERE user_id = ?', (ctx.author.id,))
             playerjob = await d.fetchone()
+            #Bonuses for members of guilds
+            guild_bonus = 1
+            try:
+                guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
+                if guild['Type'] == 'Guild':
+                    guild_level = await AssetCreation.getGuildLevel(guild['ID'])
+                    guild_bonus = 1.5 + (guild_level * .25)
+            except TypeError:
+                pass 
+
             for item_id in itemlist:
                 try:
                     query = (int(item_id), ctx.author.id)
@@ -212,6 +232,8 @@ class Items(commands.Cog):
                             break 
                 except TypeError:
                     errors = errors + f'`{item_id}` '
+
+            total = int(total * guild_bonus) #Apply guild bonus
 
             await conn.execute('UPDATE players SET gold = gold + ? WHERE user_id = ?', (total, ctx.author.id))
             await conn.commit()
