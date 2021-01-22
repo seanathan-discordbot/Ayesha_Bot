@@ -218,6 +218,9 @@ class Associations(commands.Cog):
                 stolen_amount = 50
             else:
                 stolen_amount = math.floor(victim_gold / 20)
+                role = await AssetCreation.getClass(ctx.author.id)
+                if role == 'Engineer':
+                    stolen_amount = math.floor(victim_gold / 12)
                 await conn.execute('UPDATE players SET gold = gold + ? WHERE user_id = ?', (stolen_amount, ctx.author.id))
                 await conn.execute('UPDATE players SET gold = gold - ? WHERE user_id = ?', (stolen_amount, victim))
                 await conn.commit()
@@ -404,6 +407,10 @@ class Associations(commands.Cog):
             else: #Player gets a good amount
                 result *= 2
                 capital = int(capital * result)
+            #Class bonus
+            role = await AssetCreation.getClass(ctx.author.id)
+            if role == 'Engineer':
+                gold *= math.floor(gold * 1.25)
             #Choose a random project and location
             projects = ('a museum', 'a church', 'a residence', 'a fishing company', 'a game company', 'a guild', 'a boat', 'road construction')
             locations = ('Aramithea', 'Riverburn', 'Thenuille', 'the Mythic Forest', 'Fernheim', 'Thanderlands Marsh', 'Glakelys', 'Croire', 'Crumidia', 'Mooncastle', 'Felescity', 'Mysteria', 'a local village', 'your hometown', 'Oshwega')

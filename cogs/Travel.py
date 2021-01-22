@@ -156,7 +156,7 @@ class Travel(commands.Cog):
     @commands.check(Checks.is_player)
     async def arrive(self, ctx):
         adv = await AssetCreation.getAdventure(ctx.author.id)
-        if adv is None:
+        if adv[0] is None:
             await ctx.reply('You aren\'t travelling. Use `travel` to explore somewhere new!')
             return
 
@@ -170,6 +170,11 @@ class Travel(commands.Cog):
             getWeapon = random.randint(1,10)
             if getWeapon == 1:
                 await AssetCreation.createItem(ctx.author.id, random.randint(15, 40), "Common")
+
+            #Class bonus
+            role = await AssetCreation.getClass(ctx.author.id)
+            if role == 'Traveler':
+                gold *= 3
 
             #Also give bonuses to acolytes if any
             acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(ctx.author.id)
@@ -275,6 +280,12 @@ class Travel(commands.Cog):
             fur = 0
             bone = 0
 
+        role = await AssetCreation.getClass(ctx.author.id)
+        if role == 'Hunter':
+            gold *= 2
+            fur *= 2
+            bone *= 2
+
         async with aiosqlite.connect(AssetCreation.PATH) as conn:
             await conn.execute('UPDATE players SET gold = gold + ? WHERE user_id = ?', (gold, ctx.author.id))
             await conn.execute('UPDATE resources SET fur = fur + ?, bone = bone + ? WHERE user_id = ?', (fur, bone, ctx.author.id))
@@ -358,6 +369,10 @@ class Travel(commands.Cog):
             mat = 'cacao'
             amount = random.randint(3,7)
 
+        role = await AssetCreation.getClass(ctx.author.id)
+        if role == 'Traveler':
+            amount *= 2
+
         await AssetCreation.giveMat(mat, amount, ctx.author.id)
 
         await ctx.reply(f'You received `{amount} {mat}` while foraging in `{location}`.')
@@ -415,7 +430,7 @@ class Travel(commands.Cog):
             embed = discord.Embed(title='Upgrade', color=0xBEDCF6)
             embed.add_field(name='Upgrade an item\'s attack stat by 1.', value='The cost of upgrading scales with the attack of the item. You will have to pay `3*(ATK+1)` iron and `20*(ATK+1)` gold to upgrade an item\'s ATK stat.\nEach rarity also has a maximum ATK:\n**Common:** 50\n**Uncommon:** 75\n**Rare:** 100\n**Epic:** 125\n**Legendary:** 160\n`Upgrade` has a 2 minute cooldown.')
             await ctx.reply(embed=embed)
-            await ctx.reset_cooldown(ctx)
+            await ctx.command.reset_cooldown(ctx)
             return
 
         #Upgrade only in Cities or Towns
@@ -430,38 +445,38 @@ class Travel(commands.Cog):
             item = await c.fetchone()
             if item is None:
                 await ctx.reply("No such item of yours exists.")
-                await ctx.reset_cooldown(ctx)
+                await ctx.command.reset_cooldown(ctx)
                 return
 
             #Get the item's rarity and prevent them from upgrading it past the limit (50 for commons, +25 for each above)
             if item[2] == 'Common':
                 if item[1] >= 50:
                     await ctx.reply('A common weapon can have a maximum ATK stat of 50.')
-                    await ctx.reset_cooldown(ctx)
+                    await ctx.command.reset_cooldown(ctx)
                     return
 
             elif item[2] == 'Uncommon':
                 if item[1] >= 75:
                     await ctx.reply('An uncommon weapon can have a maximum ATK stat of 75.')
-                    await ctx.reset_cooldown(ctx)
+                    await ctx.command.reset_cooldown(ctx)
                     return
 
             elif item[2] == 'Rare':
                 if item[1] >= 100:
                     await ctx.reply('A rare weapon can have a maximum ATK stat of 100.')
-                    await ctx.reset_cooldown(ctx)
+                    await ctx.command.reset_cooldown(ctx)
                     return
 
             elif item[2] == 'Epic':
                 if item[1] >= 125:
                     await ctx.reply('An epic weapon can have a maximum ATK stat of 125.')
-                    await ctx.reset_cooldown(ctx)
+                    await ctx.command.reset_cooldown(ctx)
                     return
 
             elif item[2] == 'Legendary':
                 if item[1] >= 160:
                     await ctx.reply('A legendary weapon can have a maximum ATK stat of 160.')
-                    await ctx.reset_cooldown(ctx)
+                    await ctx.command.reset_cooldown(ctx)
                     return
 
             #Ensure they have the ore and gold to upgrade this weapon

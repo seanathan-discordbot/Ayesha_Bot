@@ -12,12 +12,12 @@ occupations = {
     'Soldier' : 'You are a retainer of a local lord, trained in the discipline of swordsmanship.\nYour base character ATK is boosted by 20% and you get a bonus 10 ATK.',
     'Blacksmith' : 'You\'ve spent years as the apprentice of a hardy blacksmith, and now a master in the art of forging.\nYour weapon ATK is boosted by 10% and you get a bonus 10 ATK.',
     'Farmer' : 'You are a lowly farmer, but farming is no easy job.\nYou gain increased resources from labor commands.',
-    'Hunter' : 'The wild is your domain; no game unconquerable.\nYou gain increased rewards from hunting.',
+    'Hunter' : 'The wild is your domain; no game unconquerable.\nYou gain double rewards from hunting.',
     'Merchant' : 'Screw you, exploiter of others\' labor.\nYou gain 50% increased income from selling items.',
-    'Traveler' : 'The wild forests up north await, as do the raging seas to the south. What will you discover?\nYou gain increased rewards from travel.',
+    'Traveler' : 'The wild forests up north await, as do the raging seas to the south. What will you discover?\nYou gain triple gold from travel and double rewards from foraging.',
     'Leatherworker' : 'The finest protective gear, saddles, and equipment have your name on it.\nYou have 200 increased HP.',
     'Butcher' : 'Meat. What would one do without it?\nYou have double healing effectiveness.',
-    'Engineer' : 'Your lord praises the seemingly impossible design of his new manor.\nYou will gain increased compensation from your association',
+    'Engineer' : 'Your lord praises the seemingly impossible design of his new manor.\nYou will gain increased rewards from exclusive association commands.',
     'Scribe' : 'Despite the might of your lord, you\'ve learned a little bit about everything too.\nYou have an additional 10% crit rate.'
 }
 
@@ -36,16 +36,16 @@ origins = {
 occ = enumerate(occupations)
 occ = list(occ)
 
-# 0. Soldier - 15% bonus to character attack
-# 1. Blacksmith - 10% bonus to weapon attack
+# 0. Soldier - 15% bonus to character attack - implemented
+# 1. Blacksmith - 10% bonus to weapon attack - implemented
 # 2. Farmer - increased resources from labor commands
-# 3. Hunter - increased travelling/(hunting?) rewards
-# 4. Merchant - increased income from selling items
-# 5. Traveler - increased travelling rewards
-# 6. Leatherworker - increased HP (or DEF if added)
-# 7. Butcher - increased healing effectiveness
-# 8. Engineer/Mechanic - buff association bonuses slightly
-# 9. Scribe - increased crit rate
+# 3. Hunter - double hunting rewards - implemented
+# 4. Merchant - increased income from selling items - implemented
+# 5. Traveler - triple travelling gold, double forage rewards - implemented
+# 6. Leatherworker - increased HP (or DEF if added) - implemented
+# 7. Butcher - increased healing effectiveness - implemented
+# 8. Engineer - buff steal/invest slightly - implemented
+# 9. Scribe - increased crit rate - implemented
 
 ori = enumerate(origins)
 ori = list(ori)
