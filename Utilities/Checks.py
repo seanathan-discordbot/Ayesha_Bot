@@ -7,7 +7,7 @@ from Utilities import AssetCreation
 
 import aiosqlite
 
-PATH = 'PATH'
+PATH = AssetCreation.PATH
 
 async def not_player(ctx):
     query = (ctx.author.id,)

@@ -13,8 +13,6 @@ import random
 import math
 import time
 
-PATH = 'PATH'
-
 location_dict = {
     'Aramithea' : {
         'Biome' : 'City', 
@@ -147,7 +145,7 @@ class Travel(commands.Cog):
         cd = int(cd)
 
         # Start the adventure and input end time and destination into database
-        async with aiosqlite.connect(PATH) as conn:
+        async with aiosqlite.connect(AssetCreation.PATH) as conn:
             await conn.execute('UPDATE players SET adventure = ?, destination = ? WHERE user_id = ?', (cd, destination, ctx.author.id))
             await conn.commit()
         
@@ -158,7 +156,7 @@ class Travel(commands.Cog):
     @commands.check(Checks.is_player)
     async def arrive(self, ctx):
         adv = await AssetCreation.getAdventure(ctx.author.id)
-        if adv is None:
+        if adv[0] is None:
             await ctx.reply('You aren\'t travelling. Use `travel` to explore somewhere new!')
             return
 
@@ -173,10 +171,15 @@ class Travel(commands.Cog):
             if getWeapon == 1:
                 await AssetCreation.createItem(ctx.author.id, random.randint(15, 40), "Common")
 
+            #Class bonus
+            role = await AssetCreation.getClass(ctx.author.id)
+            if role == 'Traveler':
+                gold *= 3
+
             #Also give bonuses to acolytes if any
             acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(ctx.author.id)
 
-            async with aiosqlite.connect(PATH) as conn:
+            async with aiosqlite.connect(AssetCreation.PATH) as conn:
                 await conn.execute("""UPDATE players SET 
                     xp = xp + ?, gold = gold + ?, location = ?, 
                     adventure = NULL, destination = NULL 
@@ -222,7 +225,7 @@ class Travel(commands.Cog):
             #Also give bonuses to acolytes if any
             acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(ctx.author.id)
 
-            async with aiosqlite.connect(PATH) as conn:
+            async with aiosqlite.connect(AssetCreation.PATH) as conn:
                 await conn.execute("""UPDATE players SET 
                     xp = xp + ?, gold = gold + ?, location = ?, 
                     adventure = NULL, destination = NULL 
@@ -243,7 +246,7 @@ class Travel(commands.Cog):
                 await AssetCreation.checkLevel(ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
 
         else:
-            async with aiosqlite.connect(PATH) as conn:
+            async with aiosqlite.connect(AssetCreation.PATH) as conn:
                 await conn.execute('UPDATE players SET adventure = NULL, destination = NULL WHERE user_id = ?', (ctx.author.id,))
                 await conn.commit()
                 await ctx.reply('You decided not to travel.')
@@ -267,7 +270,7 @@ class Travel(commands.Cog):
             fur = random.randint(6,12)
             bone = int(fur / 3)
 
-        elif result[0] == 'critical':
+        elif result[0] == 'critical success':
             gold = random.randint(100, 150)
             fur = random.randint(12,18)
             bone = int(fur/3)
@@ -277,7 +280,13 @@ class Travel(commands.Cog):
             fur = 0
             bone = 0
 
-        async with aiosqlite.connect(PATH) as conn:
+        role = await AssetCreation.getClass(ctx.author.id)
+        if role == 'Hunter':
+            gold *= 2
+            fur *= 2
+            bone *= 2
+
+        async with aiosqlite.connect(AssetCreation.PATH) as conn:
             await conn.execute('UPDATE players SET gold = gold + ? WHERE user_id = ?', (gold, ctx.author.id))
             await conn.execute('UPDATE resources SET fur = fur + ?, bone = bone + ? WHERE user_id = ?', (fur, bone, ctx.author.id))
             await conn.commit()
@@ -286,7 +295,7 @@ class Travel(commands.Cog):
 
     @commands.command(description='Mine for ore. You may get iron or silver, which is needed to buff your acolytes.')
     @commands.check(Checks.is_player)
-    @cooldown(1, 30, type=BucketType.user)
+    @cooldown(1, 15, type=BucketType.user)
     async def mine(self, ctx):
         #Make sure they're in mining territory
         location = await AssetCreation.getLocation(ctx.author.id)
@@ -312,7 +321,7 @@ class Travel(commands.Cog):
             iron = random.randint(10,20)
             silver = 0
 
-        async with aiosqlite.connect(PATH) as conn:
+        async with aiosqlite.connect(AssetCreation.PATH) as conn:
             await conn.execute('UPDATE players SET gold = gold + ? WHERE user_id = ?', (gold, ctx.author.id))
             await conn.execute('UPDATE resources SET iron = iron + ?, silver = silver + ? WHERE user_id = ?', (iron, silver, ctx.author.id))
             await conn.commit()
@@ -321,7 +330,7 @@ class Travel(commands.Cog):
 
     @commands.command(description='Forage for materials depending on your location. These materials may buff your acolytes.')
     @commands.check(Checks.is_player)
-    @cooldown(1, 60, type=BucketType.user)
+    @cooldown(1, 15, type=BucketType.user)
     async def forage(self, ctx):
         #Get player location and materials.
         location = await AssetCreation.getLocation(ctx.author.id)
@@ -360,6 +369,10 @@ class Travel(commands.Cog):
             mat = 'cacao'
             amount = random.randint(3,7)
 
+        role = await AssetCreation.getClass(ctx.author.id)
+        if role == 'Traveler':
+            amount *= 2
+
         await AssetCreation.giveMat(mat, amount, ctx.author.id)
 
         await ctx.reply(f'You received `{amount} {mat}` while foraging in `{location}`.')
@@ -367,7 +380,7 @@ class Travel(commands.Cog):
     @commands.command(aliases=['pack'], description='See how many materials you have.')
     @commands.check(Checks.is_player)
     async def backpack(self, ctx):
-        async with aiosqlite.connect(PATH) as conn:
+        async with aiosqlite.connect(AssetCreation.PATH) as conn:
             c = await conn.execute('SELECT fur, bone, iron, silver, wood, wheat, oat, reeds, pine, moss, cacao FROM resources WHERE user_id = ?', (ctx.author.id,))
             backpack = await c.fetchone()
             mats = ('Fur', 'Bone', 'Iron', 'Silver', 'Wood', 'Wheat', 'Oat', 'Reeds', 'Pine', 'Moss', 'Cacao')
@@ -411,8 +424,15 @@ class Travel(commands.Cog):
 
     @commands.command(brief='<item id>', description='Upgrade the ATK stat of a weapon.')
     @commands.check(Checks.is_player)
-    # @cooldown(1,1800,type=BucketType.user)
-    async def upgrade(self, ctx, item_id : int):
+    @cooldown(1,120,type=BucketType.user)
+    async def upgrade(self, ctx, item_id : int = None):
+        if item_id is None:
+            embed = discord.Embed(title='Upgrade', color=0xBEDCF6)
+            embed.add_field(name='Upgrade an item\'s attack stat by 1.', value='The cost of upgrading scales with the attack of the item. You will have to pay `3*(ATK+1)` iron and `20*(ATK+1)` gold to upgrade an item\'s ATK stat.\nEach rarity also has a maximum ATK:\n**Common:** 50\n**Uncommon:** 75\n**Rare:** 100\n**Epic:** 125\n**Legendary:** 160\n`Upgrade` has a 2 minute cooldown.')
+            await ctx.reply(embed=embed)
+            await ctx.command.reset_cooldown(ctx)
+            return
+
         #Upgrade only in Cities or Towns
         location = await AssetCreation.getLocation(ctx.author.id)
         if location != 'Thenuille' and location != 'Aramithea' and location != 'Riverburn':
@@ -420,37 +440,43 @@ class Travel(commands.Cog):
             return
 
         #Make sure the item exists and that they own it
-        async with aiosqlite.connect(PATH) as conn:
+        async with aiosqlite.connect(AssetCreation.PATH) as conn:
             c = await conn.execute('SELECT item_id, attack, rarity, weapon_name FROM items WHERE item_id = ? AND owner_id = ?', (item_id, ctx.author.id))
             item = await c.fetchone()
             if item is None:
                 await ctx.reply("No such item of yours exists.")
+                await ctx.command.reset_cooldown(ctx)
                 return
 
             #Get the item's rarity and prevent them from upgrading it past the limit (50 for commons, +25 for each above)
             if item[2] == 'Common':
                 if item[1] >= 50:
                     await ctx.reply('A common weapon can have a maximum ATK stat of 50.')
+                    await ctx.command.reset_cooldown(ctx)
                     return
 
             elif item[2] == 'Uncommon':
                 if item[1] >= 75:
                     await ctx.reply('An uncommon weapon can have a maximum ATK stat of 75.')
+                    await ctx.command.reset_cooldown(ctx)
                     return
 
             elif item[2] == 'Rare':
                 if item[1] >= 100:
                     await ctx.reply('A rare weapon can have a maximum ATK stat of 100.')
+                    await ctx.command.reset_cooldown(ctx)
                     return
 
             elif item[2] == 'Epic':
                 if item[1] >= 125:
                     await ctx.reply('An epic weapon can have a maximum ATK stat of 125.')
+                    await ctx.command.reset_cooldown(ctx)
                     return
 
             elif item[2] == 'Legendary':
                 if item[1] >= 160:
                     await ctx.reply('A legendary weapon can have a maximum ATK stat of 160.')
+                    await ctx.command.reset_cooldown(ctx)
                     return
 
             #Ensure they have the ore and gold to upgrade this weapon
@@ -465,6 +491,7 @@ class Travel(commands.Cog):
             
             if gold < gold_cost or iron < iron_cost:
                 await ctx.reply(f'Upgrading this item to `{item[1]+1}` ATK costs `{iron_cost}` iron and `{gold_cost}` gold. You don\'t have enough resources.')
+                await ctx.reset_cooldown(ctx)
                 return
 
             #Upgrade the weapon
@@ -473,7 +500,6 @@ class Travel(commands.Cog):
             await conn.execute('UPDATE resources SET iron = iron - ? WHERE user_id = ?', (iron_cost, ctx.author.id))
             await conn.commit()
             await ctx.reply(f'Success! You consumed `{gold_cost}` gold and `{iron_cost}` iron to upgrade your `{item[3]}` to `{item[1]+1}` ATK.')
-
 
 def setup(client):
     client.add_cog(Travel(client))

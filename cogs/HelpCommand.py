@@ -9,9 +9,17 @@ import discord
 from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
-import seanathan
+import ayesha
 
-
+listCogs = """**Acolytes:** Commands involving your party members
+**Associations:** Join a brotherhood or guild for bonuses!
+**Classes:** Customize your character!
+**Items:** View your inventory and other commands involving items
+**Misc:** Other Ayesha-related commands
+**Music:** Ayesha's own music player! (it sucks)
+**Profile:** Create a character and view your stats!
+**PvE:** Basic gameplay in AyeshaBot
+**Travel:** Explore the land of Rabidus and get items for your party members!"""
 
 class HelpPaginator(menus.ListPageSource):
     def __init__(self, data):
@@ -26,7 +34,7 @@ class HelpCommand(commands.Cog):
         self.client = client
         
     def write(self, ctx, start, entries, cog):
-        helpEmbed = discord.Embed(title=f'Seanathan Help: {cog}', color=0xBEDCF6)
+        helpEmbed = discord.Embed(title=f'Ayesha Help: {cog}', color=0xBEDCF6)
         helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
         
         iteration = 0
@@ -68,19 +76,21 @@ class HelpCommand(commands.Cog):
             prefix = await self.client.get_prefix(ctx.message)
             helpEmbed = discord.Embed(color=0xBEDCF6)
             helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
-            helpEmbed.set_author(name='NguyenBot Help')
+            helpEmbed.set_author(name='Ayesha Help')
             helpEmbed.add_field(
                 name = f'Please enter `{prefix}help <Module>` for more info on that module',
-                value = """<Placeholder>""", inline=False #LIST THE COGS
+                value = listCogs, inline=False #LIST THE COGS
             )
             
             embed = discord.Embed(color=0xBEDCF6)
             embed.set_thumbnail(url=ctx.author.avatar_url)
-            embed.set_author(name='Seanathan Help: Logistics')
+            embed.set_author(name='Ayesha Help: Logistics')
             embed.add_field(name='changeprefix', #CHANGEPREFIX
                 value='`changeprefix <str>`\nChanges the server prefix to <str>', 
-                inline=False)    
-            # ADD MORE FIELDS FOR THE OTHER COMMANDS IN SEANATHAN.PY
+                inline=False)   
+            embed.add_field(name='ping', #PING
+                value='`ping`\nSee if the bot is online.', 
+                inline=False)
             
             entries = [helpEmbed, embed]
                 

@@ -7,6 +7,7 @@
         "HP": 150,
         "Rarity": 5,
         "Effect": "Crit hits increase attack by 50 for the remainder of the battle.",
+        "Mat" : "wood",
         "Story": null,
         "Image": null
     },
@@ -18,6 +19,7 @@
         "HP": 300,
         "Rarity": 5,
         "Effect": "Each attack, block, or parry does an additional 10 damage.",
+        "Mat" : "silver",
         "Story": null,
         "Image": null
     },
@@ -29,6 +31,7 @@
         "HP": 100,
         "Rarity": 5,
         "Effect": "Gain an extra 10% xp from bounties.",
+        "Mat" : "cacao",
         "Story": "Sean is short for Seanathan",
         "Image": null
     },
@@ -40,6 +43,7 @@
         "HP": 250,
         "Rarity": 4,
         "Effect": null,
+        "Mat" : "iron",
         "Story": null,
         "Image": null
     },
@@ -51,6 +55,7 @@
         "HP": 250,
         "Rarity": 4,
         "Effect": null,
+        "Mat" : "reeds",
         "Story": null,
         "Image": null
     },
@@ -62,6 +67,7 @@
         "HP": 200,
         "Rarity": 4,
         "Effect": null,
+        "Mat" : "bone",
         "Story": null,
         "Image": null
     },
@@ -73,6 +79,7 @@
         "HP": 150,
         "Rarity": 3,
         "Effect": null,
+        "Mat" : "wood",
         "Story": null,
         "Image": null
     },
@@ -84,6 +91,7 @@
         "HP": 200,
         "Rarity": 3,
         "Effect": null,
+        "Mat" : "fur",
         "Story": null,
         "Image": null
     },
@@ -95,6 +103,7 @@
         "HP": 50,
         "Rarity": 2,
         "Effect": null,
+        "Mat" : "moss",
         "Story": null,
         "Image": null
     },
@@ -106,6 +115,7 @@
         "HP": 50,
         "Rarity": 1,
         "Effect": null,
+        "Mat" : "wheat",
         "Story": null,
         "Image": null
     }

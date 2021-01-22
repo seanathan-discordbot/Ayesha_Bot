@@ -10,8 +10,6 @@ from Utilities import Checks, AssetCreation, PageSourceMaker
 import random
 import math
 
-PATH = 'PATH'
-
 class Acolytes(commands.Cog):
 
     def __init__(self, client):
@@ -49,7 +47,7 @@ class Acolytes(commands.Cog):
     @commands.check(Checks.is_player)
     async def tavern(self, ctx):
         user = (ctx.author.id,)
-        async with aiosqlite.connect(PATH) as conn:
+        async with aiosqlite.connect(AssetCreation.PATH) as conn:
             c = await conn.execute("""
                 SELECT * FROM Acolytes
                 WHERE owner_id = ? AND (is_equipped = 1 OR is_equipped = 2)""",
@@ -77,7 +75,7 @@ class Acolytes(commands.Cog):
             await ctx.reply('You can only place an acolyte in slots 1 or 2 of your party.')
             return
         query = (instance_id, ctx.author.id) # Make sure that 1. acolyte exists 2. they own this item
-        async with aiosqlite.connect(PATH) as conn:
+        async with aiosqlite.connect(AssetCreation.PATH) as conn:
             c = await conn.execute('SELECT * FROM Acolytes WHERE instance_id = ? AND owner_id = ?', query)
             acolyte = await c.fetchone()
             if acolyte is None:
@@ -131,7 +129,7 @@ class Acolytes(commands.Cog):
             await ctx.reply('Please input a valid slot (1 or 2).')
             return
         query = (ctx.author.id,)
-        async with aiosqlite.connect(PATH) as conn:
+        async with aiosqlite.connect(AssetCreation.PATH) as conn:
             if slot == 1:
                 c = await conn.execute('SELECT acolyte1 FROM Players WHERE user_id = ?', query)
             else:
@@ -153,7 +151,7 @@ class Acolytes(commands.Cog):
     @commands.check(Checks.is_player)
     async def train(self, ctx, instance_id : int):
         #Make sure the acolyte exists and they own it
-        async with aiosqlite.connect(PATH) as conn:
+        async with aiosqlite.connect(AssetCreation.PATH) as conn:
             c = await conn.execute('SELECT acolyte_name, level FROM Acolytes WHERE instance_id = ? AND owner_id = ?', (instance_id, ctx.author.id))
             try:
                 name, level = await c.fetchone()

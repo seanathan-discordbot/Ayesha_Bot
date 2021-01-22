@@ -10,8 +10,6 @@ from Utilities import Checks, AssetCreation, PageSourceMaker
 import random
 import math
 
-PATH = 'PATH'
-
 # List Level, Name, LowAtk, HighAtk, LowHP, HighHP, Special Abilities (if any)
 bounty_levels = {
     1 : {
@@ -255,7 +253,7 @@ class PvE(commands.Cog):
             pass
         acolyte_xp = math.ceil(xp / 10)
         #Give rewards
-        async with aiosqlite.connect(PATH) as conn:
+        async with aiosqlite.connect(AssetCreation.PATH) as conn:
             c = await conn.execute('SELECT instance_id FROM Acolytes WHERE owner_id = ? AND (is_equipped = 1 OR is_equipped = 2)', (player,))
             acolytes = await c.fetchall()
             if len(acolytes) == 1:
@@ -290,7 +288,7 @@ class PvE(commands.Cog):
             pass
         acolyte_xp = math.ceil(xp / 10)
         #Give rewards
-        async with aiosqlite.connect(PATH) as conn:
+        async with aiosqlite.connect(AssetCreation.PATH) as conn:
             c = await conn.execute('SELECT instance_id FROM Acolytes WHERE owner_id = ? AND (is_equipped = 1 OR is_equipped = 2)', (player,))
             acolytes = await c.fetchall()
             if len(acolytes) == 1:
