@@ -335,3 +335,12 @@ async def giveRubidics(amount : int, user_id : int):
     async with aiosqlite.connect(PATH) as conn:
         await conn.execute('UPDATE players SET rubidic = rubidic + ? WHERE user_id = ?', (amount, user_id))
         await conn.commit()
+
+async def getClass(user_id : int):
+    async with aiosqlite.connect(PATH) as conn:
+        c = await conn.execute('SELECT class FROM players WHERE user_id = ?', (user_id,))
+        role = await c.fetchone()
+        try:
+            return role[0]
+        except TypeError:
+            return None
