@@ -52,7 +52,7 @@ class Profile(commands.Cog):
         await AssetCreation.createItem(ctx.author.id, 20, 'Common', crit=0, weaponname='Wooden Spear', weapontype='Spear')
 
     #COMMANDS
-    @commands.command(aliases=['begin','create'], brief='<name : str>', description='Start the game of Seanathan')
+    @commands.command(aliases=['begin','create'], brief='<name : str>', description='Start the game of AyeshaBot.')
     @commands.check(Checks.not_player)
     async def start(self, ctx, *, name : str = None):
         if not name:
@@ -61,7 +61,7 @@ class Profile(commands.Cog):
                 await ctx.send("Name can only be up to 32 characters")
         else:
             prefix = await self.client.get_prefix(ctx.message)
-            embed = discord.Embed(title='Start the game of Seanathan?', color=0xBEDCF6)
+            embed = discord.Embed(title='Start the game of AyeshaBot?', color=0xBEDCF6)
             embed.add_field(name=f'Your Name: {name}', value=f'You can customize your name by doing `{prefix}start <name>`')
             start = await YesNo(ctx, embed).prompt(ctx)
             if start:
