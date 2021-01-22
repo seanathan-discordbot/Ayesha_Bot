@@ -17,7 +17,7 @@ class Gacha(commands.Cog):
 
     @commands.command()
     async def roll(self,ctx):
-        with open(r'C:\Users\rowlas2\Documents\Seanathan\Assets\Acolyte_List.json') as f:
+        with open(r'ACOLYTE_PATH') as f:
             data=json.load(f)
             star_data=dict()
             for key in data:
