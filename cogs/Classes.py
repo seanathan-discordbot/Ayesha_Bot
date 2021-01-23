@@ -4,8 +4,6 @@ import asyncio
 from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
-import aiosqlite
-
 from Utilities import Checks, AssetCreation, PageSourceMaker
 
 occupations = {
@@ -98,10 +96,7 @@ class Classes(commands.Cog):
                 break
             if str(reaction) == '\u2705': # Then change class
                 role = occ[page][1]
-                query = (role, ctx.author.id)
-                async with aiosqlite.connect(AssetCreation.PATH) as conn:
-                    await conn.execute("UPDATE Players SET class = $1 WHERE user_id = $2;", query)
-                    await conn.commit()
+                await AssetCreation.setPlayerClass(role, ctx.author.id)
                 await ctx.send(f'{ctx.author.mention}, you are now a {role}!')
                 await message.delete()
                 break
@@ -148,10 +143,7 @@ class Classes(commands.Cog):
                 break
             if str(reaction) == '\u2705': # Then change class
                 place = ori[page][1]
-                query = (place, ctx.author.id)
-                async with aiosqlite.connect(AssetCreation.PATH) as conn:
-                    await conn.execute("UPDATE Players SET origin = $1 WHERE user_id = $2;", query)
-                    await conn.commit()
+                await AssetCreation.setPlayerOrigin(place, ctx.author.id)
                 await ctx.send(f'{ctx.author.mention}, you are from {place}!')
                 await message.delete()
                 break

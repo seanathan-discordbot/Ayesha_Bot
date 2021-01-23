@@ -4,7 +4,6 @@ import asyncio
 from discord.ext import commands
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
-import aiosqlite
 from Utilities import Checks, AssetCreation, PageSourceMaker
 
 from dpymenus import Page, PaginatedMenu
@@ -145,9 +144,7 @@ class Travel(commands.Cog):
         cd = int(cd)
 
         # Start the adventure and input end time and destination into database
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            await conn.execute('UPDATE players SET adventure = ?, destination = ? WHERE user_id = ?', (cd, destination, ctx.author.id))
-            await conn.commit()
+        await AssetCreation.setAdventure(cd, destination, ctx.author.id)
         
         # Tell player when their adventure will be done
         await ctx.reply(f"You will arrive at `{destination}` in `{self.convertagain(loc['CD'])}`.")
@@ -176,28 +173,23 @@ class Travel(commands.Cog):
             if role == 'Traveler':
                 gold *= 3
 
+            await AssetCreation.giveAdventureRewards(xp, gold, adv[1], ctx.author.id)
+
             #Also give bonuses to acolytes if any
             acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(ctx.author.id)
 
-            async with aiosqlite.connect(AssetCreation.PATH) as conn:
-                await conn.execute("""UPDATE players SET 
-                    xp = xp + ?, gold = gold + ?, location = ?, 
-                    adventure = NULL, destination = NULL 
-                    WHERE user_id = ?""", (xp, gold, adv[1], ctx.author.id))
+            if acolyte1 is not None:
+                await AssetCreation.giveAcolyteXP(acolyte_xp, acolyte1)
+            if acolyte2 is not None:
+                await AssetCreation.giveAcolyteXP(acolyte_xp, acolyte2)
 
-                if acolyte1 is not None:
-                    ('UPDATE acolytes SET xp = xp + ? WHERE instance_id = ?', (acolyte_xp, acolyte1))
-                if acolyte2 is not None:
-                    ('UPDATE acolytes SET xp = xp + ? WHERE instance_id = ?', (acolyte_xp, acolyte2,))
+            if getWeapon == 1:
+                await ctx.reply(f'You arrived at `{adv[1]}`! On the way you earned `{xp}` xp and `{gold}` gold. You also found a weapon!')
+            else:
+                await ctx.reply(f'You arrived at `{adv[1]}`! On the way you earned `{xp}` xp and `{gold}` gold.')
 
-                await conn.commit()
-                if getWeapon == 1:
-                    await ctx.reply(f'You arrived at `{adv[1]}`! On the way you earned `{xp}` xp and `{gold}` gold. You also found a weapon!')
-                else:
-                    await ctx.reply(f'You arrived at `{adv[1]}`! On the way you earned `{xp}` xp and `{gold}` gold.')
-
-                #Check for level ups
-                await AssetCreation.checkLevel(ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
+            #Check for level ups
+            await AssetCreation.checkLevel(ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
 
         else: 
             wait = adv[0] - current
@@ -222,34 +214,32 @@ class Travel(commands.Cog):
             if getWeapon == 1:
                 await AssetCreation.createItem(ctx.author.id, random.randint(15, 40), "Common")
 
+            #Class bonus
+            role = await AssetCreation.getClass(ctx.author.id)
+            if role == 'Traveler':
+                gold *= 3
+
+            await AssetCreation.giveAdventureRewards(xp, gold, adv[1], ctx.author.id)
+
             #Also give bonuses to acolytes if any
             acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(ctx.author.id)
 
-            async with aiosqlite.connect(AssetCreation.PATH) as conn:
-                await conn.execute("""UPDATE players SET 
-                    xp = xp + ?, gold = gold + ?, location = ?, 
-                    adventure = NULL, destination = NULL 
-                    WHERE user_id = ?""", (xp, gold, adv[1], ctx.author.id))
+            if acolyte1 is not None:
+                await AssetCreation.giveAcolyteXP(acolyte_xp, acolyte1)
+            if acolyte2 is not None:
+                await AssetCreation.giveAcolyteXP(acolyte_xp, acolyte2)
 
-                if acolyte1 is not None:
-                    ('UPDATE acolytes SET xp = xp + ? WHERE instance_id = ?', (acolyte_xp, acolyte1))
-                if acolyte2 is not None:
-                    ('UPDATE acolytes SET xp = xp + ? WHERE instance_id = ?', (acolyte_xp, acolyte2,))
+            if getWeapon == 1:
+                await ctx.reply(f'You arrived at `{adv[1]}`! On the way you earned `{xp}` xp and `{gold}` gold. You also found a weapon!')
+            else:
+                await ctx.reply(f'You arrived at `{adv[1]}`! On the way you earned `{xp}` xp and `{gold}` gold.')
 
-                await conn.commit()
-                if getWeapon == 1:
-                    await ctx.reply(f'You arrived at `{adv[1]}`! On the way you earned `{xp}` xp and `{gold}` gold. You also found a weapon!')
-                else:
-                    await ctx.reply(f'You arrived at `{adv[1]}`! On the way you earned `{xp}` xp and `{gold}` gold.')
-
-                #Check for level ups
-                await AssetCreation.checkLevel(ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
+            #Check for level ups
+            await AssetCreation.checkLevel(ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
 
         else:
-            async with aiosqlite.connect(AssetCreation.PATH) as conn:
-                await conn.execute('UPDATE players SET adventure = NULL, destination = NULL WHERE user_id = ?', (ctx.author.id,))
-                await conn.commit()
-                await ctx.reply('You decided not to travel.')
+            await AssetCreation.setAdventure(None, None, ctx.author.id)
+            await ctx.reply('You decided not to travel.')
 
     @commands.command(description='Hunt for food. You may get fur and bone, which is needed to buff your acolytes.')
     @commands.check(Checks.is_player)
@@ -286,10 +276,9 @@ class Travel(commands.Cog):
             fur *= 2
             bone *= 2
 
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            await conn.execute('UPDATE players SET gold = gold + ? WHERE user_id = ?', (gold, ctx.author.id))
-            await conn.execute('UPDATE resources SET fur = fur + ?, bone = bone + ? WHERE user_id = ?', (fur, bone, ctx.author.id))
-            await conn.commit()
+        await AssetCreation.giveGold(gold, ctx.author.id)
+        await AssetCreation.giveMat('fur', fur, ctx.author.id)
+        await AssetCreation.giveMat('bone', bone, ctx.author.id)
 
         await ctx.reply(f'Your hunting trip was a {result[0]}! You got `{gold}` gold, `{fur}` furs, and `{bone}` bones.')
 
@@ -321,10 +310,9 @@ class Travel(commands.Cog):
             iron = random.randint(10,20)
             silver = 0
 
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            await conn.execute('UPDATE players SET gold = gold + ? WHERE user_id = ?', (gold, ctx.author.id))
-            await conn.execute('UPDATE resources SET iron = iron + ?, silver = silver + ? WHERE user_id = ?', (iron, silver, ctx.author.id))
-            await conn.commit()
+        await AssetCreation.giveGold(gold, ctx.author.id)
+        await AssetCreation.giveMat('iron', iron, ctx.author.id)
+        await AssetCreation.giveMat('silver', silver, ctx.author.id)
 
         await ctx.reply(f'Your mining expedition was a {result[0]}! You got `{gold}` gold, `{iron}` iron, and `{silver}` silver.')
 
@@ -380,14 +368,15 @@ class Travel(commands.Cog):
     @commands.command(aliases=['pack'], description='See how many materials you have.')
     @commands.check(Checks.is_player)
     async def backpack(self, ctx):
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            c = await conn.execute('SELECT fur, bone, iron, silver, wood, wheat, oat, reeds, pine, moss, cacao FROM resources WHERE user_id = ?', (ctx.author.id,))
-            backpack = await c.fetchone()
-            mats = ('Fur', 'Bone', 'Iron', 'Silver', 'Wood', 'Wheat', 'Oat', 'Reeds', 'Pine', 'Moss', 'Cacao')
+        mats = ('Fur', 'Bone', 'Iron', 'Silver', 'Wood', 'Wheat', 'Oat', 'Reeds', 'Pine', 'Moss', 'Cacao')
+        backpack = []
 
-            embed = discord.Embed(title='Your Backpack', color=0xBEDCF6)
-            for i in range(len(backpack)):
-                embed.add_field(name=f'{mats[i]}', value=f'{backpack[i]}')
+        for resource in mats:
+            backpack.append(await AssetCreation.getPlayerMat(resource.lower(), ctx.author.id))
+
+        embed = discord.Embed(title='Your Backpack', color=0xBEDCF6)
+        for i in range(len(backpack)):
+            embed.add_field(name=f'{mats[i]}', value=f'{backpack[i]}')
        
         await ctx.reply(embed=embed)
 
@@ -430,7 +419,7 @@ class Travel(commands.Cog):
             embed = discord.Embed(title='Upgrade', color=0xBEDCF6)
             embed.add_field(name='Upgrade an item\'s attack stat by 1.', value='The cost of upgrading scales with the attack of the item. You will have to pay `3*(ATK+1)` iron and `20*(ATK+1)` gold to upgrade an item\'s ATK stat.\nEach rarity also has a maximum ATK:\n**Common:** 50\n**Uncommon:** 75\n**Rare:** 100\n**Epic:** 125\n**Legendary:** 160\n`Upgrade` has a 2 minute cooldown.')
             await ctx.reply(embed=embed)
-            await ctx.command.reset_cooldown(ctx)
+            ctx.command.reset_cooldown(ctx)
             return
 
         #Upgrade only in Cities or Towns
@@ -440,66 +429,62 @@ class Travel(commands.Cog):
             return
 
         #Make sure the item exists and that they own it
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            c = await conn.execute('SELECT item_id, attack, rarity, weapon_name FROM items WHERE item_id = ? AND owner_id = ?', (item_id, ctx.author.id))
-            item = await c.fetchone()
-            if item is None:
-                await ctx.reply("No such item of yours exists.")
-                await ctx.command.reset_cooldown(ctx)
+        item_is_valid = await AssetCreation.verifyItemOwnership(item_id, ctx.author.id)
+        if not item_is_valid:
+            await ctx.reply("No such item of yours exists.")
+            return
+
+        item = await AssetCreation.getItem(item_id)
+
+        #Get the item's rarity and prevent them from upgrading it past the limit (50 for commons, +25 for each above)
+        if item['Rarity'] == 'Common':
+            if item['Attack'] >= 50:
+                await ctx.reply('A common weapon can have a maximum ATK stat of 50.')
+                ctx.command.reset_cooldown(ctx)
                 return
 
-            #Get the item's rarity and prevent them from upgrading it past the limit (50 for commons, +25 for each above)
-            if item[2] == 'Common':
-                if item[1] >= 50:
-                    await ctx.reply('A common weapon can have a maximum ATK stat of 50.')
-                    await ctx.command.reset_cooldown(ctx)
-                    return
+        elif item['Rarity'] == 'Uncommon':
+            if item['Attack'] >= 75:
+                await ctx.reply('An uncommon weapon can have a maximum ATK stat of 75.')
+                ctx.command.reset_cooldown(ctx)
+                return
 
-            elif item[2] == 'Uncommon':
-                if item[1] >= 75:
-                    await ctx.reply('An uncommon weapon can have a maximum ATK stat of 75.')
-                    await ctx.command.reset_cooldown(ctx)
-                    return
+        elif item['Rarity'] == 'Rare':
+            if item['Attack'] >= 100:
+                await ctx.reply('A rare weapon can have a maximum ATK stat of 100.')
+                ctx.command.reset_cooldown(ctx)
+                return
 
-            elif item[2] == 'Rare':
-                if item[1] >= 100:
-                    await ctx.reply('A rare weapon can have a maximum ATK stat of 100.')
-                    await ctx.command.reset_cooldown(ctx)
-                    return
+        elif item['Rarity'] == 'Epic':
+            if item['Attack'] >= 125:
+                await ctx.reply('An epic weapon can have a maximum ATK stat of 125.')
+                ctx.command.reset_cooldown(ctx)
+                return
 
-            elif item[2] == 'Epic':
-                if item[1] >= 125:
-                    await ctx.reply('An epic weapon can have a maximum ATK stat of 125.')
-                    await ctx.command.reset_cooldown(ctx)
-                    return
+        elif item['Rarity'] == 'Legendary':
+            if item['Attack'] >= 160:
+                await ctx.reply('A legendary weapon can have a maximum ATK stat of 160.')
+                ctx.command.reset_cooldown(ctx)
+                return
 
-            elif item[2] == 'Legendary':
-                if item[1] >= 160:
-                    await ctx.reply('A legendary weapon can have a maximum ATK stat of 160.')
-                    await ctx.command.reset_cooldown(ctx)
-                    return
+        #Ensure they have the ore and gold to upgrade this weapon
+        #Upgrade costs: 3 * (ATK + 1) iron; 20 * (ATK + 1) gold
+        iron_cost = 3 * (item['Attack'] + 1)
+        gold_cost = 20 * (item['Attack'] + 1)
 
-            #Ensure they have the ore and gold to upgrade this weapon
-            #Upgrade costs: 3 * (ATK + 1) iron; 20 * (ATK + 1) gold
-            iron_cost = 3 * (item[1] + 1)
-            gold_cost = 20 * (item[1] + 1)
-
-            c = await conn.execute("""SELECT gold, iron FROM players 
-                INNER JOIN resources WHERE players.user_id = resources.user_id
-                AND players.user_id = ?""", (ctx.author.id,))
-            gold, iron = await c.fetchone()
+        gold = await AssetCreation.getGold(ctx.author.id)
+        iron = await AssetCreation.getPlayerMat('iron', ctx.author.id)
             
-            if gold < gold_cost or iron < iron_cost:
-                await ctx.reply(f'Upgrading this item to `{item[1]+1}` ATK costs `{iron_cost}` iron and `{gold_cost}` gold. You don\'t have enough resources.')
-                await ctx.reset_cooldown(ctx)
-                return
+        if gold < gold_cost or iron < iron_cost:
+            await ctx.reply(f"Upgrading this item to `{item['Attack']+1}` ATK costs `{iron_cost}` iron and `{gold_cost}` gold. You don\'t have enough resources.")
+            ctx.command.reset_cooldown(ctx)
+            return
 
-            #Upgrade the weapon
-            await conn.execute('UPDATE items SET attack = attack + 1 WHERE item_id = ?', (item_id,))
-            await conn.execute('UPDATE players SET gold = gold - ? WHERE user_id = ?', (gold_cost, ctx.author.id))
-            await conn.execute('UPDATE resources SET iron = iron - ? WHERE user_id = ?', (iron_cost, ctx.author.id))
-            await conn.commit()
-            await ctx.reply(f'Success! You consumed `{gold_cost}` gold and `{iron_cost}` iron to upgrade your `{item[3]}` to `{item[1]+1}` ATK.')
+        #Upgrade the weapon
+        await AssetCreation.increaseItemAttack(item_id, 1)
+        await AssetCreation.giveGold(0 - gold_cost, ctx.author.id)
+        await AssetCreation.giveMat('iron', 0 - iron_cost, ctx.author.id)
+        await ctx.reply(f"Success! You consumed `{gold_cost}` gold and `{iron_cost}` iron to upgrade your `{item['Name']}` to `{item['Attack']+1}` ATK.")
 
 def setup(client):
     client.add_cog(Travel(client))
