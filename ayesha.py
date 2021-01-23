@@ -11,7 +11,7 @@ import traceback
 Token = 'TOKEN'
 
 def get_prefix(client, message):
-    with open(r'F:\OneDrive\Ayesha\prefixes.json','r') as f:
+    with open(r'PREFIX_PATH','r') as f:
         prefixes = json.load(f)
     return prefixes[str(message.guild.id)]
 
@@ -49,20 +49,20 @@ async def on_guild_join(guild):
 
 @client.event #deletes the set prefix when a bot leaves the server
 async def on_guild_remove(guild):
-    with open(r'F:\OneDrive\Ayesha\prefixes.json','r') as f:
+    with open(r'PREFIX_PATH','r') as f:
         prefixes = json.load(f)
     prefixes.pop(str(guild.id))
-    with open(r'F:\OneDrive\Ayesha\prefixes.json','w') as f:
+    with open(r'PREFIX_PATH','w') as f:
         json.dump(prefixes, f, indent=4)
 
 @client.command()
 @commands.has_guild_permissions(manage_permissions=True)
 @cooldown(1, 30, BucketType.guild)
 async def changeprefix(ctx, prefix):
-    with open(r'F:\OneDrive\Ayesha\prefixes.json','r') as f:
+    with open(r'PREFIX_PATH','r') as f:
         prefixes = json.load(f)
     prefixes[str(ctx.guild.id)] = prefix
-    with open(r'F:\OneDrive\Ayesha\prefixes.json','w') as f:
+    with open(r'PREFIX_PATH','w') as f:
         json.dump(prefixes, f, indent=4)
     await ctx.send(f'Prefix changed to {prefix}') 
 
@@ -126,12 +126,12 @@ async def reload(ctx, extension):
     await ctx.channel.send('Reloaded.')
 
 # Runs at bot startup to load all cogs
-for filename in os.listdir(r'F:\OneDrive\Ayesha\cogs'):
+for filename in os.listdir(r'COGS FOLDER'):
     if filename.endswith('.py'): # see if the file is a python file
         client.load_extension(f'cogs.{filename[:-3]}')
 
 #Also delete the music files downloaded
 for filename in os.listdir(r'F:\OneDrive\NguyenBot\Music Files'):
-    os.remove(f'F:/OneDrive/Ayesha/Music Files/{filename}')
+    os.remove(f'MUSIC FILES {filename}')
 
 client.run(Token)
