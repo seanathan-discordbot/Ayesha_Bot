@@ -5,7 +5,6 @@ from discord.ext import commands
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 from dpymenus import Page, PaginatedMenu
 
-import aiosqlite
 from Utilities import Checks, AssetCreation, PageSourceMaker
 
 import random
@@ -56,12 +55,7 @@ class Associations(commands.Cog):
         if not await Checks.guild_can_be_created(ctx, name):
             return
         # Otherwise create the guild
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            await conn.execute('INSERT INTO guilds (guild_name, guild_type, leader_id, guild_icon) VALUES (?, ?, ?, ?)', (name, 'Brotherhood', ctx.author.id, 'https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-ios7-contact-512.png'))
-            c = await conn.execute('SELECT guild_id FROM guilds WHERE leader_id = ?', (ctx.author.id,))
-            guild_id = await c.fetchone()
-            await conn.execute('UPDATE players SET guild = ?, gold = gold - 15000, guild_rank = "Leader" WHERE user_id = ?', (guild_id[0], ctx.author.id,))
-            await conn.commit()
+        await AssetCreation.createGuild(name, "Brotherhood", ctx.author.id, 'https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-ios7-contact-512.png')
         await ctx.reply('Brotherhood founded. Do `brotherhood` to see it or `brotherhood help` for more commands!')
 
     @brotherhood.command(aliases=['inv'], brief='<url>', description='Invite a player to your guild.')
@@ -94,10 +88,8 @@ class Associations(commands.Cog):
         while readReactions: 
             if str(reaction) == '\u2705': #Then exchange stuff
                 await message.delete()
-                async with aiosqlite.connect(AssetCreation.PATH) as conn:
-                    await conn.execute('UPDATE Players SET guild = ?, guild_rank = "Member" WHERE user_id = ?', (guild['ID'], player.id))
-                    await conn.commit()
-                    await ctx.send(f"Welcome to {guild['Name']}, {player.mention}!")
+                await AssetCreation.joinGuild(guild['ID'], player.id)
+                await ctx.send(f"Welcome to {guild['Name']}, {player.mention}!")
                 break
             if str(reaction) == '\u274E':
                 await message.delete()
@@ -116,10 +108,8 @@ class Associations(commands.Cog):
     @commands.check(Checks.in_brotherhood)
     @commands.check(Checks.is_not_guild_leader)
     async def leave(self, ctx):
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            await conn.execute('UPDATE Players SET guild = NULL, guild_rank = NULL WHERE user_id = ?', (ctx.author.id,))
-            await conn.commit()
-            await ctx.reply('You left your brotherhood.')
+        await AssetCreation.leaveGuild(ctx.author.id)
+        await ctx.reply('You left your brotherhood.')
 
     @brotherhood.command(aliases=['donate'], brief='<money : int>', description='Donate to your association, increasing its xp!')
     @commands.check(Checks.in_brotherhood)
@@ -130,34 +120,26 @@ class Associations(commands.Cog):
         if level >= 10:
             await ctx.reply('Your guild is already at its maximum level')
             return
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            c = await conn.execute('SELECT gold FROM players WHERE user_id = ?', (ctx.author.id,)) 
-            account = await c.fetchone()
-            if donation > account[0]:
-                await ctx.reply('You don\'t have that much money to donate.')
-                return
+
+        if donation > await AssetCreation.getGold(ctx.author.id):
+            await ctx.reply('You don\'t have that much money to donate.')
+            return
+
         #Remove money from account and add xp to guild
-            await conn.execute('UPDATE players SET gold = gold - ? WHERE user_id = ?', (donation, ctx.author.id))
-            await conn.execute('UPDATE guilds SET guild_xp = guild_xp + ? WHERE guild_id = ?', (donation, guild['ID']))
-            await conn.commit()
+        await AssetCreation.giveGold(0 - donation, ctx.author.id)
+        await AssetCreation.giveGuildXP(donation, guild['ID'])
+
         #Also calculate how much more xp is needed for a level up
-            c = await conn.execute('SELECT guild_xp FROM guilds WHERE guild_id = ?', (guild['ID'],))
-            xp = await c.fetchone()
-            needed = 100000 - (xp[0] % 100000)
-            await ctx.reply(f'You contributed `{donation}` gold to your brotherhood. It will become level `{level+1}` at `{needed}` more xp.')
+        xp = await AssetCreation.getGuildXP(guild['ID'])
+        needed = 100000 - (xp % 100000)
+        await ctx.reply(f'You contributed `{donation}` gold to your brotherhood. It will become level `{level+1}` at `{needed}` more xp.')
 
     @brotherhood.command(description='View the other members of your guild.')
     @commands.check(Checks.in_brotherhood)
     async def members(self, ctx):
         # Get the list of members, theoretically sorted by rank
         guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            c = await conn.execute("""SELECT user_id, user_name, guild_rank FROM players WHERE guild = ?
-                ORDER BY CASE guild_rank WHEN "Leader" then 1
-                WHEN "Officer" THEN 2
-                WHEN "Adept" THEN 3
-                ELSE 4 END""", (guild['ID'],))
-            members = await c.fetchall()
+        members = await AssetCreation.getGuildMembers(guild['ID'])
         # Sort them into dpymenus pages
         member_list = []
 
@@ -194,37 +176,36 @@ class Associations(commands.Cog):
         if random.randint(0,100) >= 20 + level*5: #Then failure
             await ctx.reply('You were caught and had to flee.')
             return
+
         # Otherwise get a random player and steal 5% of their money
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            c = await conn.execute('SELECT COUNT(*) FROM Players')
-            records = await c.fetchone()
-            victim_num = random.randint(1, records[0] - 1)
-            c = await conn.execute('SELECT gold, user_id, user_name FROM players WHERE num = ?', (victim_num,))
-            try: #there might be deleted chars - just give them 100 gold lmao
-                victim_gold, victim, victim_name = await c.fetchone()
-            except TypeError:
-                await conn.execute('UPDATE players SET gold = gold + 100 WHERE user_id = ?', (ctx.author.id,))
-                await conn.commit()
-                await ctx.reply('You stole `100` gold from a `random guy`.')
-                return
-            # Make sure they don't rob themself
-            if ctx.author.id == victim:
-                await ctx.reply('You were caught and had to flee.')
-                return
-            # 50 gold minimum steal. If they don't have 1000, just add 50 to the econ.
-            if victim_gold < 1000:
-                await conn.execute('UPDATE players SET gold = gold + 50 WHERE user_id = ?', (ctx.author.id,))
-                await conn.commit()
-                stolen_amount = 50
-            else:
-                stolen_amount = math.floor(victim_gold / 20)
-                role = await AssetCreation.getClass(ctx.author.id)
-                if role == 'Engineer':
-                    stolen_amount = math.floor(victim_gold / 12)
-                await conn.execute('UPDATE players SET gold = gold + ? WHERE user_id = ?', (stolen_amount, ctx.author.id))
-                await conn.execute('UPDATE players SET gold = gold - ? WHERE user_id = ?', (stolen_amount, victim))
-                await conn.commit()
-            await ctx.reply(f'You stole `{stolen_amount}` gold from `{victim_name}`.')
+        records = await AssetCreation.getPlayerCount()
+        victim_num = random.randint(1, records - 1)
+
+        try: #there might be deleted chars - just give them 100 gold lmao
+            victim_gold, victim, victim_name = await AssetCreation.getPlayerByNum(victim_num)
+        except TypeError:
+            await AssetCreation.giveGold(100, ctx.author.id)
+            await ctx.reply('You stole `100` gold from a random guy.')
+            return
+
+        # Make sure they don't rob themself
+        if ctx.author.id == victim:
+            await ctx.reply('You were caught and had to flee.')
+            return
+
+        # 50 gold minimum steal. If they don't have 1000, just add 50 to the econ.
+        if victim_gold < 1000:
+            await AssetCreation.giveGold(50, ctx.author.id)
+            stolen_amount = 50
+        else:
+            stolen_amount = math.floor(victim_gold / 20)
+            role = await AssetCreation.getClass(ctx.author.id)
+            if role == 'Engineer':
+                stolen_amount = math.floor(victim_gold / 12)
+            await AssetCreation.giveGold(stolen_amount, ctx.author.id)
+            await AssetCreation.giveGold(0 - stolen_amount, victim)
+        
+        await ctx.reply(f'You stole `{stolen_amount}` gold from `{victim_name}`.')
 
     # ----- GUILDS ----- ASSOCIATIONS THAT BUFF TRADE AND RESOURCE ATTAINMENT
     @commands.group(invoke_without_command=True, case_insensitive=True, description='See your guild.')
@@ -257,22 +238,15 @@ class Associations(commands.Cog):
         if not await Checks.guild_can_be_created(ctx, name):
             return
         # Otherwise create the guild
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            await conn.execute('INSERT INTO guilds (guild_name, guild_type, leader_id, guild_icon) VALUES (?, ?, ?, ?)', (name, 'Guild', ctx.author.id, 'https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-ios7-contact-512.png'))
-            c = await conn.execute('SELECT guild_id FROM guilds WHERE leader_id = ?', (ctx.author.id,))
-            guild_id = await c.fetchone()
-            await conn.execute('UPDATE players SET guild = ?, gold = gold - 15000, guild_rank = "Leader" WHERE user_id = ?', (guild_id[0], ctx.author.id,))
-            await conn.commit()
+        await AssetCreation.createGuild(name, "Guild", ctx.author.id, 'https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-ios7-contact-512.png')
         await ctx.reply('Guild founded. Do `guild` to see it or `guild` for more commands!')
 
     @guild.command(description='Leave your brotherhood.')
     @commands.check(Checks.in_brotherhood)
     @commands.check(Checks.is_not_guild_leader)
     async def _leave(self, ctx):
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            await conn.execute('UPDATE Players SET guild = NULL, guild_rank = NULL WHERE user_id = ?', (ctx.author.id,))
-            await conn.commit()
-            await ctx.reply('You left your guild.')
+        await AssetCreation.leaveGuild(ctx.author.id)
+        await ctx.reply('You left your guild.')
 
     @guild.command(aliases=['invite','inv'], brief='<url>', description='Invite a player to your guild.')
     @commands.check(Checks.is_guild_officer)
@@ -304,10 +278,8 @@ class Associations(commands.Cog):
         while readReactions: 
             if str(reaction) == '\u2705': #Then exchange stuff
                 await message.delete()
-                async with aiosqlite.connect(AssetCreation.PATH) as conn:
-                    await conn.execute('UPDATE Players SET guild = ?, guild_rank = "Member" WHERE user_id = ?', (guild['ID'], player.id))
-                    await conn.commit()
-                    await ctx.send(f"Welcome to {guild['Name']}, {player.mention}!")
+                await AssetCreation.joinGuild(guild['ID'], player.id)
+                await ctx.send(f"Welcome to {guild['Name']}, {player.mention}!")
                 break
             if str(reaction) == '\u274E':
                 await message.delete()
@@ -323,7 +295,7 @@ class Associations(commands.Cog):
                 await ctx.send('They did not respond to your invitation.')
 
     @guild.command(aliases=['contribute','donate'], brief='<money : int>', description='Donate to your association, increasing its xp!')
-    @commands.check(Checks.in_brotherhood)
+    @commands.check(Checks.in_guild)
     async def _contribute(self, ctx, donation : int):
         #Make sure they have the money they're paying and that the guild is <lvl 10
         guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
@@ -331,34 +303,26 @@ class Associations(commands.Cog):
         if level >= 10:
             await ctx.reply('Your guild is already at its maximum level')
             return
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            c = await conn.execute('SELECT gold FROM players WHERE user_id = ?', (ctx.author.id,)) 
-            account = await c.fetchone()
-            if donation > account[0]:
-                await ctx.reply('You don\'t have that much money to donate.')
-                return
+
+        if donation > await AssetCreation.getGold(ctx.author.id):
+            await ctx.reply('You don\'t have that much money to donate.')
+            return
+
         #Remove money from account and add xp to guild
-            await conn.execute('UPDATE players SET gold = gold - ? WHERE user_id = ?', (donation, ctx.author.id))
-            await conn.execute('UPDATE guilds SET guild_xp = guild_xp + ? WHERE guild_id = ?', (donation, guild['ID']))
-            await conn.commit()
+        await AssetCreation.giveGold(0 - donation, ctx.author.id)
+        await AssetCreation.giveGuildXP(donation, guild['ID'])
+
         #Also calculate how much more xp is needed for a level up
-            c = await conn.execute('SELECT guild_xp FROM guilds WHERE guild_id = ?', (guild['ID'],))
-            xp = await c.fetchone()
-            needed = 100000 - (xp[0] % 100000)
-            await ctx.reply(f'You contributed `{donation}` gold to your brotherhood. It will become level `{level+1}` at `{needed}` more xp.')
+        xp = await AssetCreation.getGuildXP(guild['ID'])
+        needed = 100000 - (xp % 100000)
+        await ctx.reply(f'You contributed `{donation}` gold to your guild. It will become level `{level+1}` at `{needed}` more xp.')
 
     @guild.command(aliases=['members'], description='View the other members of your guild.')
     @commands.check(Checks.in_guild)
     async def _members(self, ctx):
         # Get the list of members, theoretically sorted by rank
         guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            c = await conn.execute("""SELECT user_id, user_name, guild_rank FROM players WHERE guild = ?
-                ORDER BY CASE guild_rank WHEN "Leader" then 1
-                WHEN "Officer" THEN 2
-                WHEN "Adept" THEN 3
-                ELSE 4 END""", (guild['ID'],))
-            members = await c.fetchall()
+        members = await AssetCreation.getGuildMembers(guild['ID'])
         # Sort them into dpymenus pages
         member_list = []
 
@@ -389,42 +353,34 @@ class Associations(commands.Cog):
     @cooldown(1, 7200, BucketType.user)
     async def invest(self, ctx, capital : int):
         #Ensure they have enough money to invest
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            c = await conn.execute('SELECT gold FROM players WHERE user_id = ?', (ctx.author.id,))
-            gold = await c.fetchone()
-            if gold[0] < capital:
-                await ctx.reply('You don\'t have enough money to invest that much.')
-                return
-            #Get a random multplier of the money
-            initial = capital
-            result = random.randint(100,175) / 100
-            outcome = random.randint(1,10)
-            if outcome == 1: #Player loses money 10% of the time.
-                result *= .25
-                capital = int(capital * result)
-            elif outcome < 10: #Player gains a fair amount 80% of the time.
-                capital = int(capital * result)
-            else: #Player gets a good amount
-                result *= 2
-                capital = int(capital * result)
-            #Class bonus
-            role = await AssetCreation.getClass(ctx.author.id)
-            if role == 'Engineer':
-                gold *= math.floor(gold * 1.25)
-            #Choose a random project and location
-            projects = ('a museum', 'a church', 'a residence', 'a fishing company', 'a game company', 'a guild', 'a boat', 'road construction')
-            locations = ('Aramithea', 'Riverburn', 'Thenuille', 'the Mythic Forest', 'Fernheim', 'Thanderlands Marsh', 'Glakelys', 'Croire', 'Crumidia', 'Mooncastle', 'Felescity', 'Mysteria', 'a local village', 'your hometown', 'Oshwega')
-            project = random.choice(projects)
-            location = random.choice(locations)
-            #Update player's money and send output
-            if capital > initial:
-                money = capital - initial
-                await conn.execute('UPDATE players SET gold = gold + ? WHERE user_id = ?', (money, ctx.author.id))
-                await conn.commit()
-            elif capital < initial:
-                money = initial - capital
-                await conn.execute('UPDATE players SET gold = gold - ? WHERE user_id = ?', (money, ctx.author.id))
-                await conn.commit()
+        if await AssetCreation.getGold(ctx.author.id) < capital:
+            await ctx.reply('You don\'t have enough money to invest that much.')
+            return
+        #Get a random multplier of the money
+        initial = capital
+        result = random.randint(100,175) / 100
+        outcome = random.randint(1,10)
+        if outcome == 1: #Player loses money 10% of the time.
+            result *= .25
+            capital = int(capital * result)
+        elif outcome < 10: #Player gains a fair amount 80% of the time.
+            capital = int(capital * result)
+        else: #Player gets a good amount
+            result *= 2
+            capital = int(capital * result)
+        #Class bonus
+        role = await AssetCreation.getClass(ctx.author.id)
+        if role == 'Engineer':
+            capital *= math.floor(capital * 1.25)
+        #Choose a random project and location
+        projects = ('a museum', 'a church', 'a residence', 'a fishing company', 'a game company', 'a guild', 'a boat', 'road construction')
+        locations = ('Aramithea', 'Riverburn', 'Thenuille', 'the Mythic Forest', 'Fernheim', 'Thanderlands Marsh', 'Glakelys', 'Croire', 'Crumidia', 'Mooncastle', 'Felescity', 'Mysteria', 'a local village', 'your hometown', 'Oshwega')
+        project = random.choice(projects)
+        location = random.choice(locations)
+        #Update player's money and send output
+        money = capital - initial
+        await AssetCreation.giveGold(money, ctx.author.id)
+
         await ctx.reply(f'You invested `{initial}` gold in {project} in {location} and earned a return of `{capital}` gold.')
 
     # THESE COMMANDS ARE COMMON TO BOTH GUILDS AND BROTHERHOODS, AND THUS ARE NOT GROUPED WITH EITHER
@@ -436,11 +392,8 @@ class Associations(commands.Cog):
             await ctx.reply(f'Description max 256 characters. You gave {len(desc)}')
             return
         # Get guild and change description
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            c = await conn.execute('SELECT guild FROM players WHERE user_id = ?', (ctx.author.id,)) 
-            guild_id = await c.fetchone()
-            await conn.execute('UPDATE guilds SET guild_desc = ? WHERE guild_id = ?', (desc, guild_id[0]))
-            await conn.commit()
+        guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
+        await AssetCreation.setGuildDescription(desc, guild['ID'])
         await ctx.reply('Description updated!')
 
     @commands.command(description='Lock/unlock your guild from letting anyone join without an invite.')
@@ -448,37 +401,32 @@ class Associations(commands.Cog):
     async def lock(self, ctx):
         guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
         if guild['Join'] == 'open':
-            async with aiosqlite.connect(AssetCreation.PATH) as conn:
-                await conn.execute('UPDATE guilds SET join_status = "closed" WHERE guild_id = ?', (guild['ID'],))
-                await conn.commit()
-                await ctx.reply('Your guild is now closed to new members. Players can only join your guild via invite.')
+            await AssetCreation.lockGuild(guild['ID'])
+            await ctx.reply('Your guild is now closed to new members. Players can only join your guild via invite.')
         else:
-            async with aiosqlite.connect(AssetCreation.PATH) as conn:
-                await conn.execute('UPDATE guilds SET join_status = "open" WHERE guild_id = ?', (guild['ID'],))
-                await conn.commit()
-                await ctx.reply('Your guild is now open to members. Anyone may join with the `join` command!')
+            await AssetCreation.unlockGuild(guild['ID'])
+            await ctx.reply('Your guild is now open to members. Anyone may join with the `join` command!')
 
     @commands.command(brief='<guild id : int>', description='Join the target guild if its open!')
     @commands.check(Checks.not_in_guild)
     async def join(self, ctx, guild_id : int):
         #Make sure that guild exists, is open, and has an open slot
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            c = await conn.execute('SELECT guild_name, join_status FROM guilds WHERE guild_id = ?', (guild_id,))
-            try:
-                guild_name, join_status = await c.fetchone()
-            except TypeError:
-                await ctx.reply('That guild does not exist.')
-                return
-            if join_status != 'open':
-                await ctx.reply('This guild is not accepting new members at this time.')
-                return
-            if not await Checks.target_guild_has_vacancy(guild_id):
-                await ctx.reply('This guild has no open spaces at the moment.')
-                return
-        #Otherwise we can add them to the guild
-            await conn.execute('UPDATE Players SET guild = ?, guild_rank = "Member" WHERE user_id = ?', (guild_id, ctx.author.id))
-            await conn.commit()
-            await ctx.reply(f"Welcome to {guild_name}! Use `brotherhood` or `guild` to see your new association.")
+        try:
+            guild = await AssetCreation.getGuildByID(guild_id)
+        except TypeError:
+            await ctx.reply('That guild does not exist.')
+            return
+
+        if guild['Join'] != 'open':
+            await ctx.reply('This guild is not accepting new members at this time.')
+            return
+        if not await Checks.target_guild_has_vacancy(guild_id):
+            await ctx.reply('This guild has no open spaces at the moment.')
+            return
+
+        #Otherwise they join the guild
+        await AssetCreation.joinGuild(guild_id, ctx.author.id)
+        await ctx.reply(f"Welcome to {guild['Name']}! Use `brotherhood` or `guild` to see your new association.")
 
     @commands.command(brief='<player> <Officer/Adept>', description='Promote a member of your guild. Officers have limited administrative powers. Adepts have no powers. [LEADER ONLY]')
     @commands.check(Checks.is_guild_leader)        
@@ -512,10 +460,8 @@ class Associations(commands.Cog):
             await ctx.reply('This person is not in your brotherhood.')
             return
         #Then give them their role
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            await conn.execute('UPDATE players SET guild_rank = ? WHERE user_id = ?', (rank, player.id))
-            await conn.commit()
-            await ctx.reply(f'`{player.name}` is now an `{rank}`.')
+        await AssetCreation.changeGuildRank(rank, player.id)
+        await ctx.reply(f'`{player.name}` is now an `{rank}`.')
 
     @commands.command(brief='<player>', description='Demote a member of your guild back to member.')
     @commands.check(Checks.is_guild_leader)
@@ -536,10 +482,8 @@ class Associations(commands.Cog):
             await ctx.reply('This person is not in your brotherhood.')
             return
         #Then give them their role
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            await conn.execute('UPDATE players SET guild_rank = "Member" WHERE user_id = ?', (player.id,))
-            await conn.commit()
-            await ctx.reply(f'`{player.name}` has been demoted to `Member`.')
+        await AssetCreation.changeGuildRank("Member", player.id)
+        await ctx.reply(f'`{player.name}` has been demoted to `Member`.')
 
     @commands.command(brief='<player>', description='Transfer guild ownership to another member.')
     @commands.check(Checks.is_guild_leader)
@@ -557,12 +501,9 @@ class Associations(commands.Cog):
             await ctx.reply('This person is not in your brotherhood.')
             return
         # Otherwise make them leader - make sure to update leader field in guilds table and remove former leader
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            await conn.execute('UPDATE players SET guild_rank = "Leader" WHERE user_id = ?', (player.id,))
-            await conn.execute('UPDATE guilds SET leader_id = ? WHERE guild_id = ?', (player.id, leader_guild['ID']))
-            await conn.execute('UPDATE players SET guild_rank = "Officer" WHERE user_id = ?', (ctx.author.id,))
-            await conn.commit()
-            await ctx.reply(f"`{player.name}` has been demoted to `Leader` of `{leader_guild['Name']}`. You are now an `Officer`.")
+        await AssetCreation.changeGuildRank("Leader", player.id)
+        await AssetCreation.changeGuildRank("Officer", ctx.author.id)
+        await ctx.reply(f"`{player.name}` has been demoted to `Leader` of `{leader_guild['Name']}`. You are now an `Officer`.")
 
     @brotherhood.command(description='Shows this command.')
     async def help(self, ctx):
