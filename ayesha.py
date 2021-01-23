@@ -94,6 +94,8 @@ async def on_command_error(ctx, error):
         return
     if isinstance(error, commands.MaxConcurrencyReached):
         await ctx.send('Max concurrency reached. Please wait until this command ends.')
+    if isinstance(error, commands.MemberNotFound):
+        await ctx.reply('Could not find a player with that name.')
     
     print('Ignoring exception in command {}:'.format(ctx.command))
     traceback.print_exception(type(error), error, error.__traceback__)
