@@ -4,7 +4,6 @@ import asyncio
 from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
-import aiosqlite
 from Utilities import Checks, AssetCreation, PageSourceMaker
 
 import random
@@ -253,16 +252,13 @@ class PvE(commands.Cog):
             pass
         acolyte_xp = math.ceil(xp / 10)
         #Give rewards
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            c = await conn.execute('SELECT instance_id FROM Acolytes WHERE owner_id = ? AND (is_equipped = 1 OR is_equipped = 2)', (player,))
-            acolytes = await c.fetchall()
-            if len(acolytes) == 1:
-                await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (acolyte_xp, acolytes[0][0]))
-            elif len(acolytes) == 2:
-                await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (acolyte_xp, acolytes[0][0]))
-                await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (acolyte_xp, acolytes[1][0]))
-            await conn.execute('UPDATE Players SET gold = gold + ?, xp = xp + ?, bosswins = bosswins + 1, bossfights = bossfights + 1 WHERE user_id = ?', (gold, xp, player))
-            await conn.commit()
+        acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(player)
+        if acolyte1 is not None:
+            await AssetCreation.giveAcolyteXP(acolyte_xp, acolyte1)
+        if acolyte2 is not None:
+            await AssetCreation.giveAcolyteXP(acolyte_xp, acolyte2)
+        await AssetCreation.giveBountyRewards(player, gold, xp, victory=True)
+
         #Return an embed to send
         embed = discord.Embed(title=f"You defeated {bounty_levels[level]['Name']}!", color=0xBEDCF6)
         embed.set_thumbnail(url='https://i.imgur.com/MCAMH45.jpg')
@@ -270,11 +266,13 @@ class PvE(commands.Cog):
             embed.add_field(name=f'You had {hp} hp remaining', value=f'You received {gold} gold and {xp} xp from the battle.\nYou also gained an item. Check your `inventory` to see it!')
         else:
             embed.add_field(name=f'You had {hp} hp remaining', value=f'You received {gold} gold and {xp} xp from the battle.')
-        # Also returns the acolytes to check their level
-        if len(acolytes) == 1:
-            return embed, acolytes[0][0], None
-        elif len(acolytes) == 2:
-            return embed, acolytes[0][0], acolytes[1][0]
+
+        if acolyte1 is not None and acolyte2 is not None:
+            return embed, acolyte1, acolyte2
+        elif acolyte1 is not None and acolyte2 is None:
+            return embed, acolyte1, None
+        elif acolyte1 is None and acolyte2 is not None:
+            return embed, acolyte1, acolyte2
         else:
             return embed, None, None
 
@@ -287,25 +285,25 @@ class PvE(commands.Cog):
         except TypeError:
             pass
         acolyte_xp = math.ceil(xp / 10)
-        #Give rewards
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            c = await conn.execute('SELECT instance_id FROM Acolytes WHERE owner_id = ? AND (is_equipped = 1 OR is_equipped = 2)', (player,))
-            acolytes = await c.fetchall()
-            if len(acolytes) == 1:
-                await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (acolyte_xp, acolytes[0][0]))
-            elif len(acolytes) == 2:
-                await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (acolyte_xp, acolytes[0][0]))
-                await conn.execute('UPDATE Acolytes SET xp = xp + ? WHERE instance_id = ?', (acolyte_xp, acolytes[1][0]))
-            await conn.execute('UPDATE Players SET xp = xp + ?, bossfights = bossfights + 1 WHERE user_id = ?', (xp, player))
-            await conn.commit()
+        gold = 0
+
+        acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(player)
+        if acolyte1 is not None:
+            await AssetCreation.giveAcolyteXP(acolyte_xp, acolyte1)
+        if acolyte2 is not None:
+            await AssetCreation.giveAcolyteXP(acolyte_xp, acolyte2)
+        await AssetCreation.giveBountyRewards(player, gold, xp, victory=True)
+
         #Return an embed to send
         embed = discord.Embed(title=f"The {bounty_levels[level]['Name']} has shown its superiority", color=0xBEDCF6)
         embed.add_field(name='You fled the battlefield', value=f'Boss HP: `{enemyhp}`\nYou received {xp} xp from the battle.')
         # Also returns the acolytes to check their level
-        if len(acolytes) == 1:
-            return embed, acolytes[0][0], None
-        elif len(acolytes) == 2:
-            return embed, acolytes[0][0], acolytes[1][0]
+        if acolyte1 is not None and acolyte2 is not None:
+            return embed, acolyte1, acolyte2
+        elif acolyte1 is not None and acolyte2 is None:
+            return embed, acolyte1, None
+        elif acolyte1 is None and acolyte2 is not None:
+            return embed, acolyte1, acolyte2
         else:
             return embed, None, None
 

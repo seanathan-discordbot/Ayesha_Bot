@@ -4,7 +4,6 @@ import asyncio
 from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
-import aiosqlite
 from Utilities import Checks, AssetCreation
 
 import math
@@ -42,15 +41,6 @@ class Profile(commands.Cog):
     async def on_ready(self): # YOU NEED SELF IN COGS
         print('Profile is ready.')
 
-    #INVISIBLE
-    async def createCharacter(self, ctx, name):
-        user = (ctx.author.id, name)
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            await conn.execute('INSERT INTO players (user_id, user_name) VALUES (?, ?)', user)
-            await conn.execute('INSERT INTO resources (user_id) VALUES (?)', (ctx.author.id,))
-            await conn.commit()
-        await AssetCreation.createItem(ctx.author.id, 20, 'Common', crit=0, weaponname='Wooden Spear', weapontype='Spear')
-
     #COMMANDS
     @commands.command(aliases=['begin','create'], brief='<name : str>', description='Start the game of AyeshaBot.')
     @commands.check(Checks.not_player)
@@ -66,7 +56,7 @@ class Profile(commands.Cog):
             start = await YesNo(ctx, embed).prompt(ctx)
             if start:
                 await ctx.send(f'Your Name: {name}')
-                await self.createCharacter(ctx, name)
+                await AssetCreation.createCharacter(ctx, name)
                 await ctx.reply("Success! Use the `tutorial` command to get started!")  
 
     @commands.command(aliases=['p'], description='View your profile')
@@ -84,64 +74,71 @@ class Profile(commands.Cog):
                 return
         #Otherwise target is a player and we can access their profile
         attack, crit = await AssetCreation.getAttack(player.id)
-        query = (player.id,)
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            c = await conn.execute("""SELECT user_name, level, equipped_item, acolyte1, acolyte2, guild, gold, class, origin, location, 
-                pvpwins, pvpfights, bosswins, bossfights
-                FROM players WHERE user_id = ?""", query)
-            user_name, level, equipped, acolyte1, acolyte2, guild, gold, job, origin, location, pvpwins, pvpfights, bosswins, bossfights = await c.fetchone()
-            #Calc pvp and boss wins. If 0, hardcode to 0 to prevent div 0
-            if pvpfights == 0: 
-                pvpwinrate = 0
-            else:
-                pvpwinrate = pvpwins/pvpfights*100
-            if bossfights == 0:
-                bosswinrate = 0
-            else:
-                bosswinrate = bosswins/bossfights*100
-            d = await conn.execute('SELECT * FROM Items WHERE item_id = ?', (equipped,)) #Change the * later
-            item = await d.fetchone()
-            if guild is not None:
-                guild = await AssetCreation.getGuildByID(guild)
-            else:
-                guild = {'Name' : 'None'}
-            #Create the strings for acolytes
-            if acolyte1 is not None:
-                acolyte1 = await AssetCreation.getAcolyteByID(acolyte1)
-                acolyte1 = f"{acolyte1['Name']} ({acolyte1['Rarity']}⭐)"
-            if acolyte2 is not None:   
-                acolyte2 = await AssetCreation.getAcolyteByID(acolyte2)
-                acolyte2 = f"{acolyte2['Name']} ({acolyte2['Rarity']}⭐)"
-            #Create Embed
-            embed = discord.Embed(title=f'{player.display_name}\'s Profile: {user_name}', color=0xBEDCF6)
-            embed.set_thumbnail(url=f'{player.avatar_url}')
+
+        character = await AssetCreation.getPlayerByID(player.id)
+        #Calc pvp and boss wins. If 0, hardcode to 0 to prevent div 0
+        if character['pvpfights'] == 0: 
+            pvpwinrate = 0
+        else:
+            pvpwinrate = character['pvpwins']/character['pvpfights']*100
+        if character['bossfights'] == 0:
+            bosswinrate = 0
+        else:
+            bosswinrate = character['bosswins']/character['bossfights']*100
+
+        try:
+            item = await AssetCreation.getEquippedItem(player.id)
+            item = await AssetCreation.getItem(item)
+        except TypeError:
+            item = None
+
+        if character['Guild'] is not None:
+            guild = await AssetCreation.getGuildByID(character['Guild'])
+        else:
+            guild = {'Name' : 'None'}
+
+        #Create the strings for acolytes
+        if character['Acolyte1'] is not None:
+            acolyte1 = await AssetCreation.getAcolyteByID(character['Acolyte1'])
+            acolyte1 = f"{acolyte1['Name']} ({acolyte1['Rarity']}⭐)"
+        else:
+            acolyte1 = None
+
+        if character['Acolyte2'] is not None:   
+            acolyte2 = await AssetCreation.getAcolyteByID(character['Acolyte2'])
+            acolyte2 = f"{acolyte2['Name']} ({acolyte2['Rarity']}⭐)"
+        else:
+            acolyte2 = None
+
+        #Create Embed
+        embed = discord.Embed(title=f"{player.display_name}\'s Profile: {character['Name']}", color=0xBEDCF6)
+        embed.set_thumbnail(url=f'{player.avatar_url}')
+        embed.add_field(
+            name='Character Info',
+            value=f"Gold: `{character['Gold']}`\nClass: `{character['Class']}`\nOrigin: `{character['Origin']}`\nLocation: `{character['Location']}`\nAssociation: `{guild['Name']}`",
+            inline=True)
+        embed.add_field(
+            name='Character Stats',
+            value=f"Level: `{character['Level']}`\nAttack: `{attack}`\nCrit: `{crit}%`\nPvP Winrate: `{pvpwinrate:.0f}%`\nBoss Winrate: `{bosswinrate:.0f}%`",
+            inline=True)
+        if item is not None:
             embed.add_field(
-                name='Character Info',
-                value=f"Money: `{gold}`\nClass: `{job}`\nOrigin: `{origin}`\nLocation: `{location}`\nAssociation: `{guild['Name']}`",
+                name='Party',
+                value=f"Item: `{item['Name']} ({item['Rarity']})`\nAcolyte: `{acolyte1}`\nAcolyte: `{acolyte2}`",
                 inline=True)
+        else:
             embed.add_field(
-                name='Character Stats',
-                value=f'Level: `{level}`\nAttack: `{attack}`\nCrit: `{crit}%`\nPvP Winrate: `{pvpwinrate:.0f}%`\nBoss Winrate: `{bosswinrate:.0f}%`',
+                name='Party',
+                value=f"Item: `None`\nAcolyte: `{acolyte1}`\nAcolyte: `{acolyte2}`",
                 inline=True)
-            if item is not None:
-                embed.add_field(
-                    name='Party',
-                    value=f"Item: `{item[5]} ({item[6]})`\nAcolyte: `{acolyte1}`\nAcolyte: `{acolyte2}`",
-                    inline=True)
-            else:
-                embed.add_field(
-                    name='Party',
-                    value=f"Item: `None`\nAcolyte: `{acolyte1}`\nAcolyte: `{acolyte2}`",
-                    inline=True)
-            await ctx.reply(embed=embed)
+        
+        await ctx.reply(embed=embed)
 
     @commands.command(aliases=['xp'], description='Check your xp and level.')
     @commands.check(Checks.is_player)
     async def level(self, ctx):
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            c = await conn.execute('SELECT level, xp FROM players WHERE user_id = ?', (ctx.author.id,))
-            level, xp = await c.fetchone()
-            tonext = math.floor(10000000 * math.cos(((level+1)/64)+3.14) + 10000000 - 600) - xp
+        level, xp = await AssetCreation.getPlayerXP(ctx.author.id)
+        tonext = math.floor(6000000 * math.cos(((level+1)/64)+3.14) + 6000000) - xp
 
         embed = discord.Embed(color=0xBEDCF6)
         embed.add_field(name='Level', value=f'{level}')
@@ -155,10 +152,8 @@ class Profile(commands.Cog):
         if len(name) > 32:
             await ctx.reply('Name max 32 characters.')
             return
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            await conn.execute('UPDATE Players SET user_name = ? WHERE user_id = ?', (name, ctx.author.id))
-            await conn.commit()
-            await ctx.reply(f'Name changed to `{name}`')
+        await AssetCreation.setPlayerName(ctx.author.id, name)
+        await ctx.reply(f'Name changed to `{name}`.')
 
     #Add a tutorial command at the end of alpha
     @commands.command(description='Learn the game')
