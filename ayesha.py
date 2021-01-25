@@ -132,12 +132,12 @@ async def create_db_pool():
 client.loop.run_until_complete(create_db_pool())
 
 # Runs at bot startup to load all cogs
-for filename in os.listdir(r'COGS FOLDER'):
+for filename in os.listdir(r'F:\OneDrive\Ayesha\cogs'):
     if filename.endswith('.py'): # see if the file is a python file
         client.load_extension(f'cogs.{filename[:-3]}')
 
 #Also delete the music files downloaded
 for filename in os.listdir(r'F:\OneDrive\NguyenBot\Music Files'):
-    os.remove(f'MUSIC FILES {filename}')
+    os.remove(f'F:/OneDrive/Ayesha/Music Files/{filename}')
 
 client.run(Links.Token)
