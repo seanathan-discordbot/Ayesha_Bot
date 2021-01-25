@@ -214,13 +214,13 @@ class PvE(commands.Cog):
             vict, acolyte1, acolyte2 = await self.doVictory(ctx.author.id, level, hp, acolyte1, acolyte2)
             await message.clear_reactions()
             await message.edit(embed=vict)
-            await AssetCreation.checkLevel(ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
+            await AssetCreation.checkLevel(self.client.pg_con, ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
             return True
         elif hp <= 0: #loss
             loss, acolyte1, acolyte2 = await self.doDefeat(ctx.author.id, level, enemyhp, acolyte1, acolyte2)
             await message.clear_reactions()
             await message.edit(embed=loss)
-            await AssetCreation.checkLevel(ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
+            await AssetCreation.checkLevel(self.client.pg_con, ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
             return True
         else:
             return None
@@ -232,15 +232,15 @@ class PvE(commands.Cog):
             if level <= 5:
                 attack = random.randint(15, 40)
                 rarity = 'Common'
-                await AssetCreation.createItem(player, attack, rarity)
+                await AssetCreation.createItem(self.client.pg_con, player, attack, rarity)
             elif level <= 10:
                 attack = random.randint(30, 70)
                 rarity = 'Uncommon'
-                await AssetCreation.createItem(player, attack, rarity)
+                await AssetCreation.createItem(self.client.pg_con, player, attack, rarity)
             else:
                 attack = random.randint(45, 100)
                 rarity = 'Rare'
-                await AssetCreation.createItem(player, attack, rarity)
+                await AssetCreation.createItem(self.client.pg_con, player, attack, rarity)
             getweapon = not getweapon
         #Calculate gold, xp, acolyte xp rewards
         gold = random.randint(gold_rewards[level]['Min'], gold_rewards[level]['Max'])
@@ -252,12 +252,12 @@ class PvE(commands.Cog):
             pass
         acolyte_xp = math.ceil(xp / 10)
         #Give rewards
-        acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(player)
+        acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(self.client.pg_con, player)
         if acolyte1 is not None:
-            await AssetCreation.giveAcolyteXP(acolyte_xp, acolyte1)
+            await AssetCreation.giveAcolyteXP(self.client.pg_con, acolyte_xp, acolyte1)
         if acolyte2 is not None:
-            await AssetCreation.giveAcolyteXP(acolyte_xp, acolyte2)
-        await AssetCreation.giveBountyRewards(player, gold, xp, victory=True)
+            await AssetCreation.giveAcolyteXP(self.client.pg_con, acolyte_xp, acolyte2)
+        await AssetCreation.giveBountyRewards(self.client.pg_con, player, gold, xp, victory=True)
 
         #Return an embed to send
         embed = discord.Embed(title=f"You defeated {bounty_levels[level]['Name']}!", color=0xBEDCF6)
@@ -287,12 +287,12 @@ class PvE(commands.Cog):
         acolyte_xp = math.ceil(xp / 10)
         gold = 0
 
-        acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(player)
+        acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(self.client.pg_con, player)
         if acolyte1 is not None:
-            await AssetCreation.giveAcolyteXP(acolyte_xp, acolyte1)
+            await AssetCreation.giveAcolyteXP(self.client.pg_con, acolyte_xp, acolyte1)
         if acolyte2 is not None:
-            await AssetCreation.giveAcolyteXP(acolyte_xp, acolyte2)
-        await AssetCreation.giveBountyRewards(player, gold, xp, victory=True)
+            await AssetCreation.giveAcolyteXP(self.client.pg_con, acolyte_xp, acolyte2)
+        await AssetCreation.giveBountyRewards(self.client.pg_con, player, gold, xp, victory=True)
 
         #Return an embed to send
         embed = discord.Embed(title=f"The {bounty_levels[level]['Name']} has shown its superiority", color=0xBEDCF6)
@@ -362,7 +362,7 @@ class PvE(commands.Cog):
             await ctx.reply('You\'re already in a game.')
             return
         #Get the player's info and load stats
-        attack, crit, hp, playerjob, acolyte1, acolyte2 = await AssetCreation.getAttack(ctx.author.id, returnothers=True)
+        attack, crit, hp, playerjob, acolyte1, acolyte2 = await AssetCreation.getAttack(self.client.pg_con, ctx.author.id, returnothers=True)
         if level == 5:
             attack = math.floor(attack * 1.5)
         if level == 7:

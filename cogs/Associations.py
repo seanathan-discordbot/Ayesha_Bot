@@ -28,12 +28,12 @@ class Associations(commands.Cog):
     @commands.group(aliases=['bh'], invoke_without_command=True, case_insensitive=True, description='See your brotherhood')
     @commands.check(Checks.in_brotherhood)
     async def brotherhood(self, ctx):
-        info = await AssetCreation.getGuildFromPlayer(ctx.author.id)
+        info = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         getLeader = commands.UserConverter()
         leader = await getLeader.convert(ctx, str(info['Leader']))
-        level, progress = await AssetCreation.getGuildLevel(info['ID'], returnline=True)
-        members = await AssetCreation.getGuildMemberCount(info['ID'])
-        capacity = await AssetCreation.getGuildCapacity(info['ID'])
+        level, progress = await AssetCreation.getGuildLevel(self.client.pg_con, info['ID'], returnline=True)
+        members = await AssetCreation.getGuildMemberCount(self.client.pg_con, info['ID'])
+        capacity = await AssetCreation.getGuildCapacity(self.client.pg_con, info['ID'])
 
         embed = discord.Embed(title=f"{info['Name']}", color=0xBEDCF6)
         embed.set_thumbnail(url=f"{info['Icon']}")
@@ -55,7 +55,7 @@ class Associations(commands.Cog):
         if not await Checks.guild_can_be_created(ctx, name):
             return
         # Otherwise create the guild
-        await AssetCreation.createGuild(name, "Brotherhood", ctx.author.id, 'https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-ios7-contact-512.png')
+        await AssetCreation.createGuild(self.client.pg_con, name, "Brotherhood", ctx.author.id, 'https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-ios7-contact-512.png')
         await ctx.reply('Brotherhood founded. Do `brotherhood` to see it or `brotherhood help` for more commands!')
 
     @brotherhood.command(aliases=['inv'], brief='<url>', description='Invite a player to your guild.')
@@ -63,15 +63,15 @@ class Associations(commands.Cog):
     @commands.check(Checks.guild_has_vacancy)
     async def invite(self, ctx, player : commands.MemberConverter):
         #Ensure target player has a character and is not in a guild
-        if not await Checks.has_char(player):
+        if not await Checks.has_char(self.client.pg_con, player):
             await ctx.reply('This person does not have a character.')
             return
-        if not await Checks.target_not_in_guild(player):
+        if not await Checks.target_not_in_guild(self.client.pg_con, player):
             await ctx.reply('This player is already in an association.')
             return
         #Otherwise invite the player
         #Load the guild
-        guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         #Create and send embed invitation
         embed = discord.Embed(color=0xBEDCF6)
         embed.add_field(name=f"Invitation to {guild['Name']}", value=f"{player.mention}, {ctx.author.mention} is inviting you to join their {guild['Type']}.")
@@ -88,7 +88,7 @@ class Associations(commands.Cog):
         while readReactions: 
             if str(reaction) == '\u2705': #Then exchange stuff
                 await message.delete()
-                await AssetCreation.joinGuild(guild['ID'], player.id)
+                await AssetCreation.joinGuild(self.client.pg_con, guild['ID'], player.id)
                 await ctx.send(f"Welcome to {guild['Name']}, {player.mention}!")
                 break
             if str(reaction) == '\u274E':
@@ -108,29 +108,29 @@ class Associations(commands.Cog):
     @commands.check(Checks.in_brotherhood)
     @commands.check(Checks.is_not_guild_leader)
     async def leave(self, ctx):
-        await AssetCreation.leaveGuild(ctx.author.id)
+        await AssetCreation.leaveGuild(self.client.pg_con, ctx.author.id)
         await ctx.reply('You left your brotherhood.')
 
     @brotherhood.command(aliases=['donate'], brief='<money : int>', description='Donate to your association, increasing its xp!')
     @commands.check(Checks.in_brotherhood)
     async def contribute(self, ctx, donation : int):
         #Make sure they have the money they're paying and that the guild is <lvl 10
-        guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
-        level = await AssetCreation.getGuildLevel(guild['ID'])
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        level = await AssetCreation.getGuildLevel(self.client.pg_con, guild['ID'])
         if level >= 10:
             await ctx.reply('Your guild is already at its maximum level')
             return
 
-        if donation > await AssetCreation.getGold(ctx.author.id):
+        if donation > await AssetCreation.getGold(self.client.pg_con, ctx.author.id):
             await ctx.reply('You don\'t have that much money to donate.')
             return
 
         #Remove money from account and add xp to guild
-        await AssetCreation.giveGold(0 - donation, ctx.author.id)
-        await AssetCreation.giveGuildXP(donation, guild['ID'])
+        await AssetCreation.giveGold(self.client.pg_con, 0 - donation, ctx.author.id)
+        await AssetCreation.giveGuildXP(self.client.pg_con, donation, guild['ID'])
 
         #Also calculate how much more xp is needed for a level up
-        xp = await AssetCreation.getGuildXP(guild['ID'])
+        xp = await AssetCreation.getGuildXP(self.client.pg_con, guild['ID'])
         needed = 100000 - (xp % 100000)
         await ctx.reply(f'You contributed `{donation}` gold to your brotherhood. It will become level `{level+1}` at `{needed}` more xp.')
 
@@ -138,8 +138,8 @@ class Associations(commands.Cog):
     @commands.check(Checks.in_brotherhood)
     async def members(self, ctx):
         # Get the list of members, theoretically sorted by rank
-        guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
-        members = await AssetCreation.getGuildMembers(guild['ID'])
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        members = await AssetCreation.getGuildMembers(self.client.pg_con, guild['ID'])
         # Sort them into dpymenus pages
         member_list = []
 
@@ -148,8 +148,8 @@ class Associations(commands.Cog):
             iteration = 0
 
             while start < len(members) and iteration < 10:
-                attack, crit = await AssetCreation.getAttack(members[start][0])
-                level = await AssetCreation.getLevel(members[start][0])
+                attack, crit = await AssetCreation.getAttack(self.client.pg_con, members[start][0])
+                level = await AssetCreation.getLevel(self.client.pg_con, members[start][0])
                 player = await self.client.fetch_user(members[start][0])
                 page.add_field(name=f'{player.name}: {members[start][1]} [{members[start][2]}]', 
                     value=f'Level `{level}`, with `{attack}` attack and `{crit}` crit.', inline=False)
@@ -171,20 +171,20 @@ class Associations(commands.Cog):
     @commands.check(Checks.in_brotherhood)
     @cooldown(1, 1800, BucketType.user)
     async def steal(self, ctx):
-        guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
-        level = await AssetCreation.getGuildLevel(guild['ID'])
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        level = await AssetCreation.getGuildLevel(self.client.pg_con, guild['ID'])
         if random.randint(0,100) >= 20 + level*5: #Then failure
             await ctx.reply('You were caught and had to flee.')
             return
 
         # Otherwise get a random player and steal 5% of their money
-        records = await AssetCreation.getPlayerCount()
+        records = await AssetCreation.getPlayerCount(self.client.pg_con, )
         victim_num = random.randint(1, records - 1)
 
         try: #there might be deleted chars - just give them 100 gold lmao
-            victim_gold, victim, victim_name = await AssetCreation.getPlayerByNum(victim_num)
+            victim_gold, victim, victim_name = await AssetCreation.getPlayerByNum(self.client.pg_con, victim_num)
         except TypeError:
-            await AssetCreation.giveGold(100, ctx.author.id)
+            await AssetCreation.giveGold(self.client.pg_con, 100, ctx.author.id)
             await ctx.reply('You stole `100` gold from a random guy.')
             return
 
@@ -195,15 +195,15 @@ class Associations(commands.Cog):
 
         # 50 gold minimum steal. If they don't have 1000, just add 50 to the econ.
         if victim_gold < 1000:
-            await AssetCreation.giveGold(50, ctx.author.id)
+            await AssetCreation.giveGold(self.client.pg_con, 50, ctx.author.id)
             stolen_amount = 50
         else:
             stolen_amount = math.floor(victim_gold / 20)
-            role = await AssetCreation.getClass(ctx.author.id)
+            role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
             if role == 'Engineer':
                 stolen_amount = math.floor(victim_gold / 12)
-            await AssetCreation.giveGold(stolen_amount, ctx.author.id)
-            await AssetCreation.giveGold(0 - stolen_amount, victim)
+            await AssetCreation.giveGold(self.client.pg_con, stolen_amount, ctx.author.id)
+            await AssetCreation.giveGold(self.client.pg_con, 0 - stolen_amount, victim)
         
         await ctx.reply(f'You stole `{stolen_amount}` gold from `{victim_name}`.')
 
@@ -211,12 +211,12 @@ class Associations(commands.Cog):
     @commands.group(invoke_without_command=True, case_insensitive=True, description='See your guild.')
     @commands.check(Checks.in_guild)
     async def guild(self, ctx):
-        info = await AssetCreation.getGuildFromPlayer(ctx.author.id)
+        info = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         getLeader = commands.UserConverter()
         leader = await getLeader.convert(ctx, str(info['Leader']))
-        level, progress = await AssetCreation.getGuildLevel(info['ID'], returnline=True)
-        members = await AssetCreation.getGuildMemberCount(info['ID'])
-        capacity = await AssetCreation.getGuildCapacity(info['ID'])
+        level, progress = await AssetCreation.getGuildLevel(self.client.pg_con, info['ID'], returnline=True)
+        members = await AssetCreation.getGuildMemberCount(self.client.pg_con, info['ID'])
+        capacity = await AssetCreation.getGuildCapacity(self.client.pg_con, info['ID'])
 
         embed = discord.Embed(title=f"{info['Name']}", color=0xBEDCF6)
         embed.set_thumbnail(url=f"{info['Icon']}")
@@ -238,14 +238,14 @@ class Associations(commands.Cog):
         if not await Checks.guild_can_be_created(ctx, name):
             return
         # Otherwise create the guild
-        await AssetCreation.createGuild(name, "Guild", ctx.author.id, 'https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-ios7-contact-512.png')
+        await AssetCreation.createGuild(self.client.pg_con, name, "Guild", ctx.author.id, 'https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-ios7-contact-512.png')
         await ctx.reply('Guild founded. Do `guild` to see it or `guild` for more commands!')
 
     @guild.command(description='Leave your brotherhood.')
     @commands.check(Checks.in_brotherhood)
     @commands.check(Checks.is_not_guild_leader)
     async def _leave(self, ctx):
-        await AssetCreation.leaveGuild(ctx.author.id)
+        await AssetCreation.leaveGuild(self.client.pg_con, ctx.author.id)
         await ctx.reply('You left your guild.')
 
     @guild.command(aliases=['invite','inv'], brief='<url>', description='Invite a player to your guild.')
@@ -253,15 +253,15 @@ class Associations(commands.Cog):
     @commands.check(Checks.guild_has_vacancy)
     async def _invite(self, ctx, player : commands.MemberConverter):
         #Ensure target player has a character and is not in a guild
-        if not await Checks.has_char(player):
+        if not await Checks.has_char(self.client.pg_con, player):
             await ctx.reply('This person does not have a character.')
             return
-        if not await Checks.target_not_in_guild(player):
+        if not await Checks.target_not_in_guild(self.client.pg_con, player):
             await ctx.reply('This player is already in an association.')
             return
         #Otherwise invite the player
         #Load the guild
-        guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         #Create and send embed invitation
         embed = discord.Embed(color=0xBEDCF6)
         embed.add_field(name=f"Invitation to {guild['Name']}", value=f"{player.mention}, {ctx.author.mention} is inviting you to join their {guild['Type']}.")
@@ -278,7 +278,7 @@ class Associations(commands.Cog):
         while readReactions: 
             if str(reaction) == '\u2705': #Then exchange stuff
                 await message.delete()
-                await AssetCreation.joinGuild(guild['ID'], player.id)
+                await AssetCreation.joinGuild(self.client.pg_con, guild['ID'], player.id)
                 await ctx.send(f"Welcome to {guild['Name']}, {player.mention}!")
                 break
             if str(reaction) == '\u274E':
@@ -298,22 +298,22 @@ class Associations(commands.Cog):
     @commands.check(Checks.in_guild)
     async def _contribute(self, ctx, donation : int):
         #Make sure they have the money they're paying and that the guild is <lvl 10
-        guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
-        level = await AssetCreation.getGuildLevel(guild['ID'])
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        level = await AssetCreation.getGuildLevel(self.client.pg_con, guild['ID'])
         if level >= 10:
             await ctx.reply('Your guild is already at its maximum level')
             return
 
-        if donation > await AssetCreation.getGold(ctx.author.id):
+        if donation > await AssetCreation.getGold(self.client.pg_con, ctx.author.id):
             await ctx.reply('You don\'t have that much money to donate.')
             return
 
         #Remove money from account and add xp to guild
-        await AssetCreation.giveGold(0 - donation, ctx.author.id)
-        await AssetCreation.giveGuildXP(donation, guild['ID'])
+        await AssetCreation.giveGold(self.client.pg_con, 0 - donation, ctx.author.id)
+        await AssetCreation.giveGuildXP(self.client.pg_con, donation, guild['ID'])
 
         #Also calculate how much more xp is needed for a level up
-        xp = await AssetCreation.getGuildXP(guild['ID'])
+        xp = await AssetCreation.getGuildXP(self.client.pg_con, guild['ID'])
         needed = 100000 - (xp % 100000)
         await ctx.reply(f'You contributed `{donation}` gold to your guild. It will become level `{level+1}` at `{needed}` more xp.')
 
@@ -321,8 +321,8 @@ class Associations(commands.Cog):
     @commands.check(Checks.in_guild)
     async def _members(self, ctx):
         # Get the list of members, theoretically sorted by rank
-        guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
-        members = await AssetCreation.getGuildMembers(guild['ID'])
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        members = await AssetCreation.getGuildMembers(self.client.pg_con, guild['ID'])
         # Sort them into dpymenus pages
         member_list = []
 
@@ -331,8 +331,8 @@ class Associations(commands.Cog):
             iteration = 0
 
             while start < len(members) and iteration < 10:
-                attack, crit = await AssetCreation.getAttack(members[start][0])
-                level = await AssetCreation.getLevel(members[start][0])
+                attack, crit = await AssetCreation.getAttack(self.client.pg_con, members[start][0])
+                level = await AssetCreation.getLevel(self.client.pg_con, members[start][0])
                 player = await self.client.fetch_user(members[start][0])
                 page.add_field(name=f'{player.name}: {members[start][1]} [{members[start][2]}]', 
                     value=f'Level `{level}`, with `{attack}` attack and `{crit}` crit.', inline=False)
@@ -353,7 +353,7 @@ class Associations(commands.Cog):
     @cooldown(1, 7200, BucketType.user)
     async def invest(self, ctx, capital : int):
         #Ensure they have enough money to invest
-        if await AssetCreation.getGold(ctx.author.id) < capital:
+        if await AssetCreation.getGold(self.client.pg_con, ctx.author.id) < capital:
             await ctx.reply('You don\'t have enough money to invest that much.')
             return
         #Get a random multplier of the money
@@ -369,7 +369,7 @@ class Associations(commands.Cog):
             result *= 2
             capital = int(capital * result)
         #Class bonus
-        role = await AssetCreation.getClass(ctx.author.id)
+        role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
         if role == 'Engineer':
             capital *= math.floor(capital * 1.25)
         #Choose a random project and location
@@ -379,7 +379,7 @@ class Associations(commands.Cog):
         location = random.choice(locations)
         #Update player's money and send output
         money = capital - initial
-        await AssetCreation.giveGold(money, ctx.author.id)
+        await AssetCreation.giveGold(self.client.pg_con, money, ctx.author.id)
 
         await ctx.reply(f'You invested `{initial}` gold in {project} in {location} and earned a return of `{capital}` gold.')
 
@@ -392,19 +392,19 @@ class Associations(commands.Cog):
             await ctx.reply(f'Description max 256 characters. You gave {len(desc)}')
             return
         # Get guild and change description
-        guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
-        await AssetCreation.setGuildDescription(desc, guild['ID'])
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        await AssetCreation.setGuildDescription(self.client.pg_con, desc, guild['ID'])
         await ctx.reply('Description updated!')
 
     @commands.command(description='Lock/unlock your guild from letting anyone join without an invite.')
     @commands.check(Checks.is_guild_leader)
     async def lock(self, ctx):
-        guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         if guild['Join'] == 'open':
-            await AssetCreation.lockGuild(guild['ID'])
+            await AssetCreation.lockGuild(self.client.pg_con, guild['ID'])
             await ctx.reply('Your guild is now closed to new members. Players can only join your guild via invite.')
         else:
-            await AssetCreation.unlockGuild(guild['ID'])
+            await AssetCreation.unlockGuild(self.client.pg_con, guild['ID'])
             await ctx.reply('Your guild is now open to members. Anyone may join with the `join` command!')
 
     @commands.command(brief='<guild id : int>', description='Join the target guild if its open!')
@@ -412,7 +412,7 @@ class Associations(commands.Cog):
     async def join(self, ctx, guild_id : int):
         #Make sure that guild exists, is open, and has an open slot
         try:
-            guild = await AssetCreation.getGuildByID(guild_id)
+            guild = await AssetCreation.getGuildByID(self.client.pg_con, guild_id)
         except TypeError:
             await ctx.reply('That guild does not exist.')
             return
@@ -420,12 +420,12 @@ class Associations(commands.Cog):
         if guild['Join'] != 'open':
             await ctx.reply('This guild is not accepting new members at this time.')
             return
-        if not await Checks.target_guild_has_vacancy(guild_id):
+        if not await Checks.target_guild_has_vacancy(self.client.pg_con, guild_id):
             await ctx.reply('This guild has no open spaces at the moment.')
             return
 
         #Otherwise they join the guild
-        await AssetCreation.joinGuild(guild_id, ctx.author.id)
+        await AssetCreation.joinGuild(self.client.pg_con, guild_id, ctx.author.id)
         await ctx.reply(f"Welcome to {guild['Name']}! Use `brotherhood` or `guild` to see your new association.")
 
     @commands.command(brief='<player> <Officer/Adept>', description='Promote a member of your guild. Officers have limited administrative powers. Adepts have no powers. [LEADER ONLY]')
@@ -436,9 +436,7 @@ class Associations(commands.Cog):
             embed = discord.Embed(title='Brotherhood Role Menu', color=0xBEDCF6)
             embed.add_field(name='Guild leaders can promote their members to two other roles: Officer and Adept',
                 value='**Officers** share in the administration of the association. They can invite and kick members, and change the guild\'s description.\n**Adepts** are a mark of seniority for members. They have no powers, but are stronger and more loyal than other members.')
-            message = await ctx.reply(embed=embed)
-            await asyncio.sleep(30)
-            await message.delete()
+            await ctx.reply(embed=embed, delete_after=30.0)
             return
         #Ensure the rank input is valid
         if rank != "Officer" and rank != "Adept":
@@ -448,19 +446,19 @@ class Associations(commands.Cog):
         if ctx.author == player:
             await ctx.reply('I don\'t think so.')
             return
-        if not await Checks.has_char(player):
+        if not await Checks.has_char(self.client.pg_con, player):
             await ctx.reply('This person does not have a character.')
             return
-        if await Checks.target_not_in_guild(player):
+        if await Checks.target_not_in_guild(self.client.pg_con, player):
             await ctx.reply('This person is not in your brotherhood.')
             return
-        leader_guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
-        target_guild = await AssetCreation.getGuildFromPlayer(player.id)
+        leader_guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        target_guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, player.id)
         if leader_guild['ID'] != target_guild['ID']:
             await ctx.reply('This person is not in your brotherhood.')
             return
         #Then give them their role
-        await AssetCreation.changeGuildRank(rank, player.id)
+        await AssetCreation.changeGuildRank(self.client.pg_con, rank, player.id)
         await ctx.reply(f'`{player.name}` is now an `{rank}`.')
 
     @commands.command(brief='<player>', description='Demote a member of your guild back to member.')
@@ -470,39 +468,39 @@ class Associations(commands.Cog):
         if ctx.author == player:
             await ctx.reply('I don\'t think so.')
             return
-        if not await Checks.has_char(player):
+        if not await Checks.has_char(self.client.pg_con, player):
             await ctx.reply('This person does not have a character.')
             return
-        if await Checks.target_not_in_guild(player):
+        if await Checks.target_not_in_guild(self.client.pg_con, player):
             await ctx.reply('This person is not in your brotherhood.')
             return
-        leader_guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
-        target_guild = await AssetCreation.getGuildFromPlayer(player.id)
+        leader_guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        target_guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, player.id)
         if leader_guild['ID'] != target_guild['ID']:
             await ctx.reply('This person is not in your brotherhood.')
             return
         #Then give them their role
-        await AssetCreation.changeGuildRank("Member", player.id)
+        await AssetCreation.changeGuildRank(self.client.pg_con, "Member", player.id)
         await ctx.reply(f'`{player.name}` has been demoted to `Member`.')
 
     @commands.command(brief='<player>', description='Transfer guild ownership to another member.')
     @commands.check(Checks.is_guild_leader)
     async def transfer(self, ctx, player : commands.MemberConverter):
         # Make sure target has a char, is in the same guild
-        if not await Checks.has_char(player):
+        if not await Checks.has_char(self.client.pg_con, player):
             await ctx.reply('This person does not have a character.')
             return
-        if await Checks.target_not_in_guild(player):
+        if await Checks.target_not_in_guild(self.client.pg_con, player):
             await ctx.reply('This person is not in your brotherhood.')
             return
-        leader_guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
-        target_guild = await AssetCreation.getGuildFromPlayer(player.id)
+        leader_guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        target_guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, player.id)
         if leader_guild['ID'] != target_guild['ID']:
             await ctx.reply('This person is not in your brotherhood.')
             return
         # Otherwise make them leader - make sure to update leader field in guilds table and remove former leader
-        await AssetCreation.changeGuildRank("Leader", player.id)
-        await AssetCreation.changeGuildRank("Officer", ctx.author.id)
+        await AssetCreation.changeGuildRank(self.client.pg_con, "Leader", player.id)
+        await AssetCreation.changeGuildRank(self.client.pg_con, "Officer", ctx.author.id)
         await ctx.reply(f"`{player.name}` has been demoted to `Leader` of `{leader_guild['Name']}`. You are now an `Officer`.")
 
     @brotherhood.command(description='Shows this command.')
