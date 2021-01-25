@@ -66,7 +66,7 @@ class Items(commands.Cog):
     @commands.check(Checks.is_player)
     async def inventory(self, ctx):
         invpages = []
-        inv = await AssetCreation.getAllItemsFromPlayer(ctx.author.id)
+        inv = await AssetCreation.getAllItemsFromPlayer(self.client.pg_con, ctx.author.id)
         for i in range(0, len(inv), 5): #list 5 entries at a time
             invpages.append(self.write(i, inv, ctx.author.display_name)) # Write will create the embeds
         if len(invpages) == 0:
@@ -79,7 +79,7 @@ class Items(commands.Cog):
     @commands.check(Checks.is_player)
     async def equip(self, ctx, item_id : int):
         # Make sure that 1. item exists 2. they own this item
-        item_is_valid = await AssetCreation.verifyItemOwnership(item_id, ctx.author.id)
+        item_is_valid = await AssetCreation.verifyItemOwnership(self.client.pg_con, item_id, ctx.author.id)
         if not item_is_valid:
             await ctx.reply('No such item of yours exists.')
             return
@@ -87,16 +87,16 @@ class Items(commands.Cog):
         #Else equip new item, update new item, update old item
         #Unequip old item
         try:
-            olditem = await AssetCreation.getEquippedItem(ctx.author.id)
+            olditem = await AssetCreation.getEquippedItem(self.client.pg_con, ctx.author.id)
             if olditem == item_id:
                 await ctx.send("This item is already equipped")
                 return
-            await AssetCreation.unequipItem(ctx.author.id, olditem)
+            await AssetCreation.unequipItem(self.client.pg_con, ctx.author.id, olditem)
         except TypeError:
             olditem = None
 
         #Equip new item
-        await AssetCreation.equipItem(item_id, ctx.author.id)
+        await AssetCreation.equipItem(self.client.pg_con, item_id, ctx.author.id)
         if olditem is not None:
             await ctx.reply(f'Unequipped item `{olditem}` and equipped `{item_id}`.')
         else:
@@ -105,20 +105,20 @@ class Items(commands.Cog):
     @commands.command(description='Unequip your item')
     @commands.check(Checks.is_player)
     async def unequip(self, ctx):
-        await AssetCreation.unequipItem(ctx.author.id)
+        await AssetCreation.unequipItem(self.client.pg_con, ctx.author.id)
         await ctx.reply('Unequipped your item.')
 
     @commands.command(brief='<item_id : int>', description='Sell an item for a random price.')
     @commands.check(Checks.is_player)
     async def sell(self, ctx, item_id : int):
         #Make sure item exists and author owns it
-        item_is_valid = await AssetCreation.verifyItemOwnership(item_id, ctx.author.id)
+        item_is_valid = await AssetCreation.verifyItemOwnership(self.client.pg_con, item_id, ctx.author.id)
         if not item_is_valid:
             await ctx.reply('No such item of yours exists.')
             return
 
         #Otherwise get item and calc compensation
-        item = await AssetCreation.getItem(item_id)
+        item = await AssetCreation.getItem(self.client.pg_con, item_id)
         if item['Equip'] == 1:
             await ctx.reply('You can\'t sell your equipped item.')
             return
@@ -129,15 +129,15 @@ class Items(commands.Cog):
                 break
 
         #Consider class and guild bonus
-        playerjob = await AssetCreation.getClass(ctx.author.id)
+        playerjob = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
         if playerjob == 'Merchant':
             gold = int(gold * 1.5)
         
         guild_bonus = 1
         try:
-            guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
+            guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
             if guild['Type'] == 'Guild':
-                guild_level = await AssetCreation.getGuildLevel(guild['ID'])
+                guild_level = await AssetCreation.getGuildLevel(self.client.pg_con, guild['ID'])
                 guild_bonus = 1.5 + (guild_level * .25)
         except TypeError:
             pass   
@@ -145,8 +145,8 @@ class Items(commands.Cog):
         gold = int(gold * guild_bonus)
 
         #Delete item and give gold to player
-        await AssetCreation.giveGold(gold, ctx.author.id)
-        await AssetCreation.deleteItem(item_id)
+        await AssetCreation.giveGold(self.client.pg_con, gold, ctx.author.id)
+        await AssetCreation.deleteItem(self.client.pg_con, item_id)
 
         await ctx.reply(f'You received {gold} gold for selling {item_id}.')
 
@@ -160,9 +160,9 @@ class Items(commands.Cog):
         #Bonuses for members of guilds
         guild_bonus = 1
         try:
-            guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
+            guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
             if guild['Type'] == 'Guild':
-                guild_level = await AssetCreation.getGuildLevel(guild['ID'])
+                guild_level = await AssetCreation.getGuildLevel(self.client.pg_con, guild['ID'])
                 guild_bonus = 1.5 + (guild_level * .25)
         except TypeError:
             pass 
@@ -170,7 +170,7 @@ class Items(commands.Cog):
         #Calculate and delete items one-by-one
         for item_id in itemlist:
             try:
-                item = await AssetCreation.getItem(int(item_id))
+                item = await AssetCreation.getItem(self.client.pg_con, int(item_id))
             except ValueError:
                 errors = errors + f'`{item_id}` '
                 continue
@@ -188,17 +188,17 @@ class Items(commands.Cog):
                     if item['Rarity'] == WeaponValues[i][0]: 
                         gold = random.randint(WeaponValues[i][1], WeaponValues[i][2])
                         total = total + gold
-                        await AssetCreation.deleteItem(item_id)
+                        await AssetCreation.deleteItem(self.client.pg_con, item_id)
                         break 
             except TypeError:
                 errors = errors + f'`{item_id}` '
 
-        playerjob = await AssetCreation.getClass(ctx.author.id)
+        playerjob = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
         if playerjob == 'Merchant':
             total = int(total * 1.5)
         total = int(total * guild_bonus) #Apply guild bonus
 
-        await AssetCreation.giveGold(total, ctx.author.id)
+        await AssetCreation.giveGold(self.client.pg_con, total, ctx.author.id)
 
         if len(errors) == 0:
             await ctx.reply(f'You received {total} gold for selling these items.')
@@ -212,17 +212,17 @@ class Items(commands.Cog):
         if player.id == ctx.author.id:
             await ctx.reply('Dude...no.')
             return
-        if not await Checks.has_char(player):
+        if not await Checks.has_char(self.client.pg_con, player):
             await ctx.reply('This person does not have a character.')
             return
         
         #Make sure that item exists and author owns it
-        item_is_valid = await AssetCreation.verifyItemOwnership(item_id, ctx.author.id)
+        item_is_valid = await AssetCreation.verifyItemOwnership(self.client.pg_con, item_id, ctx.author.id)
         if not item_is_valid:
             await ctx.reply('No such item of yours exists.')
             return
 
-        item = await AssetCreation.getItem(item_id)
+        item = await AssetCreation.getItem(self.client.pg_con, item_id)
         if item['Equip'] == 1:
             await ctx.reply('You can\'t sell your equipped item')
             return
@@ -232,7 +232,7 @@ class Items(commands.Cog):
             await ctx.reply('Not a valid price.')
             return
 
-        gold = await AssetCreation.getGold(player.id)
+        gold = await AssetCreation.getGold(self.client.pg_con, player.id)
         if price >= gold:
             await ctx.reply('They can\'t afford that.')
             return
@@ -252,9 +252,9 @@ class Items(commands.Cog):
         while readReactions: 
             if str(reaction) == '\u2705': #Then exchange stuff
                 await message.delete()
-                await AssetCreation.setItemOwner(item_id, player.id)
-                await AssetCreation.giveGold(price, ctx.author.id)
-                await AssetCreation.giveGold(0 - price, player.id)
+                await AssetCreation.setItemOwner(self.client.pg_con, item_id, player.id)
+                await AssetCreation.giveGold(self.client.pg_con, price, ctx.author.id)
+                await AssetCreation.giveGold(self.client.pg_con, 0 - price, player.id)
                 await ctx.send(f"Successfully sold `{item['Name']}` for `{price}` gold")
                 break
             if str(reaction) == '\u274E':
@@ -277,12 +277,12 @@ class Items(commands.Cog):
             await ctx.reply('Name can only be 20 characters or less.')
             return
         #Make sure that item exists and author owns it
-        item_is_valid = await AssetCreation.verifyItemOwnership(item_id, ctx.author.id)
+        item_is_valid = await AssetCreation.verifyItemOwnership(self.client.pg_con, item_id, ctx.author.id)
         if not item_is_valid:
             await ctx.reply('No such item of yours exists.')
             return
 
-        await AssetCreation.setItemName(item_id, weaponname)
+        await AssetCreation.setItemName(self.client.pg_con, item_id, weaponname)
         await ctx.reply(f'Changed item `{item_id}`\'s name to `{weaponname}`.')
 
 

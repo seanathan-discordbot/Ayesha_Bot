@@ -4,6 +4,8 @@ A bunch of Misclaneous commands for testing purposes
 import discord
 from discord.ext import commands
 
+from Utilities import Checks, AssetCreation, PageSourceMaker
+
 import time
 
 class Misc(commands.Cog):
@@ -42,6 +44,35 @@ class Misc(commands.Cog):
             output = output + f'`{cmd[0]}`: {cmd[1]}\n'
         embed.add_field(name=f'{ctx.author.display_name}\'s Cooldowns', value=output)
         await ctx.reply(embed=embed)
+
+    @commands.command(description='Hi')
+    async def leaderboard(self, ctx):
+        board = await AssetCreation.getTopXP(self.client.pg_con)
+        embed = discord.Embed(title='AyeshaBot Leaderboards', color=0xBEDCF6)
+        
+        output = ''
+        for entry in board:
+            player = await self.client.fetch_user(entry[0])
+            output = output + f'**{player.name}#{player.discriminator}\'s** `{entry[1]}`: Level `{entry[2]}`, with `{entry[3]}` xp.\n'
+
+        embed.add_field(name='Most Experienced Players', value=output)
+
+        await ctx.reply(embed=embed)
+
+    @commands.command(description='Hi')
+    async def toppve(self, ctx):
+        board = await AssetCreation.getTopBosses(self.client.pg_con)
+        embed = discord.Embed(title='AyeshaBot Leaderboards', color=0xBEDCF6)
+        
+        output = ''
+        for entry in board:
+            player = await self.client.fetch_user(entry[0])
+            output = output + f'**{player.name}#{player.discriminator}\'s** `{entry[1]}`: `{entry[2]}` bosses defeated.\n'
+
+        embed.add_field(name='Most Bosses Defeated', value=output)
+
+        await ctx.reply(embed=embed)
+
 
 def setup(client):
     client.add_cog(Misc(client))

@@ -96,7 +96,7 @@ class Classes(commands.Cog):
                 break
             if str(reaction) == '\u2705': # Then change class
                 role = occ[page][1]
-                await AssetCreation.setPlayerClass(role, ctx.author.id)
+                await AssetCreation.setPlayerClass(self.client.pg_con, role, ctx.author.id)
                 await ctx.send(f'{ctx.author.mention}, you are now a {role}!')
                 await message.delete()
                 break
@@ -143,7 +143,7 @@ class Classes(commands.Cog):
                 break
             if str(reaction) == '\u2705': # Then change class
                 place = ori[page][1]
-                await AssetCreation.setPlayerOrigin(place, ctx.author.id)
+                await AssetCreation.setPlayerOrigin(self.client.pg_con, place, ctx.author.id)
                 await ctx.send(f'{ctx.author.mention}, you are from {place}!')
                 await message.delete()
                 break

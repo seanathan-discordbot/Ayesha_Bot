@@ -56,26 +56,26 @@ class Profile(commands.Cog):
             start = await YesNo(ctx, embed).prompt(ctx)
             if start:
                 await ctx.send(f'Your Name: {name}')
-                await AssetCreation.createCharacter(ctx, name)
+                await AssetCreation.createCharacter(self.client.pg_con, ctx.author.id, name)
                 await ctx.reply("Success! Use the `tutorial` command to get started!")  
 
     @commands.command(aliases=['p'], description='View your profile')
     async def profile(self, ctx, player : commands.MemberConverter = None):
-        #Make sure targeted person is a player
+        # Make sure targeted person is a player
         if player is None: #return author profile
-            if not await Checks.has_char(ctx.author):
+            if not await Checks.has_char(self.client.pg_con, ctx.author):
                 await ctx.reply('You don\'t have a character. Do `start` to make one!')
                 return
             else:
                 player = ctx.author
         else:
-            if not await Checks.has_char(player):
+            if not await Checks.has_char(self.client.pg_con, player):
                 await ctx.reply('This person does not have a character')
                 return
-        #Otherwise target is a player and we can access their profile
-        attack, crit = await AssetCreation.getAttack(player.id)
+        # Otherwise target is a player and we can access their profile
+        attack, crit = await AssetCreation.getAttack(self.client.pg_con, player.id)
+        character = await AssetCreation.getPlayerByID(self.client.pg_con, player.id)
 
-        character = await AssetCreation.getPlayerByID(player.id)
         #Calc pvp and boss wins. If 0, hardcode to 0 to prevent div 0
         if character['pvpfights'] == 0: 
             pvpwinrate = 0
@@ -87,25 +87,25 @@ class Profile(commands.Cog):
             bosswinrate = character['bosswins']/character['bossfights']*100
 
         try:
-            item = await AssetCreation.getEquippedItem(player.id)
-            item = await AssetCreation.getItem(item)
+            item = await AssetCreation.getEquippedItem(self.client.pg_con, player.id)
+            item = await AssetCreation.getItem(self.client.pg_con, item)
         except TypeError:
             item = None
 
         if character['Guild'] is not None:
-            guild = await AssetCreation.getGuildByID(character['Guild'])
+            guild = await AssetCreation.getGuildByID(self.client.pg_con, character['Guild'])
         else:
             guild = {'Name' : 'None'}
 
         #Create the strings for acolytes
         if character['Acolyte1'] is not None:
-            acolyte1 = await AssetCreation.getAcolyteByID(character['Acolyte1'])
+            acolyte1 = await AssetCreation.getAcolyteByID(self.client.pg_con, character['Acolyte1'])
             acolyte1 = f"{acolyte1['Name']} ({acolyte1['Rarity']}⭐)"
         else:
             acolyte1 = None
 
         if character['Acolyte2'] is not None:   
-            acolyte2 = await AssetCreation.getAcolyteByID(character['Acolyte2'])
+            acolyte2 = await AssetCreation.getAcolyteByID(self.client.pg_con, character['Acolyte2'])
             acolyte2 = f"{acolyte2['Name']} ({acolyte2['Rarity']}⭐)"
         else:
             acolyte2 = None
@@ -137,7 +137,7 @@ class Profile(commands.Cog):
     @commands.command(aliases=['xp'], description='Check your xp and level.')
     @commands.check(Checks.is_player)
     async def level(self, ctx):
-        level, xp = await AssetCreation.getPlayerXP(ctx.author.id)
+        level, xp = await AssetCreation.getPlayerXP(self.client.pg_con, ctx.author.id)
         tonext = math.floor(6000000 * math.cos(((level+1)/64)+3.14) + 6000000) - xp
 
         embed = discord.Embed(color=0xBEDCF6)
@@ -152,7 +152,7 @@ class Profile(commands.Cog):
         if len(name) > 32:
             await ctx.reply('Name max 32 characters.')
             return
-        await AssetCreation.setPlayerName(ctx.author.id, name)
+        await AssetCreation.setPlayerName(self.client.pg_con, ctx.author.id, name)
         await ctx.reply(f'Name changed to `{name}`.')
 
     #Add a tutorial command at the end of alpha

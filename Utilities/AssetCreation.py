@@ -3,14 +3,15 @@ import asyncio
 
 from discord.ext import commands, menus
 
-import aiosqlite
+import asyncpg
 
 import json
 import random
 import math
 
-PATH = 'PATH'
-ACOLYTE_PATH = 'PATH'
+from Utilities import Links
+
+ACOLYTE_PATH = Links.acolyte_list
 
 weapontypes = ['Spear', 'Sword', 'Dagger', 'Bow', 'Trebuchet', 'Gauntlets', 'Staff', 'Greatsword', 'Axe', 'Sling', 'Javelin', 'Falx', 'Mace']
 
@@ -18,15 +19,14 @@ dashes = []
 for i in range(0,10):
     dashes.append("".join(["▬"]*i))
 
-async def createCharacter(ctx, name):
-    user = (ctx.author.id, name)
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('INSERT INTO players (user_id, user_name) VALUES (?, ?)', user)
-        await conn.execute('INSERT INTO resources (user_id) VALUES (?)', (ctx.author.id,))
-        await conn.commit()
-    await createItem(ctx.author.id, 20, 'Common', crit=0, weaponname='Wooden Spear', weapontype='Spear')
+async def createCharacter(pool, user_id, name):
+    async with pool.acquire() as conn:
+        await conn.execute('INSERT INTO players (user_id, user_name) VALUES ($1, $2)', user_id, name)
+        await conn.execute('INSERT INTO resources (user_id) VALUES ($1)', user_id)
+    await pool.release(conn)
+    await createItem(pool, user_id, 20, 'Common', crit=0, weaponname='Wooden Spear', weapontype='Spear')
 
-async def createItem(owner_id, attack, rarity, crit = None, weaponname = None, weapontype=None):
+async def createItem(pool, owner_id, attack, rarity, crit = None, weaponname = None, weapontype=None):
     if crit is None:
         if rarity == 'Common':
             crit = random.randint(0,5)
@@ -44,123 +44,122 @@ async def createItem(owner_id, attack, rarity, crit = None, weaponname = None, w
         weapontype = weapontype[0]
     if weaponname is None:
         weaponname = 'Unnamed Weapon'
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute("""
-            INSERT INTO items (weapontype, owner_id, attack, crit, weapon_name, rarity)
-            VALUES (?, ?, ?, ?, ?, ?)""", (weapontype, owner_id, attack, crit, weaponname, rarity))
-        await conn.commit()
 
-async def getAllItemsFromPlayer(user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = ? AND is_equipped = 1', (user_id,))
-        inv = await c.fetchall()
-        c = await conn.execute('SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = ? AND is_equipped = 0', (user_id,))
-        for item in (await c.fetchall()):
+    async with pool.acquire() as conn:
+        await conn.execute("""INSERT INTO items (weapontype, owner_id, attack, crit, weapon_name, rarity)
+            VALUES ($1, $2, $3, $4, $5, $6)""", weapontype, owner_id, attack, crit, weaponname, rarity)
+        await pool.release(conn)
+
+async def getAllItemsFromPlayer(pool, user_id : int):
+    async with pool.acquire() as conn:
+        inv = await conn.fetch('SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 AND is_equipped = True', user_id)
+        other = await conn.fetch('SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 AND is_equipped = False', user_id)
+        for item in other:
             inv.append(item)
+        await pool.release(conn)
+    
     return inv
 
-async def verifyItemOwnership(item_id : int, user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT weapon_name FROM items WHERE item_id = ? AND owner_id = ?', (item_id, user_id))
-        item = await c.fetchone()
+async def verifyItemOwnership(pool, item_id : int, user_id : int):
+    async with pool.acquire() as conn:
+        item = await conn.fetchrow('SELECT weapon_name FROM items WHERE item_id = $1 AND owner_id = $2', item_id, user_id)
+        await pool.release(conn)
+
         if item is None:
             return False
         else:
             return True
 
-async def getEquippedItem(user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT item_id FROM items WHERE owner_id = ? AND is_equipped = 1', (user_id,))
-        item = await c.fetchone()
-        return item[0]
+async def getEquippedItem(pool, user_id : int):
+    async with pool.acquire() as conn:
+        item = await conn.fetchrow('SELECT item_id FROM items WHERE owner_id = $1 AND is_equipped = True', user_id)
+        return item['item_id']
 
-async def unequipItem(user_id : int, item_id : int = None):
-    async with aiosqlite.connect(PATH) as conn:
+async def unequipItem(pool, user_id : int, item_id : int = None):
+    async with pool.acquire() as conn:
         if item_id is None:
-            item_id = await getEquippedItem(user_id)
+            item_id = await getEquippedItem(pool, user_id)
 
-        await conn.execute('UPDATE items SET is_equipped = 0 WHERE item_id = ?', (item_id,))
-        await conn.execute('UPDATE players SET equipped_item = NULL WHERE user_id = ?', (user_id,))
-        await conn.commit()
+        await conn.execute('UPDATE items SET is_equipped = False WHERE item_id = $1', item_id)
+        await conn.execute('UPDATE players SET equipped_item = NULL WHERE user_id = $1', user_id)
+        await pool.release(conn)
 
-async def equipItem(item_id : int, user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('UPDATE items SET is_equipped = 1 WHERE item_id = ?', (item_id,))
-        await conn.execute('UPDATE players SET equipped_item = ? WHERE user_id = ?', (item_id, user_id))
-        await conn.commit()
+async def equipItem(pool, item_id : int, user_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE items SET is_equipped = True WHERE item_id = $1', item_id)
+        await conn.execute('UPDATE players SET equipped_item = $1 WHERE user_id = $2', item_id, user_id)
+        await pool.release(conn)
 
-async def getItem(item_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT weapontype, owner_id, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE item_id = ?', (item_id,))
-        info = await c.fetchone()
-    
+async def getItem(pool, item_id : int):
+    async with pool.acquire() as conn:
+        info = await conn.fetchrow('SELECT weapontype, owner_id, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE item_id = $1', item_id)
+        await pool.release(conn)
+
     item = {
         'ID' : item_id,
-        'Type' : info[0],
-        'Owner' : info[1],
-        'Attack' : info[2],
-        'Crit' : info[3],
-        'Name' : info[4],
-        'Rarity' : info[5],
-        'Equip' : info[6]
+        'Type' : info['weapontype'],
+        'Owner' : info['owner_id'],
+        'Attack' : info['attack'],
+        'Crit' : info['crit'],
+        'Name' : info['weapon_name'],
+        'Rarity' : info['rarity'],
+        'Equip' : info['is_equipped']
     }
 
     return item
 
-async def deleteItem(item_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('DELETE FROM Items WHERE item_id = ?', (item_id,))
-        await conn.commit()
+async def deleteItem(pool, item_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute('DELETE FROM items WHERE item_id = $1', item_id)
+        await pool.release(conn)
 
-async def setItemOwner(item_id : int, user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('UPDATE Items SET owner_id = ? WHERE item_id = ?', (user_id, item_id))
-        await conn.commit()
+async def setItemOwner(pool, item_id : int, user_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE items SET owner_id = $1 WHERE item_id = $2', user_id, item_id)
+        await pool.release(conn)
 
-async def setItemName(item_id : int, name : str):
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('UPDATE items SET weapon_name = ? WHERE item_id = ?', (name, item_id))
-        await conn.commit()
+async def setItemName(pool, item_id : int, name : str):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE items SET weapon_name = $1 WHERE item_id = $2', name, item_id)
+        await pool.release(conn)
 
-async def increaseItemAttack(item_id : int, increase : int):
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('UPDATE items SET attack = attack + ? WHERE item_id = ?', (increase, item_id))
-        await conn.commit()
+async def increaseItemAttack(pool, item_id : int, increase : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE items SET attack = attack + $1 WHERE item_id = $2', increase, item_id)
+        await pool.release(conn)
 
-async def createAcolyte(owner_id, acolyte_name):
-    async with aiosqlite.connect(PATH) as conn:
-        acolyte = (owner_id, acolyte_name)
-        await conn.execute("""
-            INSERT INTO acolytes (owner_id, acolyte_name) VALUES (?, ?)""", acolyte)
-        await conn.commit()
+async def createAcolyte(pool, owner_id, acolyte_name):
+    async with pool.acquire() as conn:
+        await conn.execute('INSERT INTO acolytes (owner_id, acolyte_name) VALUES ($1, $2)', owner_id, acolyte_name)
+        await pool.release(conn)
 
-async def checkAcolyteLevel(ctx, instance_id):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT acolyte_name, level, xp FROM Acolytes WHERE instance_id = ?', (instance_id,))
-        current = await c.fetchone()
-        if current[1] < getAcolyteLevel(current[2]):
-            await conn.execute('UPDATE Acolytes SET level = level + 1 WHERE instance_id = ?', (instance_id,))
-            await conn.commit()
-            await ctx.send(f'{current[0]} levelled up to level {current[1] + 1}!')
+async def checkAcolyteLevel(pool, ctx, instance_id):
+    async with pool.acquire() as conn:
+        current = await conn.fetchrow('SELECT acolyte_name, lvl, xp FROM acolytes WHERE instance_id = $1', instance_id)
+        if current['lvl'] < getAcolyteLevel(current['xp']):
+            await conn.execute('UPDATE acolytes SET lvl = lvl + 1 WHERE instance_id = $1', instance_id)
+            await pool.release(conn)
+            
+            await ctx.send(f"{current['acolyte_name']} levelled up to level {current['lvl'] + 1}!")
 
-async def checkLevel(ctx, user_id, aco1=None, aco2=None):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT level, xp, user_name FROM Players WHERE user_id = ?', (user_id,))
-        current = await c.fetchone()
-        if current[0] < calcLevel(current[1]):
+async def checkLevel(pool, ctx, user_id, aco1=None, aco2=None):
+    async with pool.acquire() as conn:
+        current = await conn.fetchrow('SELECT lvl, xp, user_name FROM Players WHERE user_id = $1', user_id)
+        if current['lvl'] < calcLevel(current['xp']):
             #Give some rewards
-            gold = (current[0] + 1) * 500
-            rubidic = math.ceil((current[0] + 1) / 10)
-            await conn.execute('UPDATE Players SET level = level + 1, gold = gold + ?, rubidic = rubidic + ? WHERE user_id = ?', (gold, rubidic, user_id,))
-            await conn.commit()
+            gold = (current['lvl'] + 1) * 500
+            rubidic = math.ceil((current['lvl'] + 1) / 10)
+            await conn.execute('UPDATE Players SET lvl = lvl + 1, gold = gold + $1, rubidic = rubidic + $2 WHERE user_id = $3', gold, rubidic, user_id)
+
             #Send level-up message
-            embed = discord.Embed(title=f'You\'ve levelled up to level {current[0]+1}!', color=0xBEDCF6)
-            embed.add_field(name=f'{current[2]}, you gained some rewards:', value=f'**Gold:** {gold}\n**Rubidics:** {rubidic}')
+            embed = discord.Embed(title=f"You've levelled up to level {current['lvl']+1}!", color=0xBEDCF6)
+            embed.add_field(name=f"{current['user_name']}, you gained some rewards:", value=f'**Gold:** {gold}\n**Rubidics:** {rubidic}')
             await ctx.send(embed=embed)
+        await pool.release(conn)
     if aco1 is not None:
-        await checkAcolyteLevel(ctx, aco1)
+        await checkAcolyteLevel(pool, ctx, aco1)
     if aco2 is not None:
-        await checkAcolyteLevel(ctx, aco2)
+        await checkAcolyteLevel(pool, ctx, aco2)
 
 def getAcolyteLevel(xp):
     level = 0
@@ -196,59 +195,61 @@ def calcLevel(xp):
 
     return level
 
-async def getLevel(user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT level FROM Players WHERE user_id = ?', (user_id,))
-        level = await c.fetchone()
-        return level[0]
+async def getLevel(pool, user_id : int):
+    async with pool.acquire() as conn:
+        level = await conn.fetchrow('SELECT lvl FROM Players WHERE user_id = $1', user_id)
+        return level['lvl']
 
-async def getAttack(user_id, returnothers = False):
-    charattack, weaponattack, guildattack, acolyteattack, attack, crit, hp = 0, 0, 0, 0, 0, 0, 500
+async def getAttack(pool, user_id, returnothers = False):
+    charattack, weaponattack, guildattack, acolyteattack, attack, crit, hp = 20, 0, 0, 0, 0, 5, 500
     acolyte1, acolyte2 = None, None
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT level, equipped_item, acolyte1, acolyte2, class FROM Players WHERE user_id = ?', (user_id,))
-        char = await c.fetchone()
-        d = await conn.execute('SELECT attack, crit FROM Items WHERE item_id = ?', (char[1],))
-        item = await d.fetchone()
-        if char[2] is not None:
-            acolyte1 = await getAcolyteByID(char[2])
-            acolyteattack = acolyteattack + acolyte1['Attack'] + (acolyte1['Scale'] * acolyte1['Level'])
-            crit = crit + acolyte1['Crit']
-            hp = hp + acolyte1['HP']
-        if char[3] is not None:
-            acolyte2 = await getAcolyteByID(char[3])
-            acolyteattack = acolyteattack + acolyte2['Attack'] + (acolyte2['Scale'] * acolyte2['Level'])
-            crit = crit + acolyte2['Crit']
-            hp = hp + acolyte2['HP']
-        charattack = 20 + char[0] * 2
-        if item is not None:
-            weaponattack = item[0]
-        if char[4] == 'Soldier':
+    async with pool.acquire() as conn:
+        char = await conn.fetchrow('SELECT lvl, equipped_item, acolyte1, acolyte2, occupation FROM players WHERE user_id = $1', user_id)
+        charattack += char['lvl'] * 2
+
+        if char['equipped_item'] is not None:
+            item = await conn.fetchrow('SELECT attack, crit FROM items WHERE item_id = $1', char['equipped_item'])
+            weaponattack = item['attack']
+            crit += item['crit']
+
+        if char['acolyte1'] is not None:
+            acolyte1 = await getAcolyteByID(pool, char['acolyte1'])
+            acolyteattack += acolyte1['Attack'] + (acolyte1['Scale'] * acolyte1['Level'])
+            crit += acolyte1['Crit']
+            hp += acolyte1['HP']
+
+        if char['acolyte2'] is not None:
+            acolyte2 = await getAcolyteByID(pool, char['acolyte2'])
+            acolyteattack += acolyte2['Attack'] + (acolyte2['Scale'] * acolyte2['Level'])
+            crit += acolyte2['Crit']
+            hp += acolyte2['HP']
+
+        if char['occupation'] == 'Soldier':
             charattack = math.floor(charattack * 1.2) + 10
-        if char[4] == 'Blacksmith':
+        if char['occupation'] == 'Blacksmith':
             weaponattack = math.floor(weaponattack * 1.1) + 10
+        if char['occupation'] == 'Scribe':
+            crit += 10
+        if char['occupation'] == 'Leatherworker':
+            hp += 200
+
         try:
-            guild = await getGuildFromPlayer(user_id)
-            guild_level = await getGuildLevel(guild['ID'])
+            guild = await getGuildFromPlayer(pool, user_id)
+            guild_level = await getGuildLevel(pool, guild['ID'])
             if guild['Type'] == 'Brotherhood':
                 guildattack = guild_level * (guild_level + 1) / 2
                 crit = crit + guild_level
         except TypeError:
             pass
+
         attack = charattack + weaponattack + acolyteattack + guildattack
-        if item is not None:
-            crit = crit + 5 + item[1]
-        else:
-            crit = crit + 5
-        if char[4] == 'Scribe':
-            crit += 10
-        if char[4] == 'Leatherworker':
-            hp += 200
-        
-        if not returnothers:
-            return int(attack), crit
-        else:
-            return int(attack), crit, hp, char[4], acolyte1, acolyte2 #returns Class, then acolytes
+
+        await pool.release(conn)
+
+    if not returnothers:
+        return int(attack), crit
+    else:
+        return int(attack), crit, hp, char['occupation'], acolyte1, acolyte2 #returns Class, then acolytes
 
 def getAcolyteByName(name : str):
     with open(ACOLYTE_PATH, 'r') as acolyte_list:
@@ -256,314 +257,326 @@ def getAcolyteByName(name : str):
         acolyte_list.close()
     return acolytes[name]
 
-async def getAcolyteByID(instance : int):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT acolyte_name, level, is_equipped, duplicate FROM Acolytes WHERE instance_id = ?', (instance,))
-        name, level, equip_status, dupes = await c.fetchone()
-        acolyte = getAcolyteByName(name)
+async def getAcolyteByID(pool, instance : int):
+    async with pool.acquire() as conn:
+        info = await conn.fetchrow('SELECT acolyte_name, lvl, is_equipped, duplicate FROM Acolytes WHERE instance_id = $1', instance)
+        acolyte = getAcolyteByName(info['name'])
 
-        acolyte['Level'] = level
+        acolyte['Level'] = info['level']
         acolyte['ID'] = instance
-        acolyte['Equip'] = equip_status
-        acolyte['Dupes'] = dupes
+        acolyte['Equip'] = info['is_equipped']
+        acolyte['Dupes'] = info['duplicate']
+        
+        await pool.release(conn)
 
-        return acolyte
+    return acolyte
 
-async def getAcolyteFromPlayer(user_id : int): #Returns the IDs of the equipped acolytes
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT acolyte1, acolyte2 FROM players WHERE user_id = ?', (user_id,))
-        acolyte1, acolyte2 = await c.fetchone()
-        return acolyte1, acolyte2
+async def getAcolyteFromPlayer(pool, user_id : int): #Returns the IDs of the equipped acolytes
+    async with pool.acquire() as conn:
+        acolytes = await conn.fetchrow('SELECT acolyte1, acolyte2 FROM players WHERE user_id = $1', user_id)
+        acolyte1 = acolytes['acolyte1']
+        acolyte2 = acolytes['acolyte2']
+        await pool.release(conn)
+    
+    return acolyte1, acolyte2
 
-async def getAllAcolytesFromPlayer(user_id : int): #Returns tuple of every acolyte a player owns
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute("""SELECT instance_id, acolyte_name, level, is_equipped, duplicate FROM acolytes
-                WHERE owner_id = ? AND (is_equipped = 1 OR is_equipped = 2)""", (user_id,))
-        inv = await c.fetchall()
-        c = await conn.execute("""SELECT instance_id, acolyte_name, level, is_equipped, duplicate FROM acolytes
-                WHERE owner_id = ? AND is_equipped = 0""", (user_id,))
-        for item in (await c.fetchall()): 
+async def getAllAcolytesFromPlayer(pool, user_id : int): #Returns tuple of every acolyte a player owns
+    async with pool.acquire() as conn:
+        inv = await conn.fetch("""SELECT instance_id, acolyte_name, lvl, is_equipped, duplicate FROM acolytes
+                WHERE owner_id = $1 AND (is_equipped = 1 OR is_equipped = 2)""", user_id)
+        other = await conn.fetch("""SELECT instance_id, acolyte_name, lvl, is_equipped, duplicate FROM acolytes
+                WHERE owner_id = $1 AND is_equipped = 0""", user_id)
+        for item in other: 
             inv.append(item)
+        await pool.release(conn)
 
     return inv
 
-async def verifyAcolyteOwnership(instance_id : int, user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT instance_id FROM Acolytes WHERE instance_id = ? AND owner_id = ?', (instance_id, user_id))
-        acolyte = await c.fetchone()
-        if acolyte is None:
-            return False
-        else:
-            return True #Then something came up and teh acolyte actually is in this player's tavern
-
-async def unequipAcolyte(instance_id : int, slot : int = None, user_id : int = None):
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('UPDATE Acolytes SET is_equipped = 0 WHERE instance_id = ?', (instance_id,))
-
-        if slot == 1:
-            await conn.execute('UPDATE players SET acolyte1 = NULL where user_id = ?', (user_id,))
-        if slot == 2:
-            await conn.execute('UPDATE players SET acolyte2 = NULL where user_id = ?', (user_id,))
-
-        await conn.commit()
-
-async def equipAcolyte(instance_id : int, slot : int, user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('UPDATE Acolytes SET is_equipped = ? WHERE instance_id = ?', (slot, instance_id))
-        if slot == 1:
-            await conn.execute('UPDATE Players SET acolyte1 = ? WHERE user_id = ?', (instance_id, user_id))
-        else:
-            await conn.execute('UPDATE Players SET acolyte2 = ? WHERE user_id = ?', (instance_id, user_id))
+async def verifyAcolyteOwnership(pool, instance_id : int, user_id : int):
+    async with pool.acquire() as conn:
+        acolyte = await conn.fetchrow('SELECT instance_id FROM Acolytes WHERE instance_id = $1 AND owner_id = $2', instance_id, user_id)
+        await pool.release(conn)
         
-        await conn.commit()
+    if acolyte is None:
+        return False
+    else:
+        return True #Then something came up and teh acolyte actually is in this player's tavern
 
-async def giveAcolyteXP(amount : int, instance_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('UPDATE acolytes SET xp = xp + ? WHERE instance_id = ?', (amount, instance_id))
-        await conn.commit()
+async def unequipAcolyte(pool, instance_id : int, slot : int = None, user_id : int = None):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE Acolytes SET is_equipped = 0 WHERE instance_id = $1', instance_id)
 
-async def createGuild(name, guild_type, leader, icon):
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('INSERT INTO guilds (guild_name, guild_type, leader_id, guild_icon) VALUES (?, ?, ?, ?)', (name, guild_type, leader, icon))
-        c = await conn.execute('SELECT guild_id FROM guilds WHERE leader_id = ?', (leader,))
-        guild_id = await c.fetchone()
-        await conn.execute('UPDATE players SET guild = ?, gold = gold - 15000, guild_rank = "Leader" WHERE user_id = ?', (guild_id[0], leader))
-        await conn.commit()
+        if slot == 1:
+            await conn.execute('UPDATE players SET acolyte1 = NULL where user_id = $1', user_id)
+        if slot == 2:
+            await conn.execute('UPDATE players SET acolyte2 = NULL where user_id = $1', user_id)
 
-async def joinGuild(guild_id, user_id): #DOES NOT VERIFY IF THEY'RE ALREADY IN A GUILD
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('UPDATE players SET guild = ?, guild_rank = "Member" WHERE user_id = ?', (guild_id, user_id))
-        await conn.commit()
+        await pool.release(conn)
 
-async def leaveGuild(user_id : int): #DOES NOT VERIFY IF MEMBER LEAVING IS LEADER USE ON MEMBERS ONLYYY
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('UPDATE Players SET guild = NULL, guild_rank = NULL WHERE user_id = ?', (user_id,))
-        await conn.commit()
+async def equipAcolyte(pool, instance_id : int, slot : int, user_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE Acolytes SET is_equipped = $1 WHERE instance_id = $2', slot, instance_id)
+        if slot == 1:
+            await conn.execute('UPDATE Players SET acolyte1 = $1 WHERE user_id = $2', instance_id, user_id)
+        else:
+            await conn.execute('UPDATE Players SET acolyte2 = $1 WHERE user_id = $2', instance_id, user_id)
+        
+        await pool.release(conn)
 
-async def getGuildFromPlayer(user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT guild FROM players WHERE user_id = ?', (user_id,)) 
-        guild_id = await c.fetchone()
-        return await getGuildByID(guild_id[0])
+async def giveAcolyteXP(pool, amount : int, instance_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE acolytes SET xp = xp + $1 WHERE instance_id = $2', amount, instance_id)
+        await pool.release(conn)
 
-async def getGuildByID(guild_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT * FROM guilds WHERE guild_id = ?', (guild_id,))
-        info = await c.fetchone()
-        guild = {
-            'ID' : info[0],
-            'Name' : info[1],
-            'Type' : info[2],
-            'XP' : info[3],
-            'Leader' : info[4],
-            'Desc' : info[5],
-            'Icon' : info[6],
-            'Join' : info[7]
-        }
-        return guild
+async def createGuild(pool, name, guild_type, leader, icon):
+    async with pool.acquire() as conn:
+        await conn.execute('INSERT INTO guilds (guild_name, guild_type, leader_id, guild_icon) VALUES ($1, $2, $3, $4)', name, guild_type, leader, icon)
+        guild_id = await conn.fetchrow('SELECT guild_id FROM guilds WHERE leader_id = $1', leader)
+        await conn.execute("UPDATE players SET guild = $1, gold = gold - 15000, guild_rank = 'Leader' WHERE user_id = $2", guild_id['guild_id'], leader)
+        await pool.release(conn)
 
-async def getGuildLevel(guild_id : int, returnline = False):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT level FROM guild_levels WHERE guild_id = ?', (guild_id,))
-        level = await c.fetchone()
+async def joinGuild(pool, guild_id, user_id): #DOES NOT VERIFY IF THEY'RE ALREADY IN A GUILD
+    async with pool.acquire() as conn:
+        await conn.execute("UPDATE players SET guild = $1, guild_rank = 'Member' WHERE user_id = $2", guild_id, user_id)
+        await pool.release(conn)
+
+async def leaveGuild(pool, user_id : int): #DOES NOT VERIFY IF MEMBER LEAVING IS LEADER USE ON MEMBERS ONLYYY
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE Players SET guild = NULL, guild_rank = NULL WHERE user_id = $1', user_id)
+        await pool.release(conn)
+
+async def getGuildFromPlayer(pool, user_id : int):
+    async with pool.acquire() as conn:
+        guild_id = await conn.fetchval('SELECT guild FROM players WHERE user_id = $1', user_id)
+        await pool.release(conn) 
+    
+    return await getGuildByID(pool, guild_id)
+
+async def getGuildByID(pool, guild_id : int):
+    async with pool.acquire() as conn:
+        info = await conn.fetchrow('SELECT guild_id, guild_name, guild_type, guild_xp, leader_id, guild_desc, guild_icon, join_status FROM guilds WHERE guild_id = $1', guild_id)
+        await pool.release(conn)
+
+    guild = {
+        'ID' : info['guild_id'],
+        'Name' : info['guild_name'],
+        'Type' : info['guild_type'],
+        'XP' : info['guild_xp'],
+        'Leader' : info['leader_id'],
+        'Desc' : info['guild_desc'],
+        'Icon' : info['guild_icon'],
+        'Join' : info['join_status']
+    }
+
+    return guild
+
+async def getGuildLevel(pool, guild_id : int, returnline = False):
+    async with pool.acquire() as conn:
+        level = await conn.fetchrow('SELECT guild_level FROM guild_levels WHERE guild_id = $1', guild_id)
 
         if returnline: #Also create a string to show progress
-            c = await conn.execute('SELECT guild_xp FROM guilds WHERE guild_id = ?', (guild_id,))
-            xp = await c.fetchone()
-            progress = int((xp[0] % 100000) / 20000)
+            xp = await conn.fetchrow('SELECT guild_xp FROM guilds WHERE guild_id = $1', guild_id)
+            progress = int((xp['guild_xp'] % 100000) / 20000)
             progressStr = dashes[progress]+'◆'+dashes[4-progress]
-            return level[0], progressStr
+            await pool.release(conn)
+            return level['guild_level'], progressStr
         else:
-            return level[0]
+            await pool.release(conn)
+            return level['guild_level']
 
-async def getGuildMemberCount(guild_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT member_count FROM guild_membercount WHERE guild_id = ?', (guild_id,))
-        count = await c.fetchone()
-        return count[0]
+async def getGuildMemberCount(pool, guild_id : int):
+    async with pool.acquire() as conn:
+        count = await conn.fetchrow('SELECT member_count FROM guild_membercount WHERE guild_id = $1', guild_id)
+        await pool.release(conn)
+    
+    return count['member_count']
 
-async def getGuildCapacity(guild_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT capacity FROM guild_capacities WHERE guild_id = ?', (guild_id,))
-        capacity = await c.fetchone()
-        return capacity[0]
+async def getGuildCapacity(pool, guild_id : int):
+    async with pool.acquire() as conn:
+        capacity = await conn.fetchrow('SELECT capacity FROM guild_capacities WHERE guild_id = $1', guild_id)
+        await pool.release(conn)
+        
+    return capacity['capacity']
 
-async def giveGuildXP(amount : int, guild_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('UPDATE guilds SET guild_xp = guild_xp + ? WHERE guild_id = ?', (amount, guild_id))
-        await conn.commit()
+async def giveGuildXP(pool, amount : int, guild_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE guilds SET guild_xp = guild_xp + $1 WHERE guild_id = $2', amount, guild_id)
+        await pool.release(conn)
 
-async def getGuildXP(guild_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT guild_xp FROM guilds WHERE guild_id = ?', (guild_id,))
-        xp = await c.fetchone()
-        return xp[0]
+async def getGuildXP(pool, guild_id : int):
+    async with pool.acquire() as conn:
+        xp = await conn.fetchrow('SELECT guild_xp FROM guilds WHERE guild_id = $1', guild_id)
+        await pool.release(conn)
+    
+    return xp['guild_xp']
 
-async def getGuildMembers(guild_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute("""SELECT user_id, user_name, guild_rank FROM players WHERE guild = ?
-            ORDER BY CASE guild_rank WHEN "Leader" then 1
-            WHEN "Officer" THEN 2
-            WHEN "Adept" THEN 3
-            ELSE 4 END""", (guild_id,))
-        members = await c.fetchall()
-        return members
+async def getGuildMembers(pool, guild_id : int):
+    async with pool.acquire() as conn:
+        members = await conn.fetch("""SELECT user_id, user_name, guild_rank FROM players WHERE guild = $1
+            ORDER BY CASE guild_rank WHEN 'Leader' then 1
+            WHEN 'Officer' THEN 2
+            WHEN 'Adept' THEN 3
+            ELSE 4 END""", guild_id)
+        await pool.release(conn)
+    
+    return members
 
-async def setGuildDescription(description, guild_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('UPDATE guilds SET guild_desc = ? WHERE guild_id = ?', (description, guild_id))
-        await conn.commit()
+async def setGuildDescription(pool, description, guild_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE guilds SET guild_desc = $1 WHERE guild_id = $2', description, guild_id)
+        await pool.release(conn)
 
-async def lockGuild(guild_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('UPDATE guilds SET join_status = "closed" WHERE guild_id = ?', (guild_id,))
-        await conn.commit()
+async def lockGuild(pool, guild_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute("UPDATE guilds SET join_status = 'closed' WHERE guild_id = $1", guild_id)
+        await pool.release(conn)
 
-async def unlockGuild(guild_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('UPDATE guilds SET join_status = "open" WHERE guild_id = ?', (guild_id,))
-        await conn.commit()
+async def unlockGuild(pool, guild_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute("UPDATE guilds SET join_status = 'open' WHERE guild_id = $1", guild_id)
+        await pool.release(conn)
 
-async def changeGuildRank(rank : str, user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('UPDATE players SET guild_rank = ? WHERE user_id = ?', (rank, user_id))
+async def changeGuildRank(pool, rank : str, user_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE players SET guild_rank = $1 WHERE user_id = $2', rank, user_id)
         
         if rank == "Leader":
-            guild = await getGuildFromPlayer(user_id)
-            await conn.execute('UPDATE guilds SET leader_id = ? WHERE guild_id = ?', (user_id, guild['ID']))  
+            guild = await getGuildFromPlayer(pool, user_id)
+            await conn.execute('UPDATE guilds SET leader_id = $1 WHERE guild_id = $2', user_id, guild['ID'])  
 
-        await conn.commit()  
+        await pool.release(conn)
 
-async def getAdventure(user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT adventure, destination FROM players WHERE user_id = ?', (user_id,))
-        adventure = await c.fetchone()
-        return adventure
+async def getAdventure(pool, user_id : int):
+    async with pool.acquire() as conn:
+        adventure = await conn.fetchrow('SELECT adventure, destination FROM players WHERE user_id = $1', user_id)
+        await pool.release(conn)
+    
+    return adventure
 
-async def getLocation(user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT location FROM players WHERE user_id = ?', (user_id,))
-        location = await c.fetchone()
-        return location[0]
+async def getLocation(pool, user_id : int):
+    async with pool.acquire() as conn:
+        location = await conn.fetchrow('SELECT loc FROM players WHERE user_id = $1', user_id)
+        await pool.release(conn)
+    
+    return location[0]
 
-async def giveMat(material : str, amount : int, user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        query = (amount, user_id)
+async def giveMat(pool, material : str, amount : int, user_id : int):
+    async with pool.acquire() as conn:
 
         if material == 'wheat':
-            await conn.execute('UPDATE resources SET wheat = wheat + ? WHERE user_id = ?', query)
+            await conn.execute('UPDATE resources SET wheat = wheat + $1 WHERE user_id = $2', amount, user_id)
         if material == 'oat':
-            await conn.execute('UPDATE resources SET oat = oat + ? WHERE user_id = ?', query)
+            await conn.execute('UPDATE resources SET oat = oat + $1 WHERE user_id = $2', amount, user_id)
         if material == 'wood':
-            await conn.execute('UPDATE resources SET wood = wood + ? WHERE user_id = ?', query)
+            await conn.execute('UPDATE resources SET wood = wood + $1 WHERE user_id = $2', amount, user_id)
         if material == 'reeds':
-            await conn.execute('UPDATE resources SET reeds = reeds + ? WHERE user_id = ?', query)
+            await conn.execute('UPDATE resources SET reeds = reeds + $1 WHERE user_id = $2', amount, user_id)
         if material == 'pine':
-            await conn.execute('UPDATE resources SET pine = pine + ? WHERE user_id = ?', query)
+            await conn.execute('UPDATE resources SET pine = pine + $1 WHERE user_id = $2', amount, user_id)
         if material == 'moss':
-            await conn.execute('UPDATE resources SET moss = moss + ? WHERE user_id = ?', query)
+            await conn.execute('UPDATE resources SET moss = moss + $1 WHERE user_id = $2', amount, user_id)
         if material == 'iron':
-            await conn.execute('UPDATE resources SET iron = iron + ? WHERE user_id = ?', query)
+            await conn.execute('UPDATE resources SET iron = iron + $1 WHERE user_id = $2', amount, user_id)
         if material == 'cacao':
-            await conn.execute('UPDATE resources SET cacao = cacao + ? WHERE user_id = ?', query)
+            await conn.execute('UPDATE resources SET cacao = cacao + $1 WHERE user_id = $2', amount, user_id)
         if material == 'fur':
-            await conn.execute('UPDATE resources SET fur = fur + ? WHERE user_id = ?', query)
+            await conn.execute('UPDATE resources SET fur = fur + $1 WHERE user_id = $2', amount, user_id)
         if material == 'bone':
-            await conn.execute('UPDATE resources SET bone = bone + ? WHERE user_id = ?', query)
+            await conn.execute('UPDATE resources SET bone = bone + $1 WHERE user_id = $2', amount, user_id)
         if material == 'silver':
-            await conn.execute('UPDATE resources SET silver = silver + ? WHERE user_id = ?', query)
+            await conn.execute('UPDATE resources SET silver = silver + $1 WHERE user_id = $2', amount, user_id)
 
-        await conn.commit()
+        await pool.release(conn)
 
-async def takeMat(material : str, amount : int, user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        query = (amount, user_id)
+async def takeMat(pool, material : str, amount : int, user_id : int):
+    async with pool.acquire() as conn:
 
         if material == 'wheat':
-            await conn.execute('UPDATE resources SET wheat = wheat - ? WHERE user_id = ?', query)
+            await conn.execute('UPDATE resources SET wheat = wheat - $1 WHERE user_id = $2', amount, user_id)
         if material == 'oat':
-            await conn.execute('UPDATE resources SET oat = oat - ? WHERE user_id = ?', query)
+            await conn.execute('UPDATE resources SET oat = oat - $1 WHERE user_id = $2', amount, user_id)
         if material == 'wood':
-            await conn.execute('UPDATE resources SET wood = wood - ? WHERE user_id = ?', query)
+            await conn.execute('UPDATE resources SET wood = wood - $1 WHERE user_id = $2', amount, user_id)
         if material == 'reeds':
-            await conn.execute('UPDATE resources SET reeds = reeds - ? WHERE user_id = ?', query)
+            await conn.execute('UPDATE resources SET reeds = reeds - $1 WHERE user_id = $2', amount, user_id)
         if material == 'pine':
-            await conn.execute('UPDATE resources SET pine = pine - ? WHERE user_id = ?', query)
+            await conn.execute('UPDATE resources SET pine = pine - $1 WHERE user_id = $2', amount, user_id)
         if material == 'moss':
-            await conn.execute('UPDATE resources SET moss = moss - ? WHERE user_id = ?', query)
+            await conn.execute('UPDATE resources SET moss = moss - $1 WHERE user_id = $2', amount, user_id)
         if material == 'iron':
-            await conn.execute('UPDATE resources SET iron = iron - ? WHERE user_id = ?', query)
+            await conn.execute('UPDATE resources SET iron = iron - $1 WHERE user_id = $2', amount, user_id)
         if material == 'cacao':
-            await conn.execute('UPDATE resources SET cacao = cacao - ? WHERE user_id = ?', query)
+            await conn.execute('UPDATE resources SET cacao = cacao - $1 WHERE user_id = $2', amount, user_id)
 
-        await conn.commit()
+        await pool.release(conn)
 
-async def getPlayerMat(material : str, user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
+async def getPlayerMat(pool, material : str, user_id : int):
+    async with pool.acquire() as conn:
         if material == 'wheat':
-            c = await conn.execute('SELECT wheat FROM resources WHERE user_id = ?', (user_id,))
+            c = await conn.fetchrow('SELECT wheat FROM resources WHERE user_id = $1', user_id)
         if material == 'oat':
-            c = await conn.execute('SELECT oat FROM resources WHERE user_id = ?', (user_id,))
+            c = await conn.fetchrow('SELECT oat FROM resources WHERE user_id = $1', user_id)
         if material == 'wood':
-            c = await conn.execute('SELECT wood FROM resources WHERE user_id = ?', (user_id,))
+            c = await conn.fetchrow('SELECT wood FROM resources WHERE user_id = $1', user_id)
         if material == 'reeds':
-            c = await conn.execute('SELECT reeds FROM resources WHERE user_id = ?', (user_id,))
+            c = await conn.fetchrow('SELECT reeds FROM resources WHERE user_id = $1', user_id)
         if material == 'pine':
-            c = await conn.execute('SELECT pine FROM resources WHERE user_id = ?', (user_id,))
+            c = await conn.fetchrow('SELECT pine FROM resources WHERE user_id = $1', user_id)
         if material == 'moss':
-            c = await conn.execute('SELECT moss FROM resources WHERE user_id = ?', (user_id,))
+            c = await conn.fetchrow('SELECT moss FROM resources WHERE user_id = $1', user_id)
         if material == 'iron':
-            c = await conn.execute('SELECT iron FROM resources WHERE user_id = ?', (user_id,))
+            c = await conn.fetchrow('SELECT iron FROM resources WHERE user_id = $1', user_id)
         if material == 'cacao':
-            c = await conn.execute('SELECT cacao FROM resources WHERE user_id = ?', (user_id,))
+            c = await conn.fetchrow('SELECT cacao FROM resources WHERE user_id = $1', user_id)
         if material == 'fur':
-            c = await conn.execute('SELECT fur FROM resources WHERE user_id = ?', (user_id,))
+            c = await conn.fetchrow('SELECT fur FROM resources WHERE user_id = $1', user_id)
         if material == 'bone':
-            c = await conn.execute('SELECT bone FROM resources WHERE user_id = ?', (user_id,))
+            c = await conn.fetchrow('SELECT bone FROM resources WHERE user_id = $1', user_id)
         if material == 'silver':
-            c = await conn.execute('SELECT silver FROM resources WHERE user_id = ?', (user_id,))
+            c = await conn.fetchrow('SELECT silver FROM resources WHERE user_id = $1', user_id)
 
-        mat = await c.fetchone()
-        return mat[0]
+        await pool.release(conn) 
+    
+    return c[0]
 
-async def giveGold(amount : int, user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('UPDATE players SET gold = gold + ? WHERE user_id = ?', (amount, user_id))
-        await conn.commit()
+async def giveGold(pool, amount : int, user_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE players SET gold = gold + $1 WHERE user_id = $2', amount, user_id)
+        await pool.release(conn)
 
-async def getGold(user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT gold FROM players WHERE user_id = ?', (user_id,))
-        gold = await c.fetchone()
-        return gold[0]
+async def getGold(pool, user_id : int):
+    async with pool.acquire() as conn:
+        gold = await conn.fetchrow('SELECT gold FROM players WHERE user_id = $1', user_id)
+        return gold['gold']
 
-async def giveRubidics(amount : int, user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('UPDATE players SET rubidic = rubidic + ? WHERE user_id = ?', (amount, user_id))
-        await conn.commit()
+async def giveRubidics(pool, amount : int, user_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE players SET rubidic = rubidic + $1 WHERE user_id = $2', amount, user_id)
+        await pool.release(conn)
 
-async def getClass(user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT class FROM players WHERE user_id = ?', (user_id,))
-        role = await c.fetchone()
-        try:
-            return role[0]
-        except TypeError:
-            return None
+async def getClass(pool, user_id : int):
+    async with pool.acquire() as conn:
+        role = await conn.fetchrow('SELECT occupation FROM players WHERE user_id = $1', user_id)
+        await pool.release(conn)
 
-async def getPlayerCount():
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT COUNT(*) FROM Players')
-        records = await c.fetchone()
+    try:
+        return role['occupation']
+    except TypeError:
+        return None
 
-        return records[0]
+async def getPlayerCount(pool):
+    async with pool.acquire() as conn:
+        records = await conn.fetchrow('SELECT COUNT(*) FROM Players')
+        await pool.release(conn)
 
-async def getPlayerByID(user_id: int):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute("""SELECT num, user_name, level, equipped_item, acolyte1, acolyte2, guild, guild_rank, 
-            gold, class, origin, location, pvpwins, pvpfights, bosswins, bossfights
-            FROM players WHERE user_id = ?""", (user_id,))
-        info = await c.fetchone()
+    return records[0]
+
+async def getPlayerByID(pool, user_id: int):
+    async with pool.acquire() as conn:
+        info = await conn.fetchrow("""SELECT num, user_name, lvl, equipped_item, acolyte1, acolyte2, guild, guild_rank, 
+            gold, occupation, origin, loc, pvpwins, pvpfights, bosswins, bossfights
+            FROM players WHERE user_id = $1""", user_id)
+        await pool.release(conn)
 
     player = {
         'Num' : info[0],
@@ -586,52 +599,76 @@ async def getPlayerByID(user_id: int):
 
     return player
 
-async def getPlayerByNum(num : int):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT gold, user_id, user_name FROM players WHERE num = ?', (num,))
-        gold, idnum, name = await c.fetchone()
+async def getPlayerByNum(pool, num : int):
+    async with pool.acquire() as conn:
+        info = await conn.fetchrow('SELECT gold, user_id, user_name FROM players WHERE num = $1', num)
+        await pool.release(conn)
+    
+    gold = info['gold'] 
+    idnum = info['user_id']
+    name = info['user_name']
 
-        return gold, idnum, name
+    return gold, idnum, name
 
-async def setPlayerClass(role : str, user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('UPDATE players SET class = ? WHERE user_id = ?', (role, user_id))
-        await conn.commit()
+async def setPlayerClass(pool, role : str, user_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE players SET occupation = $1 WHERE user_id = $2', role, user_id)
+        await pool.release(conn)
 
-async def setPlayerOrigin(role : str, user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('UPDATE players SET origin = ? WHERE user_id = ?', (role, user_id))
-        await conn.commit()
+async def setPlayerOrigin(pool, role : str, user_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE players SET origin = $1 WHERE user_id = $2', role, user_id)
+        await pool.release(conn)
 
-async def getPlayerXP(user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT level, xp FROM players WHERE user_id = ?', (user_id,))
-        level, xp = await c.fetchone()
-        return level, xp
+async def getPlayerXP(pool, user_id : int):
+    async with pool.acquire() as conn:
+        info = await conn.fetchrow('SELECT lvl, xp FROM players WHERE user_id = $1', user_id)
+        await pool.release(conn)
 
-async def setPlayerName(user_id : int, name : str):
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('UPDATE players SET user_name = ? WHERE user_id = ?', (name, user_id))
-        await conn.commit()
+    level = info['lvl'] 
+    xp = info['xp']
 
-async def giveBountyRewards(user_id : int, gold : int, xp : int, victory : bool):
-    async with aiosqlite.connect(PATH) as conn:
+    return level, xp
+
+async def setPlayerName(pool, user_id : int, name : str):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE players SET user_name = $1 WHERE user_id = $2', name, user_id)
+        await pool.release(conn)
+
+async def giveBountyRewards(pool, user_id : int, gold : int, xp : int, victory : bool):
+    async with pool.acquire() as conn:
         if victory:
-            await conn.execute('UPDATE players SET gold = gold + ?, xp = xp + ?, bosswins = bosswins + 1, bossfights = bossfights + 1 WHERE user_id = ?', (gold, xp, user_id))
+            await conn.execute('UPDATE players SET gold = gold + $1, xp = xp + $2, bosswins = bosswins + 1, bossfights = bossfights + 1 WHERE user_id = $3', gold, xp, user_id)
         else:
-            await conn.execute('UPDATE players SET gold = gold + ?, xp = xp + ?, bossfights = bossfights + 1 WHERE user_id = ?', (gold, xp, user_id))
+            await conn.execute('UPDATE players SET gold = gold + $1, xp = xp + $2, bossfights = bossfights + 1 WHERE user_id = $3', gold, xp, user_id)
 
-        await conn.commit()
+        await pool.release(conn)
 
-async def giveAdventureRewards(xp : int, gold : int, location : str, user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
+async def giveAdventureRewards(pool, xp : int, gold : int, location : str, user_id : int):
+    async with pool.acquire() as conn:
         await conn.execute("""UPDATE players SET 
-            xp = xp + ?, gold = gold + ?, location = ?, 
+            xp = xp + $1, gold = gold + $2, loc = $3, 
             adventure = NULL, destination = NULL 
-            WHERE user_id = ?""", (xp, gold, location, user_id))
-        await conn.commit()
+            WHERE user_id = $4""", xp, gold, location, user_id)
+        await pool.release(conn)
 
-async def setAdventure(adventure : int, destination : str, user_id : int):
-    async with aiosqlite.connect(PATH) as conn:
-        await conn.execute('UPDATE players SET adventure = ?, destination = ? WHERE user_id = ?', (adventure, destination, user_id))
-        await conn.commit()
+async def setAdventure(pool, adventure : int, destination : str, user_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE players SET adventure = $1, destination = $2 WHERE user_id = $3', adventure, destination, user_id)
+        await pool.release(conn)
+
+async def getTopXP(pool):
+    async with pool.acquire() as conn:
+        board = await conn.fetch("""SELECT user_id, user_name, lvl, xp FROM players
+            ORDER BY xp DESC LIMIT 5""")
+        await pool.release(conn)
+    
+    return board
+
+async def getTopBosses(pool):
+    async with pool.acquire() as conn:
+        board = await conn.fetch("""SELECT user_id, user_name, bosswins FROM players
+            ORDER BY bosswins DESC LIMIT 5""")
+        await pool.release(conn)
+    
+    return board

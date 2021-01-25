@@ -8,10 +8,12 @@ import os
 import time
 import traceback
 
-Token = 'TOKEN'
+import asyncpg
+
+from Utilities import Links
 
 def get_prefix(client, message):
-    with open(r'PREFIX_PATH','r') as f:
+    with open(Links.prefix_file,'r') as f:
         prefixes = json.load(f)
     return prefixes[str(message.guild.id)]
 
@@ -41,28 +43,28 @@ async def on_ready():
 # ----- PREFIX CHANGES ------
 @client.event #the default prefix is %
 async def on_guild_join(guild):
-    with open(r'F:\OneDrive\Ayesha\prefixes.json','r') as f:
+    with open(Links.prefix_file,'r') as f:
         prefixes = json.load(f)
     prefixes[str(guild.id)] = '%'
-    with open(r'F:\OneDrive\Ayesha\prefixes.json','w') as f:
+    with open(Links.prefix_file,'w') as f:
         json.dump(prefixes, f, indent=4)
 
 @client.event #deletes the set prefix when a bot leaves the server
 async def on_guild_remove(guild):
-    with open(r'PREFIX_PATH','r') as f:
+    with open(Links.prefix_file,'r') as f:
         prefixes = json.load(f)
     prefixes.pop(str(guild.id))
-    with open(r'PREFIX_PATH','w') as f:
+    with open(Links.prefix_file,'w') as f:
         json.dump(prefixes, f, indent=4)
 
 @client.command()
 @commands.has_guild_permissions(manage_permissions=True)
 @cooldown(1, 30, BucketType.guild)
 async def changeprefix(ctx, prefix):
-    with open(r'PREFIX_PATH','r') as f:
+    with open(Links.prefix_file,'r') as f:
         prefixes = json.load(f)
     prefixes[str(ctx.guild.id)] = prefix
-    with open(r'PREFIX_PATH','w') as f:
+    with open(Links.prefix_file,'w') as f:
         json.dump(prefixes, f, indent=4)
     await ctx.send(f'Prefix changed to {prefix}') 
 
@@ -80,10 +82,8 @@ async def on_command_error(ctx, error):
         else:
             embed.add_field(name=f'{ctx.command.name}', value=f'{ctx.command.description}', inline=False)
         await ctx.reply(embed=embed)
-        return
     if isinstance(error, commands.CheckFailure):
         await ctx.reply('You are ineligible to use this command.')
-        return
     if isinstance(error, CommandOnCooldown):
         if error.retry_after >= 3600:
             await ctx.send(f'You are on cooldown for `{time.strftime("%H:%M:%S", time.gmtime(error.retry_after))}`.')
@@ -91,7 +91,6 @@ async def on_command_error(ctx, error):
             await ctx.send(f'You are on cooldown for `{time.strftime("%M:%S", time.gmtime(error.retry_after))}`.')
         else:
             await ctx.send(f'You are on cooldown for another `{error.retry_after:.2f}` seconds.')
-        return
     if isinstance(error, commands.MaxConcurrencyReached):
         await ctx.send('Max concurrency reached. Please wait until this command ends.')
     if isinstance(error, commands.MemberNotFound):
@@ -105,7 +104,6 @@ async def on_command_error(ctx, error):
 async def ping(ctx):
     embed = discord.Embed(title="Pong!", description=f"Latency is {client.latency * 1000:.2f} ms", color=0xBEDCF6)
     await ctx.send(embed=embed)
-
 
 # ----- LOAD COGS -----
 @client.command()
@@ -127,6 +125,12 @@ async def reload(ctx, extension):
     client.load_extension(f'cogs.{extension}')
     await ctx.channel.send('Reloaded.')
 
+# Create connections to the database
+async def create_db_pool():
+    client.pg_con = await asyncpg.create_pool(database=Links.database_name, user=Links.database_user, password=Links.database_password)
+
+client.loop.run_until_complete(create_db_pool())
+
 # Runs at bot startup to load all cogs
 for filename in os.listdir(r'COGS FOLDER'):
     if filename.endswith('.py'): # see if the file is a python file
@@ -136,4 +140,4 @@ for filename in os.listdir(r'COGS FOLDER'):
 for filename in os.listdir(r'F:\OneDrive\NguyenBot\Music Files'):
     os.remove(f'MUSIC FILES {filename}')
 
-client.run(Token)
+client.run(Links.Token)

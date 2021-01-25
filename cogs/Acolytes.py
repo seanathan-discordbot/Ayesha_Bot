@@ -45,7 +45,7 @@ class Acolytes(commands.Cog):
     @commands.command(aliases=['acolytes'], description='View your acolytes')
     @commands.check(Checks.is_player)
     async def tavern(self, ctx):
-        inv = await AssetCreation.getAllAcolytesFromPlayer(ctx.author.id)
+        inv = await AssetCreation.getAllAcolytesFromPlayer(self.client.pg_con, ctx.author.id)
 
         invpages = []
         for i in range(0, len(inv), 5): #list 5 entries at a time
@@ -63,12 +63,12 @@ class Acolytes(commands.Cog):
             await ctx.reply('You can only place an acolyte in slots 1 or 2 of your party.')
             return
 
-        if not await AssetCreation.verifyAcolyteOwnership(instance_id, ctx.author.id):
+        if not await AssetCreation.verifyAcolyteOwnership(self.client.pg_con, instance_id, ctx.author.id):
             await ctx.reply('This acolyte isn\'t in your tavern.')
             return
 
         #Equip new acolyte, update new acolyte, update old acolyte
-        acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(ctx.author.id)
+        acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(self.client.pg_con, ctx.author.id)
         
         if slot == 1:
             oldacolyte = acolyte1
@@ -93,13 +93,13 @@ class Acolytes(commands.Cog):
             pass
 
         try:
-            await AssetCreation.unequipAcolyte(oldacolyte)
+            await AssetCreation.unequipAcolyte(self.client.pg_con, oldacolyte)
         except TypeError:
             pass
 
         # Otherwise add the new acolyte
-        added = await AssetCreation.getAcolyteByID(instance_id)
-        await AssetCreation.equipAcolyte(instance_id, slot, ctx.author.id)
+        added = await AssetCreation.getAcolyteByID(self.client.pg_con, instance_id)
+        await AssetCreation.equipAcolyte(self.client.pg_con, instance_id, slot, ctx.author.id)
         await ctx.reply(f"Added `{instance_id}: {added['Name']}` to your party.")
 
     @commands.command(brief='<slot : int>', description='Dismiss an acolyte from the slot in your party.')
@@ -110,7 +110,7 @@ class Acolytes(commands.Cog):
             return
         
         #Make sure the slot they ask for has something in it
-        acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(ctx.author.id)
+        acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(self.client.pg_con, ctx.author.id)
         if slot == 1:
             if acolyte1 is None:
                 await ctx.reply('You don\'t have an acolyte equipped in that slot.')
@@ -123,40 +123,40 @@ class Acolytes(commands.Cog):
         #Unequip the acolyte
         if slot == 1:
             await AssetCreation.unequipAcolyte(acolyte1, 1, ctx.author.id)
-            removed = await AssetCreation.getAcolyteByID(acolyte1)
+            removed = await AssetCreation.getAcolyteByID(self.client.pg_con, acolyte1)
         if slot == 2:
             await AssetCreation.unequipAcolyte(acolyte2, 2, ctx.author.id)
-            removed = await AssetCreation.getAcolyteByID(acolyte2)
+            removed = await AssetCreation.getAcolyteByID(self.client.pg_con, acolyte2)
 
         await ctx.reply(f"Dismissed acolyte `{removed['ID']}: {removed['Name']}`")
 
     @commands.command(brief='<acolyte id>', description='Train your acolyte, giving it xp and potentially levelling it up!')
     @commands.check(Checks.is_player)
     async def train(self, ctx, instance_id : int):
-        if not await AssetCreation.verifyAcolyteOwnership(instance_id, ctx.author.id):
+        if not await AssetCreation.verifyAcolyteOwnership(self.client.pg_con, instance_id, ctx.author.id):
             await ctx.reply('This acolyte isn\'t in your tavern.')
             return
 
-        acolyte = await AssetCreation.getAcolyteByID(instance_id)
+        acolyte = await AssetCreation.getAcolyteByID(self.client.pg_con, instance_id)
         if acolyte['Level'] >= 100:
             await ctx.reply(f"{acolyte['Name']} is already at maximum level!")
             return
 
         #Make sure player has the resources and gold to train
         #5000 xp = 50 of the mat + 250 gold
-        material = await AssetCreation.getPlayerMat(acolyte['Mat'], ctx.author.id)
-        gold = await AssetCreation.getGold(ctx.author.id)
+        material = await AssetCreation.getPlayerMat(self.client.pg_con, acolyte['Mat'], ctx.author.id)
+        gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
 
         if material < 50 or gold < 250:
             await ctx.reply(f"Training your acolyte costs `50` {acolyte['Mat']} and `250` gold. You don\'t have enough resources to train.")
             return
         
-        await AssetCreation.giveAcolyteXP(5000, instance_id)
-        await AssetCreation.giveGold(-250, ctx.author.id)
-        await AssetCreation.takeMat(acolyte['Mat'], 50, ctx.author.id)
+        await AssetCreation.giveAcolyteXP(self.client.pg_con, 5000, instance_id)
+        await AssetCreation.giveGold(self.client.pg_con, -250, ctx.author.id)
+        await AssetCreation.takeMat(self.client.pg_con, acolyte['Mat'], 50, ctx.author.id)
 
         await ctx.reply(f"You trained with `{acolyte['Name']}`, consuming `50` {acolyte['Mat']} and `250` gold in the process. As a result, `{acolyte['Name']}` gained 5,000 exp!`")
-        await AssetCreation.checkAcolyteLevel(ctx, instance_id)
+        await AssetCreation.checkAcolyteLevel(self.client.pg_con, ctx, instance_id)
 
 def setup(client):
     client.add_cog(Acolytes(client))
