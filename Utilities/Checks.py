@@ -5,116 +5,117 @@ from discord.ext import commands, menus
 
 from Utilities import AssetCreation
 
-import aiosqlite
-
-PATH = AssetCreation.PATH
+import asyncpg
 
 async def not_player(ctx):
-    query = (ctx.author.id,)
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT user_id FROM players WHERE user_id = ?', query)
-        result = await c.fetchone()
-        if result is None: #Then there is no char for this id
-            return True
+    async with ctx.bot.pg_con.acquire() as conn:
+        result = await conn.fetchrow('SELECT user_id FROM players WHERE user_id = $1', ctx.author.id)
+        await ctx.bot.pg_con.release(conn)
+    
+    if result is None: #Then there is no char for this id
+        return True
 
 async def is_player(ctx):
-    query = (ctx.author.id,)
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT user_id FROM players WHERE user_id = ?', query)
-        result = await c.fetchone()
-        if result is not None: #Then there is a char for this id
-            return True
+    async with ctx.bot.pg_con.acquire() as conn:
+        result = await conn.fetchrow('SELECT user_id FROM players WHERE user_id = $1', ctx.author.id)
+        await ctx.bot.pg_con.release(conn)
+        
+    if result is not None: #Then there is a char for this id
+        return True
 
-async def has_char(user : discord.user): #NOT A CHECK --> in-function version of is_player
-    query = (user.id,)
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT user_id FROM players WHERE user_id = ?', query)
-        result = await c.fetchone()
-        if result is not None: #Then there is a char for this id
-            return True
+async def has_char(pool, user : discord.user): #NOT A CHECK --> in-function version of is_player
+    async with pool.acquire() as conn:
+        result = await conn.fetchrow('SELECT user_id FROM players WHERE user_id = $1', user.id)
+        await pool.release(conn)
+    
+    if result is not None: #Then there is a char for this id
+        return True
 
 async def not_in_guild(ctx):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT guild FROM players WHERE user_id = ?', (ctx.author.id,))
-        guild = await c.fetchone()
-        if guild[0] is None:
-            return True
+    async with ctx.bot.pg_con.acquire() as conn:
+        guild = await conn.fetchval('SELECT guild FROM players WHERE user_id = $1', ctx.author.id)
+        await ctx.bot.pg_con.release(conn)
+    
+    if guild is None:
+        return True
 
-async def target_not_in_guild(user : discord.user): #NOT A CHECK --> in-function version of not_in_guilf
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT guild FROM players WHERE user_id = ?', (user.id,))
-        guild = await c.fetchone()
-        if guild[0] is None:
-            return True
+async def target_not_in_guild(pool, user : discord.user): #NOT A CHECK --> in-function version of not_in_guilf
+    async with pool.acquire() as conn:
+        guild = await conn.fetchval('SELECT guild FROM players WHERE user_id = $1', user.id)
+        await pool.release(conn)
+    
+    if guild is None:
+        return True
 
 async def in_brotherhood(ctx):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT guild FROM players WHERE user_id = ?', (ctx.author.id,))
-        guild = await c.fetchone()
+    async with ctx.bot.pg_con.acquire() as conn:
+        guild = await conn.fetchrow('SELECT guild FROM players WHERE user_id = $1', ctx.author.id)
+    
         if guild[0] is None:
             return
         else:
-            c = await conn.execute('SELECT guild_type FROM guilds WHERE guild_id = ?', (guild[0],))
-            guild_type = await c.fetchone()
-            if guild_type[0] == 'Brotherhood':
+            guild_type = await conn.fetchval('SELECT guild_type FROM guilds WHERE guild_id = $1', guild[0])
+            if guild_type == 'Brotherhood':
                 return True
 
 async def in_guild(ctx):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT guild FROM players WHERE user_id = ?', (ctx.author.id,))
-        guild = await c.fetchone()
+    async with ctx.bot.pg_con.acquire() as conn:
+        guild = await conn.fetchrow('SELECT guild FROM players WHERE user_id = $1', ctx.author.id)
+
         if guild is None:
             return
         else:
-            c = await conn.execute('SELECT guild_type FROM guilds WHERE guild_id = ?', (guild[0],))
-            guild_type = await c.fetchone()
+            guild_type = await conn.fetchrow('SELECT guild_type FROM guilds WHERE guild_id = $1', guild[0])
             if guild_type[0] == 'Guild':
                 return True     
 
 async def guild_can_be_created(ctx, name): #NOT A CHECK
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT guild_id FROM guilds WHERE guild_name = ?', (name,))
-        is_taken = await c.fetchone()
+    async with ctx.bot.pg_con.acquire() as conn:
+        is_taken = await conn.fetchrow('SELECT guild_id FROM guilds WHERE guild_name = $1', name)
         if is_taken is not None:
             await ctx.reply('This name is already taken.')
+            await ctx.bot.pg_con.release(conn)
             return
-        c = await conn.execute('SELECT gold FROM players WHERE user_id = ?', (ctx.author.id,))
-        gold = await c.fetchone()
+        gold = await conn.fetchrow('SELECT gold FROM players WHERE user_id = $1', ctx.author.id)
         if gold[0] < 15000:
             await ctx.reply('You don\'t have enough money form a brotherhood.')
+            await ctx.bot.pg_con.release(conn)
             return
+        await ctx.bot.pg_con.release(conn)
         return True #Otherwise we're good to go
 
 async def is_guild_leader(ctx):
-    player_guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
-    if ctx.author.id == player_guild['Leader']:
-        return True
+    async with ctx.bot.pg_con.acquire() as conn:
+        playerrank = await conn.fetchval('SELECT guild_rank FROM players WHERE user_id = $1', ctx.author.id)
+
+        if playerrank == 'Leader':
+            return True
 
 async def is_not_guild_leader(ctx):
-    player_guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
+    player_guild = await AssetCreation.getGuildFromPlayer(ctx.bot.pg_con, ctx.author.id)
     if ctx.author.id != player_guild['Leader']:
         return True
 
 async def is_guild_officer(ctx):
-    async with aiosqlite.connect(PATH) as conn:
-        c = await conn.execute('SELECT guild_rank FROM players WHERE user_id = ?', (ctx.author.id,))
-        rank = await c.fetchone()
-        if rank[0] == 'Officer' or rank[0]:
-            return True
-        elif is_guild_leader(ctx):
-            return True
+    async with ctx.bot.pg_con.acquire() as conn:
+        rank = await conn.fetchrow('SELECT guild_rank FROM players WHERE user_id = $1', ctx.author.id)
+        await ctx.bot.pg_con.release(conn)
+    
+    if rank[0] == 'Officer' or rank[0]:
+        return True
+    elif is_guild_leader(ctx):
+        return True
 
 async def guild_has_vacancy(ctx): 
-    guild = await AssetCreation.getGuildFromPlayer(ctx.author.id)
-    members = await AssetCreation.getGuildMemberCount(guild['ID'])
-    capacity = await AssetCreation.getGuildCapacity(guild['ID'])
+    guild = await AssetCreation.getGuildFromPlayer(ctx.bot.pg_con, ctx.author.id)
+    members = await AssetCreation.getGuildMemberCount(ctx.bot.pg_con, guild['ID'])
+    capacity = await AssetCreation.getGuildCapacity(ctx.bot.pg_con, guild['ID'])
     if members < capacity:
         return True
 
-async def target_guild_has_vacancy(guild_id : int): #NOT A CHECK. ALT VERSION OF guild_has_vacancy
-    guild = await AssetCreation.getGuildByID(guild_id)
-    members = await AssetCreation.getGuildMemberCount(guild['ID'])
-    capacity = await AssetCreation.getGuildCapacity(guild['ID'])
+async def target_guild_has_vacancy(pool, guild_id : int): #NOT A CHECK. ALT VERSION OF guild_has_vacancy
+    guild = await AssetCreation.getGuildByID(pool, guild_id)
+    members = await AssetCreation.getGuildMemberCount(pool, guild['ID'])
+    capacity = await AssetCreation.getGuildCapacity(pool, guild['ID'])
     if members < capacity:
         return True
-
