@@ -51,7 +51,14 @@ async def createItem(pool, owner_id, attack, rarity, crit = None, weaponname = N
         await pool.release(conn)
 
     if returnstats:
-        return crit, weaponname, weapontype
+        item_info = {
+            'Attack' : attack,
+            'Rarity' : rarity,
+            'Crit' : crit,
+            'Name' : weaponname,
+            'Type' : weapontype
+        }
+        return item_info
 
 async def getAllItemsFromPlayer(pool, user_id : int):
     async with pool.acquire() as conn:
