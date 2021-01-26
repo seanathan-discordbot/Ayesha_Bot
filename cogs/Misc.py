@@ -4,6 +4,8 @@ A bunch of Misclaneous commands for testing purposes
 import discord
 from discord.ext import commands
 
+from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
+
 from Utilities import Checks, AssetCreation, PageSourceMaker
 
 import time
@@ -12,17 +14,32 @@ class Misc(commands.Cog):
     def __init__(self,client):
         self.client=client
 
-    @commands.command(description='Greet Ayesha!')
-    async def hello(self,ctx):
-        await ctx.message.channel.send('Hello!')
+    #EVENTS
+    @commands.Cog.listener() # needed to create event in cog
+    async def on_ready(self): # YOU NEED SELF IN COGS
+        print('Misc is ready.')
 
-    @commands.command(description='Lean.')
-    async def sean(self,ctx):
-        await ctx.message.channel.send('Sean is short for Seanathan')
+    #COMMANDS
+    @commands.command(description='Invite Ayesha to your server!')
+    async def invite(self, ctx):
+        embed = discord.Embed(title='Click me to invite Ayesha to your server!',
+            url = 'https://discord.com/api/oauth2/authorize?client_id=767234703161294858&permissions=70347841&scope=bot',
+            color = 0xBEDCF6)
+        # embed.set_image()
 
-    @commands.command(brief='<statement>', description='Ayesha will echo your statement.')
-    async def echo(self,ctx, *, returnStatement):
-        await ctx.send(returnStatement)
+        await ctx.reply(embed=embed)
+
+    # @commands.command(description='Greet Ayesha!')
+    # async def hello(self,ctx):
+    #     await ctx.message.channel.send('Hello!')
+
+    # @commands.command(description='Lean.')
+    # async def sean(self,ctx):
+    #     await ctx.message.channel.send('Sean is short for Seanathan')
+
+    # @commands.command(brief='<statement>', description='Ayesha will echo your statement.')
+    # async def echo(self,ctx, *, returnStatement):
+    #     await ctx.send(returnStatement)
         
     @commands.command(description='Link to a place to report bugs in AyeshaBot.')
     async def report(self,ctx):
@@ -73,6 +90,12 @@ class Misc(commands.Cog):
 
         await ctx.reply(embed=embed)
 
+    @commands.command(description='Get 2 rubidics daily!')
+    @commands.check(Checks.is_player)
+    @cooldown(1, 86400, BucketType.user)
+    async def daily(self, ctx):
+        await AssetCreation.giveRubidics(self.client.pg_con, 2, ctx.author.id)
+        await ctx.reply('You received 2 rubidics!')
 
 def setup(client):
     client.add_cog(Misc(client))
