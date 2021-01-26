@@ -61,24 +61,40 @@ class Gacha(commands.Cog):
         else: 
             winner=random.randint(1,101)
 
-            #Otherwise select a random acolyte
+            #Determine if reward will be a weapon
+            reward = random.choices(['weapon', 'acolyte'], [75, 25])
+
+            #Select a random weapon or acolyte
             if winner in five_star: #If its a five star reset the pity
-                name=random.choice(star_data[5])
+                if reward[0] == 'weapon':
+                    item_info = await AssetCreation.createItem(self.client.pg_con, ctx.author.id, random.randint(100, 150), 'Legendary', returnstats=True)
+                else:
+                    name=random.choice(star_data[5])
                 pity = 0
-
             else: #Add one to the pitycounter
-
                 if winner in two_star:
-                    name=random.choice(star_data[2])
+                    if reward[0] == 'weapon':
+                        item_info = await AssetCreation.createItem(self.client.pg_con, ctx.author.id, random.randint(30,60), 'Uncommon', returnstats=True)
+                    else:
+                        name=random.choice(star_data[2])
 
                 elif winner in three_star:
-                    name=random.choice(star_data[3])
+                    if reward[0] == 'weapon':
+                        item_info = await AssetCreation.createItem(self.client.pg_con, ctx.author.id, random.randint(45,90), 'Rare', returnstats=True)
+                    else:
+                        name=random.choice(star_data[3])
 
                 elif winner in four_star:
-                    name=random.choice(star_data[4])
+                    if reward[0] == 'weapon':
+                        item_info = await AssetCreation.createItem(self.client.pg_con, ctx.author.id, random.randint(75,120), 'Epic', returnstats=True)
+                    else:
+                        name=random.choice(star_data[4])
 
                 elif winner in one_star:
-                    name=random.choice(star_data[1])
+                    if reward[0] == 'weapon': #Minimum 2 star weapons from gacha
+                        item_info = await AssetCreation.createItem(self.client.pg_con, ctx.author.id, random.randint(30,60), 'Uncommon', returnstats=True)
+                    else:
+                        name=random.choice(star_data[1])
 
                 pity = info['pitycounter'] + 1
 
@@ -88,24 +104,32 @@ class Gacha(commands.Cog):
         await AssetCreation.setRubidics(self.client.pg_con, ctx.author.id, rubidics)
 
         #Add acolyte to inventory or add as a duplicate
-        is_duplicate = await AssetCreation.checkDuplicate(self.client.pg_con, ctx.author.id, name)
+        if reward[0] == 'acolyte':
+            is_duplicate = await AssetCreation.checkDuplicate(self.client.pg_con, ctx.author.id, name)
 
-        if is_duplicate is not None: #then its a dupe - add 1 to duplicate
-            await AssetCreation.addAcolyteDuplicate(self.client.pg_con, is_duplicate['instance_id'])
-        else: #Create a new one and add it to tavern
-            await AssetCreation.createAcolyte(self.client.pg_con, ctx.author.id, name)
+            if is_duplicate is not None: #then its a dupe - add 1 to duplicate
+                await AssetCreation.addAcolyteDuplicate(self.client.pg_con, is_duplicate['instance_id'])
+            else: #Create a new one and add it to tavern
+                await AssetCreation.createAcolyte(self.client.pg_con, ctx.author.id, name)
 
         #Send embed
-        embed = discord.Embed(title=f"{name} ({acolyte_list[name]['Rarity']}⭐) has entered the tavern!", color=0xBEDCF6)
-        embed.set_thumbnail(url='https://i.imgur.com/doAL3RB.jpg')
-        embed.add_field(name='Attack', value=f"{acolyte_list[name]['Attack']} + {acolyte_list[name]['Scale']}/lvl")
-        embed.add_field(name='Crit', value=f"{acolyte_list[name]['Crit']}")
-        embed.add_field(name='HP', value=f"{acolyte_list[name]['HP']}")
-        if acolyte_list[name]['Effect'] is None:
-            embed.add_field(name='Effect', value=f" No effect.\n{name} uses {acolyte_list[name]['Mat']} to level up.")
+        if reward[0] == 'acolyte':
+            embed = discord.Embed(title=f"{name} ({acolyte_list[name]['Rarity']}⭐) has entered the tavern!", color=0xBEDCF6)
+            # embed.set_thumbnail(url='https://i.imgur.com/doAL3RB.jpg')
+            embed.add_field(name='Attack', value=f"{acolyte_list[name]['Attack']} + {acolyte_list[name]['Scale']}/lvl")
+            embed.add_field(name='Crit', value=f"{acolyte_list[name]['Crit']}")
+            embed.add_field(name='HP', value=f"{acolyte_list[name]['HP']}")
+            if acolyte_list[name]['Effect'] is None:
+                embed.add_field(name='Effect', value=f" No effect.\n{name} uses {acolyte_list[name]['Mat']} to level up.")
+            else:
+                embed.add_field(name='Effect', value=f"{acolyte_list[name]['Effect']}\n{name} uses `{acolyte_list[name]['Mat']}` to level up.", inline=False)
+            embed.set_footer(text=f"You have {rubidics} rubidics. You will receive a 5-star in {80-pity} summons.")
         else:
-            embed.add_field(name='Effect', value=f"{acolyte_list[name]['Effect']}\n{name} uses `{acolyte_list[name]['Mat']}` to level up.", inline=False)
-        embed.set_footer(text=f"You have {rubidics} rubidics. You will receive a 5-star in {80-pity} summons.")
+            embed = discord.Embed(title=f"You received {item_info['Name']} ({item_info['Rarity']})!", color=0xBEDCF6)
+            embed.add_field(name='Type', value=f"{item_info['Type']}")
+            embed.add_field(name='Attack', value=f"{item_info['Attack']}")
+            embed.add_field(name='Crit', value=f"{item_info['Crit']}")
+            embed.set_footer(text=f"You have {rubidics} rubidics. You will receive a 5-star in {80-pity} summons.")
 
         await ctx.reply(embed=embed)
 
