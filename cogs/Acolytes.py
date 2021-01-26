@@ -28,13 +28,13 @@ class Acolytes(commands.Cog):
             if inv[start][3] == 1 or inv[start][3] == 2:
                 acolyte = AssetCreation.getAcolyteByName(inv[start][1])
                 embed.add_field(name = f"({acolyte['Rarity']}\u2B50) {inv[start][1]}: `{inv[start][0]}` [Equipped]",
-                    value = f"**Level:** {inv[start][2]}, **Attack:** {int(acolyte['Attack'] + (acolyte['Scale'] * inv[start][2]))}, **Crit:** {acolyte['Crit']}%\n**Effect:** {acolyte['Effect']}",
+                    value = f"**Level:** {inv[start][2]}, **Attack:** {int(acolyte['Attack'] + (acolyte['Scale'] * inv[start][2]))}, **Crit:** {acolyte['Crit']}%, **Dupes:** {inv[start][4]}\n**Effect:** {acolyte['Effect']}",
                     inline=False
                 )
             else:
                 acolyte = AssetCreation.getAcolyteByName(inv[start][1])
                 embed.add_field(name = f"({acolyte['Rarity']}\u2B50) {inv[start][1]}: `{inv[start][0]}`",
-                    value = f"**Level:** {inv[start][2]}, **Attack:** {int(acolyte['Attack'] + (acolyte['Scale'] * inv[start][2]))}, **Crit:** {acolyte['Crit']}%\n**Effect:** {acolyte['Effect']}",
+                    value = f"**Level:** {inv[start][2]}, **Attack:** {int(acolyte['Attack'] + (acolyte['Scale'] * inv[start][2]))}, **Crit:** {acolyte['Crit']}%, **Dupes:** {inv[start][4]}\n**Effect:** {acolyte['Effect']}",
                     inline=False
                 )
             iteration += 1

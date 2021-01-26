@@ -188,7 +188,7 @@ class Items(commands.Cog):
                     if item['Rarity'] == WeaponValues[i][0]: 
                         gold = random.randint(WeaponValues[i][1], WeaponValues[i][2])
                         total = total + gold
-                        await AssetCreation.deleteItem(self.client.pg_con, item_id)
+                        await AssetCreation.deleteItem(self.client.pg_con, int(item_id))
                         break 
             except TypeError:
                 errors = errors + f'`{item_id}` '
