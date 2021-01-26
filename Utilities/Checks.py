@@ -118,4 +118,4 @@ async def target_guild_has_vacancy(pool, guild_id : int): #NOT A CHECK. ALT VERS
     members = await AssetCreation.getGuildMemberCount(pool, guild['ID'])
     capacity = await AssetCreation.getGuildCapacity(pool, guild['ID'])
     if members < capacity:
-        return True
+        return True 

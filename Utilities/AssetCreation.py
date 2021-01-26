@@ -26,7 +26,7 @@ async def createCharacter(pool, user_id, name):
     await pool.release(conn)
     await createItem(pool, user_id, 20, 'Common', crit=0, weaponname='Wooden Spear', weapontype='Spear')
 
-async def createItem(pool, owner_id, attack, rarity, crit = None, weaponname = None, weapontype=None):
+async def createItem(pool, owner_id, attack, rarity, crit = None, weaponname = None, weapontype=None, returnstats = False):
     if crit is None:
         if rarity == 'Common':
             crit = random.randint(0,5)
@@ -49,6 +49,9 @@ async def createItem(pool, owner_id, attack, rarity, crit = None, weaponname = N
         await conn.execute("""INSERT INTO items (weapontype, owner_id, attack, crit, weapon_name, rarity)
             VALUES ($1, $2, $3, $4, $5, $6)""", weapontype, owner_id, attack, crit, weaponname, rarity)
         await pool.release(conn)
+
+    if returnstats:
+        return crit, weaponname, weapontype
 
 async def getAllItemsFromPlayer(pool, user_id : int):
     async with pool.acquire() as conn:
@@ -260,9 +263,9 @@ def getAcolyteByName(name : str):
 async def getAcolyteByID(pool, instance : int):
     async with pool.acquire() as conn:
         info = await conn.fetchrow('SELECT acolyte_name, lvl, is_equipped, duplicate FROM Acolytes WHERE instance_id = $1', instance)
-        acolyte = getAcolyteByName(info['name'])
+        acolyte = getAcolyteByName(info['acolyte_name'])
 
-        acolyte['Level'] = info['level']
+        acolyte['Level'] = info['lvl']
         acolyte['ID'] = instance
         acolyte['Equip'] = info['is_equipped']
         acolyte['Dupes'] = info['duplicate']
@@ -291,6 +294,14 @@ async def getAllAcolytesFromPlayer(pool, user_id : int): #Returns tuple of every
         await pool.release(conn)
 
     return inv
+
+async def checkDuplicate(pool, user_id : int, acolyte_name : str):
+    async with pool.acquire() as conn:
+        acolyte = await conn.fetchrow('SELECT instance_id, duplicate FROM acolytes WHERE owner_id = $1 AND acolyte_name = $2', user_id, acolyte_name)
+        if acolyte is None:
+            return None
+        else:
+            return acolyte
 
 async def verifyAcolyteOwnership(pool, instance_id : int, user_id : int):
     async with pool.acquire() as conn:
@@ -321,6 +332,11 @@ async def equipAcolyte(pool, instance_id : int, slot : int, user_id : int):
         else:
             await conn.execute('UPDATE Players SET acolyte2 = $1 WHERE user_id = $2', instance_id, user_id)
         
+        await pool.release(conn)
+
+async def addAcolyteDuplicate(pool, instance_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE acolytes SET duplicate = duplicate + 1 WHERE instance_id = $1', instance_id)
         await pool.release(conn)
 
 async def giveAcolyteXP(pool, amount : int, instance_id : int):
@@ -549,11 +565,6 @@ async def getGold(pool, user_id : int):
         gold = await conn.fetchrow('SELECT gold FROM players WHERE user_id = $1', user_id)
         return gold['gold']
 
-async def giveRubidics(pool, amount : int, user_id : int):
-    async with pool.acquire() as conn:
-        await conn.execute('UPDATE players SET rubidic = rubidic + $1 WHERE user_id = $2', amount, user_id)
-        await pool.release(conn)
-
 async def getClass(pool, user_id : int):
     async with pool.acquire() as conn:
         role = await conn.fetchrow('SELECT occupation FROM players WHERE user_id = $1', user_id)
@@ -672,3 +683,30 @@ async def getTopBosses(pool):
         await pool.release(conn)
     
     return board
+
+async def getRubidics(pool, user_id : int):
+    async with pool.acquire() as conn:
+        info = await conn.fetchrow('SELECT rubidic, pitycounter FROM players WHERE user_id = $1', user_id)
+        await pool.release(conn)
+
+    return info
+
+async def resetPityCounter(pool, user_id : int): #CURRENTLY NOT IN USE
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE players SET pitycounter = 0 WHERE user_id = $1', user_id)
+        await pool.release(conn)
+
+async def setPityCounter(pool, user_id : int, pity : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE players SET pitycounter = $1 WHERE user_id = $2', pity, user_id)
+        await pool.release(conn)
+
+async def setRubidics(pool, user_id, rubidics : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE players SET rubidic = $1 WHERE user_id = $2', rubidics, user_id)
+        await pool.release(conn)
+
+async def giveRubidics(pool, amount : int, user_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE players SET rubidic = rubidic + $1 WHERE user_id = $2', amount, user_id)
+        await pool.release(conn)
