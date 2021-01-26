@@ -115,7 +115,8 @@ class Gacha(commands.Cog):
         #Send embed
         if reward[0] == 'acolyte':
             embed = discord.Embed(title=f"{name} ({acolyte_list[name]['Rarity']}⭐) has entered the tavern!", color=0xBEDCF6)
-            # embed.set_thumbnail(url='https://i.imgur.com/doAL3RB.jpg')
+            if acolyte_list[name]['Image'] is not None:
+                embed.set_thumbnail(url=f"{acolyte_list[name]['Image']}")
             embed.add_field(name='Attack', value=f"{acolyte_list[name]['Attack']} + {acolyte_list[name]['Scale']}/lvl")
             embed.add_field(name='Crit', value=f"{acolyte_list[name]['Crit']}")
             embed.add_field(name='HP', value=f"{acolyte_list[name]['HP']}")

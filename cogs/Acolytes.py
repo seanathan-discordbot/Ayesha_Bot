@@ -155,7 +155,7 @@ class Acolytes(commands.Cog):
         await AssetCreation.giveGold(self.client.pg_con, -250, ctx.author.id)
         await AssetCreation.takeMat(self.client.pg_con, acolyte['Mat'], 50, ctx.author.id)
 
-        await ctx.reply(f"You trained with `{acolyte['Name']}`, consuming `50` {acolyte['Mat']} and `250` gold in the process. As a result, `{acolyte['Name']}` gained 5,000 exp!`")
+        await ctx.reply(f"You trained with `{acolyte['Name']}`, consuming `50` {acolyte['Mat']} and `250` gold in the process. As a result, `{acolyte['Name']}` gained 5,000 exp!")
         await AssetCreation.checkAcolyteLevel(self.client.pg_con, ctx, instance_id)
 
 def setup(client):
