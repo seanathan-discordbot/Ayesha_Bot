@@ -14,6 +14,7 @@ import ayesha
 listCogs = """**Acolytes:** Commands involving your party members
 **Associations:** Join a brotherhood or guild for bonuses!
 **Classes:** Customize your character!
+**Gacha:** Roll for weapons and acolytes!
 **Items:** View your inventory and other commands involving items
 **Misc:** Other Ayesha-related commands
 **Music:** Ayesha's own music player! (it sucks)

@@ -141,8 +141,8 @@ bounty_levels = {
         'Name' : 'Draconicus Rex', #SPECIAL: HEALS 100 HP EVERY TURN
         'LowATK' : 225,
         'HighATK' : 250,
-        'LowHP' : 5000,
-        'HighHP' : 5000,
+        'LowHP' : 2500,
+        'HighHP' : 2500,
         'Effect' : 'The Draconicus Rex heals 100 HP every turn.',
         'Image' : None
     },
@@ -292,7 +292,7 @@ class PvE(commands.Cog):
             await AssetCreation.giveAcolyteXP(self.client.pg_con, acolyte_xp, acolyte1)
         if acolyte2 is not None:
             await AssetCreation.giveAcolyteXP(self.client.pg_con, acolyte_xp, acolyte2)
-        await AssetCreation.giveBountyRewards(self.client.pg_con, player, gold, xp, victory=True)
+        await AssetCreation.giveBountyRewards(self.client.pg_con, player, gold, xp, victory=False)
 
         #Return an embed to send
         embed = discord.Embed(title=f"The {bounty_levels[level]['Name']} has shown its superiority", color=0xBEDCF6)
