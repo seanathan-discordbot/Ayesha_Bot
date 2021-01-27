@@ -71,7 +71,7 @@ async def changeprefix(ctx, prefix):
 # ----- ERROR HANDLER -----
 @client.event
 async def on_command_error(ctx, error):
-    if isinstance(error, commands.MissingRequiredArgument):
+    if isinstance(error, commands.MissingRequiredArgument) or isinstance(error, commands.BadArgument):
         embed = discord.Embed(title=f'You forgot an argument', color=0xBEDCF6)
         if ctx.command.brief and ctx.command.aliases:
             embed.add_field(name=f'{ctx.command.name} `{ctx.command.brief}`', value=f'Aliases: `{ctx.command.aliases}`\n{ctx.command.description}', inline=False)
@@ -84,20 +84,23 @@ async def on_command_error(ctx, error):
         await ctx.reply(embed=embed)
     if isinstance(error, commands.CheckFailure):
         await ctx.reply('You are ineligible to use this command.')
-    if isinstance(error, CommandOnCooldown):
+    if isinstance(error, commands.MaxConcurrencyReached):
+        await ctx.send('Max concurrency reached. Please wait until this command ends.')
+    if isinstance(error, commands.MemberNotFound):
+        await ctx.reply('Could not find a player with that name.')
+    if isinstance(error, CommandOnCooldown): #Please stop printing this
         if error.retry_after >= 3600:
             await ctx.send(f'You are on cooldown for `{time.strftime("%H:%M:%S", time.gmtime(error.retry_after))}`.')
         elif error.retry_after >= 60:
             await ctx.send(f'You are on cooldown for `{time.strftime("%M:%S", time.gmtime(error.retry_after))}`.')
         else:
             await ctx.send(f'You are on cooldown for another `{error.retry_after:.2f}` seconds.')
-    if isinstance(error, commands.MaxConcurrencyReached):
-        await ctx.send('Max concurrency reached. Please wait until this command ends.')
-    if isinstance(error, commands.MemberNotFound):
-        await ctx.reply('Could not find a player with that name.')
-    
-    print('Ignoring exception in command {}:'.format(ctx.command))
-    traceback.print_exception(type(error), error, error.__traceback__)
+    if isinstance(error, commands.BotMissingPermissions):
+        await ctx.reply('sssss')
+
+    if not isinstance(error, CommandOnCooldown) and not isinstance(error, commands.CheckFailure):
+        print('Ignoring exception in command {}:'.format(ctx.command))
+        traceback.print_exception(type(error), error, error.__traceback__)
 
 # ----- OTHER COMMANDS -----
 @client.command(brief=None, description='Ping to see if bot is working')
@@ -133,11 +136,13 @@ client.loop.run_until_complete(create_db_pool())
 
 # Runs at bot startup to load all cogs
 for filename in os.listdir(r'F:\OneDrive\Ayesha\cogs'):
+# for filename in os.listdir(r'C:\Users\sebas\OneDrive\Ayesha\cogs'):
     if filename.endswith('.py'): # see if the file is a python file
         client.load_extension(f'cogs.{filename[:-3]}')
 
 #Also delete the music files downloaded
 for filename in os.listdir(r'F:\OneDrive\NguyenBot\Music Files'):
+# for filename in os.listdir(r'C:\Users\sebas\OneDrive\Ayesha\Music Files'):
     os.remove(f'F:/OneDrive/Ayesha/Music Files/{filename}')
 
 client.run(Links.Token)
