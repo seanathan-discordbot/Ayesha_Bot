@@ -1,0 +1,49 @@
+-- PAGE 1 TUTORIAL -- [2,4]
+
+Welcome to Ayesha! If you haven't already use the `create` command to create a character, or `create <name>` to customize your name.
+Ayesha is a simple RPG/Gacha discord bot. To learn more about a specific module, you can use the `help` command to list its commands, or do `tutorial Acolytes/Items/PvE/Travel` for a walkthrough.
+Hit the right arrow below for a quick introduction to gameplay!
+
+-- PAGE 2 TUTORIAL -- [7,12]
+First, use the `inventory` command to see what weapons you have. Next to each weapon's name is its ID. Do `equip <id>` to equip a specific weapon.
+The main way to increase your character's strength is through bounties. Try `pve 1` to fight your first enemy!
+When fighting, you have 5 options: attack, block, parry, heal, and bide. Attacking maximizes your damage output, blocking minimizes damage taken, and parrying is a mix of both. The bide action increases your attack by 10%. Try each of them!
+If you want to see the full list of enemies, just do `pve`.
+
+-- PAGE 3 TUTORIAL -- [13,14]
+From bounties you will level up, but what about gaining better weapons and party members? Use the `roll` command to gain a weapon or an acolyte, a party member that buffs your stats. Each roll costs 1 rubidic, which can be obtained from the `daily` command or by levelling up.
+That's the basics of Ayesha! Thank you for playing!
+
+-- ACOLYTES TUTORIAL -- [17,19]
+Acolytes are your friends, boosting your ATK, Crit, and HP. Some also give special effects both in and out of combat. You can have up to two (2) acolytes in your party.
+The primary way of getting acolytes is through the `Gacha` module. There is a 25% chance of getting an acolyte from any roll. However, if roll 79 times without getting a 5-star weapon or acolyte, your 80th will be a 5-star acolyte.
+Hit the right arrow below to learn how to equip and use acolytes!
+
+-- ACOLYTES TUTORIAL (2) -- [22,23]
+All your acolytes are stored in the `tavern`. Like weapons, they have an ID number. To add them to your party, use the `recruit <id> <slot>` command, where slot is 1 or 2. Once equipped, they idly affect your stats. Look at your `profile`!
+Some acolytes have powerful combat effects. Aulus, for example, boosts your attack when you crit! Others boost other aspects of gameplay. Sean gives you more experience from bounties. You will need acolytes with both such effects to make your character as strong as possible.
+In the next page, we will go over training acolytes.
+
+-- ACOLYTES TUTORIAL (3) -- [27,30]
+Like your character, acolytes get stronger as you gain xp. However, you can boost them faster with the `train` command.
+Training costs both 250 gold and 50 of a unique resource obtained through the `hunt`, `forage`, or `mine` commands. You will have to `travel` to to the appropriate region to use these commands and farm the needed resource.
+In addition, getting duplicates of an acolyte will slightly boost their stats, up to a maximum of 5 duplicates. 
+To learn more about each acolyte, use the `acolyte <name>` command.
+
+-- ITEMS TUTORIAL -- [33,36]
+You can have one weapon equipped at any time. Weapons give bonuses to your attack and crit.
+View your owned weapons with the `inventory` command! Each weapon has an ID number, listed next to its name. To equip an item, use the `equip <id>` command. To acquire more weapons, `roll` or defeat enemies in `PvE`. 
+You can sell an item for a small amount of gold with the `sell` command. You can sell multiple at once with the `sellmultiple` command. Merchants and guild members receive increased amounts from selling.
+`Upgrade` your weapon in cities and towns at the cost of gold and iron to increase its attack.
+
+-- PVE TUTORIAL -- [39,43]
+PvE has 15 levels. To fight a specific boss, do `pve <boss number>`.
+PvE, also known as bounties, utilize all your stats and effects from your character, weapon, acolytes, and brotherhood.
+Likewise, some bosses have increased attack or HP, or a special effect that can buff or nerf your fighting ability. To see more info on each boss, do `pve` without any arguments.
+When you defeat a boss, you will gain lots of gold and xp, and possibly a weapon. Losing heavily reduces the xp you gain.
+Have fun defeating every boss!
+
+-- TRAVEL TUTORIAL -- [46,48]
+You can check your location at anytime using the `Profile` command. Depending on your location, you can use the `hunt`, `forage`, `mine`, `upgrade`, or `fish` commands to gain additional gold, resources, or upgrade your weapon!
+You will need to travel for a set period of time before arriving at a new location. Do `travel` to see the list of places you can go and what commands and resources are available there. Then, you can do `travel <destination>` to set off towards that place.
+Once you have reached your destination, use the `arrive` command to gain some rewards.
