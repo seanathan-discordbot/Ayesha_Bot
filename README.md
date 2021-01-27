@@ -7,3 +7,4 @@
 * discord.ext.menus
 * dpymenus
 * asyncpg
+* coolname
