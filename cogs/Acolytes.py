@@ -6,6 +6,7 @@ from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 from Utilities import Checks, AssetCreation, PageSourceMaker
 
+import json
 import random
 import math
 
@@ -153,10 +154,33 @@ class Acolytes(commands.Cog):
         
         await AssetCreation.giveAcolyteXP(self.client.pg_con, 5000, instance_id)
         await AssetCreation.giveGold(self.client.pg_con, -250, ctx.author.id)
-        await AssetCreation.takeMat(self.client.pg_con, acolyte['Mat'], 50, ctx.author.id)
+        await AssetCreation.giveMat(self.client.pg_con, acolyte['Mat'], -50, ctx.author.id)
 
         await ctx.reply(f"You trained with `{acolyte['Name']}`, consuming `50` {acolyte['Mat']} and `250` gold in the process. As a result, `{acolyte['Name']}` gained 5,000 exp!")
         await AssetCreation.checkAcolyteLevel(self.client.pg_con, ctx, instance_id)
+
+    @commands.command(brief='<name>', description='Learn more about each of your acolytes!')
+    async def acolyte(self, ctx, *, name):
+        with open(r"F:\OneDrive\Ayesha\Assets\Acolyte_List.json", "r") as f:
+            info = json.load(f)
+
+        try:
+            if name != "PrxRdr":
+                name = name.title()
+            acolyte = info[name]
+        except KeyError:
+            await ctx.reply('No acolyte goes by that name.')
+            return
+
+        embed = discord.Embed(title=f"{acolyte['Name']}", color=0xBEDCF6)
+        if acolyte['Image'] is not None:
+            embed.set_thumbnail(url=acolyte['Image']) 
+        embed.add_field(name="Backstory", value=f"{acolyte['Story']}")
+        embed.add_field(name='Effect', value=f"{acolyte['Effect']}", inline=False)
+        embed.add_field(name="Stats", value=f"Attack: {acolyte['Attack']} + {acolyte['Scale']}/lvl\nCrit: {acolyte['Crit']}\nHP: {acolyte['HP']}")
+        embed.add_field(name="Details", value=f"Rarity: {acolyte['Rarity']}\u2B50\nUpgrade Material: {acolyte['Mat'].title()}")
+
+        await ctx.reply(embed=embed)
 
 def setup(client):
     client.add_cog(Acolytes(client))

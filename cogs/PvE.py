@@ -173,25 +173,12 @@ class PvE(commands.Cog):
 
     def __init__(self, client):
         self.client = client
-        self.players = {}
+        # self.players = {}
 
     #EVENTS
     @commands.Cog.listener() # needed to create event in cog
     async def on_ready(self): # YOU NEED SELF IN COGS
         print('PvE is ready.')
-
-    def getPlayer(self, ctx): #This command ensures someone doesn't play multiple PvEs at once
-        try:
-            return self.players[ctx.author.id]
-        except KeyError:
-            self.players[ctx.author.id] = 1
-            return
-
-    def deletePlayer(self, ctx):
-        try:
-            del self.players[ctx.author.id]
-        except KeyError:
-            pass
 
     def getBossAction(self, level):
         action = {'Action' : None, 'Damage' : None, 'DamageTaken' : 1}
@@ -344,6 +331,7 @@ class PvE(commands.Cog):
     #COMMANDS
     @commands.command(aliases=['pve', 'fight', 'boss'], brief='<level>', description='Fight an enemy for rewards!')
     @commands.check(Checks.is_player)
+    @commands.max_concurrency(1, per=BucketType.user, wait=False)
     async def bounty(self, ctx, level : int = 0):
         if level == 0:
             levels = self.showBounties()
@@ -355,11 +343,6 @@ class PvE(commands.Cog):
         if level < 1 or level > 15:
             await ctx.reply('Please supply a valid level.')
             ctx.command.reset_cooldown(ctx)
-            return
-        #Make sure they're not already playing a game
-        is_playing = self.getPlayer(ctx)
-        if is_playing is not None:
-            await ctx.reply('You\'re already in a game.')
             return
         #Get the player's info and load stats
         attack, crit, hp, playerjob, acolyte1, acolyte2 = await AssetCreation.getAttack(self.client.pg_con, ctx.author.id, returnothers=True)
@@ -547,13 +530,19 @@ class PvE(commands.Cog):
             try:
                 reaction, user = await self.client.wait_for('reaction_add', check=check, timeout=30.0)
                 await message.remove_reaction(reaction, user)
+                await asyncio.sleep(0.5)
 
             except asyncio.TimeoutError:
                 readReactions = not readReactions
                 await ctx.send('Timed out.')
                 await message.delete()
 
-        self.deletePlayer(ctx) # Remove their playing entry
+    @bounty.error
+    async def on_bounty_error(self, ctx, error):
+        if isinstance(error, commands.MaxConcurrencyReached):
+            pass
+        else:
+            await ctx.reply('The bot is missing permissions here! Make sure the bot can send, edit, and manage messages in this channel.')
 
 
 def setup(client):
