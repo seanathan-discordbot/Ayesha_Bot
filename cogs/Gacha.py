@@ -55,6 +55,7 @@ class Gacha(commands.Cog):
 
         #Check to see if player has reached pity
         if info['pitycounter'] >= 80:
+            reward = ['acolyte']
             name=random.choice(star_data[5])
             pity = 0
 

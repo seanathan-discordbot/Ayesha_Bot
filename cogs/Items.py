@@ -205,6 +205,18 @@ class Items(commands.Cog):
         else:
             await ctx.reply(f'You received {total} gold for selling these items. Did not sell items {errors}.')
 
+    @commands.command(brief='<rarity>', description='Sell all the items in your inventory of the stated rarity.')
+    @commands.check(Checks.is_player)
+    async def sellall(self, ctx, rarity : str = 'Common'):
+        #Ensure that a valid rarity is input
+        rarities = ('Common', 'Uncommon', 'Rare', 'Epic', 'Legendary')
+        rarity = rarity.title()
+        if rarity not in rarities:
+            await ctx.reply('That is not a valid rarity.')
+            return
+        items, gold = await AssetCreation.sellAllItems(self.client.pg_con, ctx.author.id, rarity)
+        await ctx.reply(f'You sold all {items} of your {rarity.lower()} items for {gold} gold.')
+
     @commands.command(brief='<player> <item_id : int> <price : int>', description='Sell an item to someone')
     @commands.check(Checks.is_player)
     async def offer(self, ctx, player : commands.MemberConverter, item_id : int, price : int):

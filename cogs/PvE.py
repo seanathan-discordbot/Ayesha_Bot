@@ -539,9 +539,12 @@ class PvE(commands.Cog):
 
     @bounty.error
     async def on_bounty_error(self, ctx, error):
+        #If you guys know how to make this work contact me thanks
         if isinstance(error, commands.MaxConcurrencyReached):
             pass
-        else:
+        elif isinstance(error, commands.CommandOnCooldown):
+            pass
+        else: #When the error is Missing Perms but that wont work for some reason
             await ctx.reply('The bot is missing permissions here! Make sure the bot can send, edit, and manage messages in this channel.')
 
 
