@@ -1,10 +1,12 @@
 import discord
 import asyncio
 
-from discord.ext import commands, menus
+from discord.ext import commands
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 from Utilities import Checks, AssetCreation, PageSourceMaker
+
+from dpymenus import Page, PaginatedMenu
 
 import json
 import random
@@ -21,21 +23,22 @@ class Acolytes(commands.Cog):
         print('Acolytes is ready.')
 
     #INVISIBLE
-    def write(self, start, inv, player):
-        embed = discord.Embed(title=f'{player}\'s Tavern', color=0xBEDCF6)
+    async def write(self, start, inv, player):
+        embed = Page(title=f'{player}\'s Tavern', color=0xBEDCF6)
 
         iteration = 0
         while start < len(inv) and iteration < 5: #Loop til 5 entries or none left
+            attack, crit, hp = await AssetCreation.getAcolyteAttack(self.client.pg_con, inv[start][0])
             if inv[start][3] == 1 or inv[start][3] == 2:
                 acolyte = AssetCreation.getAcolyteByName(inv[start][1])
                 embed.add_field(name = f"({acolyte['Rarity']}\u2B50) {inv[start][1]}: `{inv[start][0]}` [Equipped]",
-                    value = f"**Level:** {inv[start][2]}, **Attack:** {int(acolyte['Attack'] + (acolyte['Scale'] * inv[start][2]))}, **Crit:** {acolyte['Crit']}%, **Dupes:** {inv[start][4]}\n**Effect:** {acolyte['Effect']}",
+                    value = f"**Level:** {inv[start][2]}, **Attack:** {attack}, **Crit:** {crit}%, **Dupes:** {inv[start][4]}\n**Effect:** {acolyte['Effect']}",
                     inline=False
                 )
             else:
                 acolyte = AssetCreation.getAcolyteByName(inv[start][1])
                 embed.add_field(name = f"({acolyte['Rarity']}\u2B50) {inv[start][1]}: `{inv[start][0]}`",
-                    value = f"**Level:** {inv[start][2]}, **Attack:** {int(acolyte['Attack'] + (acolyte['Scale'] * inv[start][2]))}, **Crit:** {acolyte['Crit']}%, **Dupes:** {inv[start][4]}\n**Effect:** {acolyte['Effect']}",
+                    value = f"**Level:** {inv[start][2]}, **Attack:** {attack}, **Crit:** {crit}%, **Dupes:** {inv[start][4]}\n**Effect:** {acolyte['Effect']}",
                     inline=False
                 )
             iteration += 1
@@ -50,14 +53,19 @@ class Acolytes(commands.Cog):
 
         invpages = []
         for i in range(0, len(inv), 5): #list 5 entries at a time
-            invpages.append(self.write(i, inv, ctx.author.display_name)) # Write will create the embeds
+            invpages.append(await self.write(i, inv, ctx.author.display_name)) # Write will create the embeds
         if len(invpages) == 0:
             await ctx.reply('Your tavern is empty!')
         else:
-            tavern = menus.MenuPages(source=PageSourceMaker.PageMaker(invpages), clear_reactions_after=True, delete_message_after=True)
-            await tavern.start(ctx)
+            # tavern = menus.MenuPages(source=PageSourceMaker.PageMaker(invpages), clear_reactions_after=True, delete_message_after=True)
+            # await tavern.start(ctx)
+            menu = PaginatedMenu(ctx)
+            menu.add_pages(invpages)
+            menu.set_timeout(30)
+            menu.show_command_message()
+            await menu.open()
 
-    @commands.command(brief='<acolyte_id : int> <slot : int>', description='Add an acolyte to your party')
+    @commands.command(aliases=['hire'], brief='<acolyte_id : int> <slot : int>', description='Add an acolyte to your party')
     @commands.check(Checks.is_player)
     async def recruit(self, ctx, instance_id : int, slot : int):
         if slot < 1 or slot > 2:
@@ -123,10 +131,10 @@ class Acolytes(commands.Cog):
 
         #Unequip the acolyte
         if slot == 1:
-            await AssetCreation.unequipAcolyte(acolyte1, 1, ctx.author.id)
+            await AssetCreation.unequipAcolyte(self.client.pg_con, acolyte1, 1, ctx.author.id)
             removed = await AssetCreation.getAcolyteByID(self.client.pg_con, acolyte1)
         if slot == 2:
-            await AssetCreation.unequipAcolyte(acolyte2, 2, ctx.author.id)
+            await AssetCreation.unequipAcolyte(self.client.pg_con, acolyte2, 2, ctx.author.id)
             removed = await AssetCreation.getAcolyteByID(self.client.pg_con, acolyte2)
 
         await ctx.reply(f"Dismissed acolyte `{removed['ID']}: {removed['Name']}`")

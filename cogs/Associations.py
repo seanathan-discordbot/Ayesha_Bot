@@ -384,6 +384,28 @@ class Associations(commands.Cog):
         await ctx.reply(f'You invested `{initial}` gold in {project} in {location} and earned a return of `{capital}` gold.')
 
     # THESE COMMANDS ARE COMMON TO BOTH GUILDS AND BROTHERHOODS, AND THUS ARE NOT GROUPED WITH EITHER
+    @commands.command(aliases=['guildinfo', 'bhinfo'], brief='<guild ID>', description='See info on another guild based on their ID')
+    async def info(self, ctx, guild_id : int):
+        try:
+            info = await AssetCreation.getGuildByID(self.client.pg_con, guild_id)
+        except TypeError:
+            await ctx.reply('No association has that ID.')
+            return
+
+        leader = await self.client.fetch_user(info['Leader'])
+        level, progress = await AssetCreation.getGuildLevel(self.client.pg_con, info['ID'], returnline=True)
+        members = await AssetCreation.getGuildMemberCount(self.client.pg_con, info['ID'])
+        capacity = await AssetCreation.getGuildCapacity(self.client.pg_con, info['ID'])
+
+        embed = discord.Embed(title=f"{info['Name']}", color=0xBEDCF6)
+        embed.set_thumbnail(url=f"{info['Icon']}")
+        embed.add_field(name='Leader', value=f"{leader.mention}")
+        embed.add_field(name='Members', value=f"{members}/{capacity}")
+        embed.add_field(name='Level', value=f"{level}")
+        embed.add_field(name='EXP Progress', value=f'{progress}')
+        embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.", value=f"{info['Desc']}", inline=False)
+        embed.set_footer(text=f"{info['Type']} ID: {info['ID']}")
+        await ctx.reply(embed=embed)
 
     @commands.command(aliases=['desc'], brief='<desc>', description='Change your brotherhood\'s description. [GUILD OFFICER+ ONLY]')
     @commands.check(Checks.is_guild_officer)
