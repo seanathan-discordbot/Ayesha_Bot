@@ -16,6 +16,14 @@ ACOLYTE_PATH = Links.acolyte_list
 
 weapontypes = ['Spear', 'Sword', 'Dagger', 'Bow', 'Trebuchet', 'Gauntlets', 'Staff', 'Greatsword', 'Axe', 'Sling', 'Javelin', 'Falx', 'Mace']
 
+Weaponvalues = {
+    'Common' : (1, 20),
+    'Uncommon' : (15, 30),
+    'Rare' : (75, 150),
+    'Epic' : (400, 700),
+    'Legendary' : (2000, 3000)
+}
+
 dashes = []
 for i in range(0,10):
     dashes.append("".join(["▬"]*i))
@@ -156,6 +164,20 @@ async def increaseItemAttack(pool, item_id : int, increase : int):
         await conn.execute('UPDATE items SET attack = attack + $1 WHERE item_id = $2', increase, item_id)
         await pool.release(conn)
 
+async def sellAllItems(pool, user_id : int, rarity : str):
+    async with pool.acquire() as conn:
+        amount = await conn.fetchval('SELECT COUNT(item_id) FROM items WHERE owner_id = $1 AND rarity = $2 AND is_equipped = FALSE', user_id, rarity)
+        
+        if amount == 0:
+            await pool.release(conn)
+            return 0, 0
+        
+        gold = random.randint(Weaponvalues[rarity][0], Weaponvalues[rarity][1]) * amount
+        await conn.execute('UPDATE players SET gold = gold + $1 WHERE user_id = $2', gold, user_id)
+        await conn.execute('DELETE FROM items WHERE owner_id = $1 AND rarity = $2 AND is_equipped = FALSE', user_id, rarity)
+        await pool.release(conn)
+    return amount, gold
+
 async def createAcolyte(pool, owner_id, acolyte_name):
     async with pool.acquire() as conn:
         await conn.execute('INSERT INTO acolytes (owner_id, acolyte_name) VALUES ($1, $2)', owner_id, acolyte_name)
@@ -228,6 +250,15 @@ async def getLevel(pool, user_id : int):
         level = await conn.fetchrow('SELECT lvl FROM Players WHERE user_id = $1', user_id)
         return level['lvl']
 
+async def getAcolyteAttack(pool, instance_id : int):
+    info = await getAcolyteByID(pool, instance_id)
+    if info['Dupes'] > 5:
+        info['Dupes'] = 5
+    attack = int(info['Attack'] + (info['Scale'] * info['Level']) + (info['Dupes'] * 5))
+    crit = int(info['Crit'] + info['Dupes'])
+    hp = int(info['HP'] + (info['Dupes'] * 20))
+    return attack, crit, hp
+
 async def getAttack(pool, user_id, returnothers = False):
     charattack, weaponattack, guildattack, acolyteattack, attack, crit, hp = 20, 0, 0, 0, 0, 5, 500
     acolyte1, acolyte2 = None, None
@@ -241,16 +272,16 @@ async def getAttack(pool, user_id, returnothers = False):
             crit += item['crit']
 
         if char['acolyte1'] is not None:
-            acolyte1 = await getAcolyteByID(pool, char['acolyte1'])
-            acolyteattack += acolyte1['Attack'] + (acolyte1['Scale'] * acolyte1['Level'])
-            crit += acolyte1['Crit']
-            hp += acolyte1['HP']
+            a1atk, a1crit, a1hp = await getAcolyteAttack(pool, char['acolyte1'])
+            acolyteattack += a1atk
+            crit += a1crit
+            hp += a1hp
 
         if char['acolyte2'] is not None:
-            acolyte2 = await getAcolyteByID(pool, char['acolyte2'])
-            acolyteattack += acolyte2['Attack'] + (acolyte2['Scale'] * acolyte2['Level'])
-            crit += acolyte2['Crit']
-            hp += acolyte2['HP']
+            a2atk, a2crit, a2hp = await getAcolyteAttack(pool, char['acolyte2'])
+            acolyteattack += a2atk
+            crit += a2crit
+            hp += a2hp
 
         if char['occupation'] == 'Soldier':
             charattack = math.floor(charattack * 1.2) + 10
