@@ -297,17 +297,17 @@ class Travel(commands.Cog):
         result = random.choices(['success', 'critical success', 'failure'], [45,35,20])
         if result[0] == 'success':
             gold = random.randint(20,100)
-            iron = random.randint(20,30)
-            silver = random.randint(0,2)
+            iron = random.randint(40,80)
+            silver = random.randint(10,15)
 
         elif result[0] == 'critical success':
             gold = random.randint(100, 150)
-            iron = random.randint(20,30)
-            silver =  random.randint(10,20)
+            iron = random.randint(80,100)
+            silver =  random.randint(20,30)
 
         else:
             gold = random.randint(10,30)
-            iron = random.randint(10,20)
+            iron = random.randint(25,35)
             silver = 0
 
         await AssetCreation.giveGold(self.client.pg_con, gold, ctx.author.id)
@@ -355,7 +355,7 @@ class Travel(commands.Cog):
             amount = random.randint(5,10)
         elif biome == 'Jungle':
             mat = 'cacao'
-            amount = random.randint(3,7)
+            amount = random.randint(7,12)
 
         role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
         if role == 'Traveler':

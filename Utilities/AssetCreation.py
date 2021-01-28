@@ -8,6 +8,7 @@ import asyncpg
 import json
 import random
 import math
+import coolname
 
 from Utilities import Links
 
@@ -18,6 +19,23 @@ weapontypes = ['Spear', 'Sword', 'Dagger', 'Bow', 'Trebuchet', 'Gauntlets', 'Sta
 dashes = []
 for i in range(0,10):
     dashes.append("".join(["▬"]*i))
+
+def getRandomName():
+    length = random.randint(1,3)
+
+    if length == 1:
+        name = coolname.generate()
+        name = name[2]
+    else:
+        name = coolname.generate_slug(length)
+
+    if len(name) > 20:
+        name = name[0:20] 
+
+    name = name.replace('-', ' ')
+    name = name.title()
+
+    return name
 
 async def createCharacter(pool, user_id, name):
     async with pool.acquire() as conn:
@@ -43,7 +61,7 @@ async def createItem(pool, owner_id, attack, rarity, crit = None, weaponname = N
         weapontype = random.choices(weapontypes)
         weapontype = weapontype[0]
     if weaponname is None:
-        weaponname = 'Unnamed Weapon'
+        weaponname = getRandomName()
 
     async with pool.acquire() as conn:
         await conn.execute("""INSERT INTO items (weapontype, owner_id, attack, crit, weapon_name, rarity)
@@ -51,7 +69,14 @@ async def createItem(pool, owner_id, attack, rarity, crit = None, weaponname = N
         await pool.release(conn)
 
     if returnstats:
-        return crit, weaponname, weapontype
+        item_info = {
+            'Attack' : attack,
+            'Rarity' : rarity,
+            'Crit' : crit,
+            'Name' : weaponname,
+            'Type' : weapontype
+        }
+        return item_info
 
 async def getAllItemsFromPlayer(pool, user_id : int):
     async with pool.acquire() as conn:
@@ -504,7 +529,7 @@ async def giveMat(pool, material : str, amount : int, user_id : int):
 
         await pool.release(conn)
 
-async def takeMat(pool, material : str, amount : int, user_id : int):
+async def takeMat(pool, material : str, amount : int, user_id : int): #DEPRECATED
     async with pool.acquire() as conn:
 
         if material == 'wheat':

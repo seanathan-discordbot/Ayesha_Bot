@@ -98,14 +98,62 @@
     "Bort": {
         "Name" : "Bort",
         "Attack": 5,
-        "Scale": 0.25,
+        "Scale": 0.1,
         "Crit": 1,
         "HP": 50,
         "Rarity": 2,
         "Effect": null,
         "Mat" : "moss",
+        "Story": "Bort is your normal tort. She thinks of herself as 'Tortoise the Great', but there are calls for her bort. Bort likes to spend her time sitting idly in dark rooms, telling others that she's zooming. We all know you're lying, Bort.",
+        "Image": "https://i.imgur.com/C8inYxx.png"
+    },
+    "Dog": {
+        "Name" : "Dog",
+        "Attack": 8,
+        "Scale": 0,
+        "Crit": 0,
+        "HP": 100,
+        "Rarity": 2,
+        "Effect": null,
+        "Mat" : "bone",
         "Story": null,
         "Image": null
+    }, 
+    "Cat": {
+        "Name" : "Cat",
+        "Attack": 2,
+        "Scale": 0.25,
+        "Crit": 2,
+        "HP": 100,
+        "Rarity": 2,
+        "Effect": null,
+        "Mat" : "wheat",
+        "Story": null,
+        "Image": null
+    },   
+    "Joe Scammer": {
+        "Name" : "Joe Scammer",
+        "Attack": 7,
+        "Scale": 0.1,
+        "Crit": 3,
+        "HP": 100,
+        "Rarity": 2,
+        "Effect": null,
+        "Mat" : "reeds",
+        "Story": "A traveling salesman from Crumidia, Joe Scammer is a master of disguise. A nice hat, a few shipments of lumber, or a 'rare' weapon, everyone takes the bait on Joe's antics. No one ever realizes they've been had, at least until they get their product. Opening the box, all they find is a note saying 'You just got Joe'd!'",
+        "Image": null
+    },
+    "A Local Seal": {
+        "Name" : "A Local Seal",
+        "Attack": 0,
+        "Scale": 0.25,
+        "Crit": 5,
+        "HP": 25,
+        "Rarity": 2,
+        "Effect": null,
+        "Mat" : "pine",
+        "Story": "This seal thinks hes a master of trolling and trickery. Nah.",
+        "Image": "https://i.imgur.com/JZc19rp.png"
     },
     "PrxRdr": {
         "Name" : "PrxRdr",
@@ -116,7 +164,7 @@
         "Rarity": 1,
         "Effect": null,
         "Mat" : "wheat",
-        "Story": null,
+        "Story": "Michael Mike!",
         "Image": null
     }
 }

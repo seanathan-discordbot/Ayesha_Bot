@@ -99,6 +99,9 @@ class HelpCommand(commands.Cog):
             await pages.start(ctx)
         else:
             try:
+                cog = cog.title()
+                if cog == 'Pve':
+                    cog = 'PvE'
                 await self.createHelp(ctx, cog)
             except AttributeError:
                 await ctx.send("That is not a valid module.")
