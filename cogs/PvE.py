@@ -31,8 +31,8 @@ bounty_levels = {
     },
     3 : {
         'Name' : 'Roadside Brigands',
-        'LowATK' : 40,
-        'HighATK' : 60,
+        'LowATK' : 60,
+        'HighATK' : 90,
         'LowHP' : 700,
         'HighHP' : 900,
         'Effect' : None,
@@ -40,8 +40,8 @@ bounty_levels = {
     },
     4 : {
         'Name' : 'Eques Maledicens',
-        'LowATK' : 50,
-        'HighATK' : 70,
+        'LowATK' : 100,
+        'HighATK' : 120,
         'LowHP' : 750,
         'HighHP' : 1000,
         'Effect' : None,
@@ -60,33 +60,33 @@ bounty_levels = {
         'Name' : 'Rabid Bear',
         'LowATK' : 300,
         'HighATK' : 350,
-        'LowHP' : 200,
-        'HighHP' : 400,
+        'LowHP' : 400,
+        'HighHP' : 500,
         'Effect' : None,
         'Image' : None
     },
     7 : {
         'Name' : 'Maritimialan Shaman', #SPECIAL: ATTACK REDUCED BY 20%
-        'LowATK' : 110,
+        'LowATK' : 125,
         'HighATK' : 150,
-        'LowHP' : 250,
-        'HighHP' : 500,
+        'LowHP' : 500,
+        'HighHP' : 750,
         'Effect' : 'Players have 20% reduced attack when fighting this boss.',
         'Image' : None
     },
     8 : {
         'Name' : 'Apprenticeship Loan Debt Collector',
-        'LowATK' : 130,
-        'HighATK' : 150,
-        'LowHP' : 600,
-        'HighHP' : 800,
+        'LowATK' : 150,
+        'HighATK' : 160,
+        'LowHP' : 800,
+        'HighHP' : 1000,
         'Effect' : None,
         'Image' : None
     },
     9 : {
         'Name' : 'Moonlight Wolf Pack', #SPECIAL: NO HEALING
-        'LowATK' : 120,
-        'HighATK' : 140,
+        'LowATK' : 150,
+        'HighATK' : 180,
         'LowHP' : 1100,
         'HighHP' : 1500,
         'Effect' : 'Players cannot heal when fighting this boss.',
@@ -94,8 +94,8 @@ bounty_levels = {
     },
     10 : {
         'Name' : 'Crumidian Warriors', 
-        'LowATK' : 140,
-        'HighATK' : 150,
+        'LowATK' : 180,
+        'HighATK' : 200,
         'LowHP' : 1100,
         'HighHP' : 1500,
         'Effect' : None,
@@ -105,17 +105,17 @@ bounty_levels = {
         'Name' : 'Naysayers of the Larry Almighty', #SPECIAL: -80% DAMAGE TAKEN IF PARRYING
         'LowATK' : 500,
         'HighATK' : 800,
-        'LowHP' : 1000,
-        'HighHP' : 1200,
+        'LowHP' : 1200,
+        'HighHP' : 1300,
         'Effect' : 'Players take 80% reduced damage instead of 50% when parrying this boss\' attacks.',
         'Image' : None
     },
     12 : {
         'Name' : 'Osprey Imperial Assassin', 
-        'LowATK' : 175,
-        'HighATK' : 190,
-        'LowHP' : 1000,
-        'HighHP' : 1000,
+        'LowATK' : 200,
+        'HighATK' : 225,
+        'LowHP' : 1150,
+        'HighHP' : 1250,
         'Effect' : None,
         'Image' : None
     },
@@ -311,7 +311,7 @@ class PvE(commands.Cog):
 
         try:
             if acolyte1['Name'] == 'Paterius' or acolyte2['Name'] == 'Paterius': #Doesn't need a crit, but placed here for brevity
-                damage += 10
+                damage += 15
         except TypeError:
             pass
 
@@ -346,11 +346,19 @@ class PvE(commands.Cog):
             return
         #Get the player's info and load stats
         attack, crit, hp, playerjob, acolyte1, acolyte2 = await AssetCreation.getAttack(self.client.pg_con, ctx.author.id, returnothers=True)
+        if acolyte1 is not None:
+            acolyte1 = await AssetCreation.getAcolyteByID(self.client.pg_con, acolyte1)
+        if acolyte2 is not None:
+            acolyte2 = await AssetCreation.getAcolyteByID(self.client.pg_con, acolyte2)
+        
         if level == 5:
             attack = math.floor(attack * 1.5)
         if level == 7:
             attack = math.floor(attack * (4/5))
         enemyhp = random.randint(bounty_levels[level]['LowHP'], bounty_levels[level]['HighHP'])
+
+        strategy = await AssetCreation.getStrategy(self.client.pg_con, ctx.author.id)
+
         # Create the embed
         embed = discord.Embed(title=f"{bounty_levels[level]['Name']} attacks!", color=0xBEDCF6)
         embed.add_field(name='Attack', value=f'{attack}') #field 0
@@ -360,22 +368,13 @@ class PvE(commands.Cog):
         embed.add_field(name='You get initiative', value='Turn `0`') #field 4
         message = await ctx.reply(embed=embed)
 
-        # Add reactions and fight simulator
-        await message.add_reaction('🗡️') #attack
-        await message.add_reaction('\N{SHIELD}') #block
-        await message.add_reaction('\N{CROSSED SWORDS}') #parry
-        await message.add_reaction('\u2764') #heal
-        await message.add_reaction('\u23F1') #bide
-
-        def check(reaction, user):
-            return user == ctx.author
-        
-        reaction = None
         readReactions = True
         turnCounter = 0
 
         while readReactions:
-            if str(reaction) == '🗡️': #attack
+            reaction = random.randint(1,100)
+
+            if reaction <= strategy['attack']:
                 #Do Calcs
                 bossaction = self.getBossAction(level)
                 damage = math.floor(random.randint(attack, attack+10) * bossaction['DamageTaken'])
@@ -407,7 +406,7 @@ class PvE(commands.Cog):
                     embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You critically striked for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {bossaction['Damage']} damage.", inline=False)
                 await message.edit(embed=embed)
 
-            if str(reaction) == '\N{SHIELD}': #block
+            elif reaction <= strategy['attack'] + strategy['block']:
                 #Do Calcs
                 bossaction = self.getBossAction(level)
                 damage = math.floor((random.randint(attack, attack+10)/10) * bossaction['DamageTaken'])
@@ -440,7 +439,7 @@ class PvE(commands.Cog):
                     embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You critically striked for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", inline=False)
                 await message.edit(embed=embed)
 
-            if str(reaction) == '\N{CROSSED SWORDS}': #parry
+            elif reaction <= strategy['attack'] + strategy['block'] + strategy['parry']:
                 #Do Calcs
                 bossaction = self.getBossAction(level)
                 damage = math.floor((random.randint(attack, attack+10) * bossaction['DamageTaken'])/2)
@@ -474,10 +473,10 @@ class PvE(commands.Cog):
                     embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You critically striked for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", inline=False)
                 await message.edit(embed=embed)
 
-            if str(reaction) == '\u2764': #heal
+            elif reaction <= strategy['attack'] + strategy['block'] + strategy['parry'] + strategy['heal']:
                 bossaction = self.getBossAction(level)
                 hp = hp - bossaction['Damage']
-                heal = math.floor((1000 - hp) / 8)
+                heal = math.floor((1500 - hp) / 8)
                 if playerjob == 'Butcher':
                     heal = heal * 2
                 if level == 9:
@@ -499,7 +498,7 @@ class PvE(commands.Cog):
                 embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You healed {heal} hp. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {bossaction['Damage']} damage.", inline=False)
                 await message.edit(embed=embed)
 
-            if str(reaction) == '\u23F1': #bide
+            else:
                 #Do Calcs
                 bossaction = self.getBossAction(level)
                 your_damage = math.floor(bossaction['Damage'] * (3/4))
@@ -521,29 +520,72 @@ class PvE(commands.Cog):
                 embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You bided your time and boosted your attack. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", inline=False)
                 await message.edit(embed=embed)
 
-            if turnCounter == 51: #100 turn limit
+            if turnCounter == 51: #50 turn limit
                 loss = await self.doDefeat(ctx.author.id, level, enemyhp, acolyte1, acolyte2)
-                await message.clear_reactions()
                 await message.edit(embed=loss[0])
                 break                
 
-            try:
-                reaction, user = await self.client.wait_for('reaction_add', check=check, timeout=30.0)
-                await message.remove_reaction(reaction, user)
-                await asyncio.sleep(0.5)
+            await asyncio.sleep(2.0)
 
-            except asyncio.TimeoutError:
-                readReactions = not readReactions
-                await ctx.send('Timed out.')
-                await message.delete()
+    # @bounty.error
+    # async def on_bounty_error(self, ctx, error):
+    #     #If you guys know how to make this work contact me thanks
+    #     if isinstance(error, commands.MaxConcurrencyReached):
+    #         pass
+    #     elif isinstance(error, commands.CommandOnCooldown):
+    #         pass
+    #     else: #When the error is Missing Perms but that wont work for some reason
+    #         await ctx.reply('The bot is missing permissions here! Make sure the bot can send, edit, and manage messages in this channel.')
 
-    @bounty.error
-    async def on_bounty_error(self, ctx, error):
-        if isinstance(error, commands.MaxConcurrencyReached):
-            pass
-        else:
-            await ctx.reply('The bot is missing permissions here! Make sure the bot can send, edit, and manage messages in this channel.')
+    @commands.command(aliases=['strat', 'st'], brief='<attack> <block> <parry> <heal> <bide>', description='Set the action weighting when fighting bosses. Do this command without any arguments for more info.')
+    @commands.check(Checks.is_player)
+    async def strategy(self, ctx, attack : int = None, block : int = None, parry : int = None, heal : int = None, bide : int = None):
+        #Explain command if nothing input
+        if bide is None:
+            with open(r"F:\OneDrive\Ayesha\Assets\Tutorial.txt", "r") as f:
+                tutorial = f.readlines()
 
+            embed1 = discord.Embed(title='Ayesha Tutorial: Strategy', color=0xBEDCF6, description = '```strategy <attack> <block> <parry> <heal> <bide>```')
+            embed1.add_field(name='You can customize how you fight bosses with the Strategy Command!', value=f"{tutorial[51]}\n{tutorial[52]}\n{tutorial[53]}\n{tutorial[54]}")
+
+            await ctx.reply(embed=embed1)
+            return
+
+        #Let them set negatives and zeroes if they don't want to do an action at all
+        if attack < 0:
+            attack = 0
+        if block < 0:
+            block = 0
+        if parry < 0:
+            parry = 0
+        if heal < 0:
+            heal = 0
+        if bide < 0:
+            bide = 0
+
+        #Make sure they don't 0 everything, then put everything in a 100 scale
+        total = attack + block + parry + heal + bide
+        if total <= 0:
+            attack = 100
+            total = 100
+
+        attack = int(attack / total * 100)
+        block = int(block / total * 100)
+        parry = int(parry / total * 100)
+        heal = int(heal / total * 100)
+        bide = int(bide / total * 100)
+
+        while attack + block + parry + heal + bide < 100:
+            attack += 1
+
+        #Save this in the database
+        await AssetCreation.setStrategy(self.client.pg_con, ctx.author.id, attack, block, parry, heal, bide)
+
+        #Output their new settings
+        embed = discord.Embed(title='Set New Action Weights', color=0xBEDCF6)
+        embed.add_field(name='Here are the chances of you doing each action when fighting a boss:',
+            value=f'**Attack:** {attack}%\n**Block:** {block}%\n**Parry:** {parry}%\n**Heal:** {heal}%\n**Bide:** {bide}%')
+        await ctx.reply(embed=embed)
 
 def setup(client):
     client.add_cog(PvE(client))

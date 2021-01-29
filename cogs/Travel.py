@@ -257,18 +257,18 @@ class Travel(commands.Cog):
         result = random.choices(['success', 'critical success', 'failure'], [80,12,8])
         if result[0] == 'success':
             gold = random.randint(20,100)
-            fur = random.randint(6,12)
-            bone = int(fur / 3)
+            fur = random.randint(10,18)
+            bone = int(fur / 1.2)
 
         elif result[0] == 'critical success':
             gold = random.randint(100, 150)
-            fur = random.randint(12,18)
-            bone = int(fur/3)
+            fur = random.randint(18,24)
+            bone = int(fur/1.2)
 
         else:
             gold = 10
-            fur = 0
-            bone = 0
+            fur = 6
+            bone = 4
 
         role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
         if role == 'Hunter':
