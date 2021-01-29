@@ -54,13 +54,13 @@ class Gacha(commands.Cog):
                     star_data[acolyte_list[key]['Rarity']].append(key)
 
         #Check to see if player has reached pity
-        if info['pitycounter'] >= 80:
+        if info['pitycounter'] >= 79:
             reward = ['acolyte']
             name=random.choice(star_data[5])
             pity = 0
 
         else: 
-            winner=random.randint(1,101)
+            winner=random.randint(1,100)
 
             #Determine if reward will be a weapon
             reward = random.choices(['weapon', 'acolyte'], [75, 25])
