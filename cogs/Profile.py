@@ -230,5 +230,10 @@ class Profile(commands.Cog):
 
         await ctx.reply(embed=embed1)
 
+    @start.error
+    async def on_start_error(self, ctx, error):
+        if isinstance(error, commands.CheckFailure):
+            await ctx.reply('You already have a character.')
+
 def setup(client):
     client.add_cog(Profile(client))

@@ -190,5 +190,21 @@ class Acolytes(commands.Cog):
 
         await ctx.reply(embed=embed)
 
+    @commands.command(brief='<acolyte ID>', description='Check your acolyte\'s xp and level.')
+    @commands.check(Checks.is_player)
+    async def acolytexp(self, ctx, instance_id : int):
+        if not await AssetCreation.verifyAcolyteOwnership(self.client.pg_con, instance_id, ctx.author.id):
+            await ctx.reply('This acolyte isn\'t in your tavern.')
+            return
+
+        info = await AssetCreation.getAcolyteXP(self.client.pg_con, instance_id)
+        tonext = math.floor(3000000 * math.cos(((info['lvl']+1)/64)+3.14) + 3000000) - info['xp']
+
+        embed = discord.Embed(color=0xBEDCF6)
+        embed.add_field(name='Level', value=f"{info['lvl']}")
+        embed.add_field(name='EXP', value=f"{info['xp']}")
+        embed.add_field(name=f"EXP until Level {info['lvl']+1}", value=f"{tonext}")
+        await ctx.reply(embed=embed)
+
 def setup(client):
     client.add_cog(Acolytes(client))
