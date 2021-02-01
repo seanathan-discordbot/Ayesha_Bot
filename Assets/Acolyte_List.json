@@ -18,7 +18,7 @@
         "Crit": 0,
         "HP": 300,
         "Rarity": 5,
-        "Effect": "Each attack, block, or parry does an additional 10 damage.",
+        "Effect": "Each attack, block, or parry does an additional 15 damage.",
         "Mat" : "silver",
         "Story": null,
         "Image": null
