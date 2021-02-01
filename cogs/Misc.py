@@ -29,17 +29,12 @@ class Misc(commands.Cog):
 
         await ctx.reply(embed=embed)
 
-    # @commands.command(description='Greet Ayesha!')
-    # async def hello(self,ctx):
-    #     await ctx.message.channel.send('Hello!')
-
-    # @commands.command(description='Lean.')
-    # async def sean(self,ctx):
-    #     await ctx.message.channel.send('Sean is short for Seanathan')
-
-    # @commands.command(brief='<statement>', description='Ayesha will echo your statement.')
-    # async def echo(self,ctx, *, returnStatement):
-    #     await ctx.send(returnStatement)
+    @commands.command(description='Get 2 rubidics daily!')
+    @commands.check(Checks.is_player)
+    @cooldown(1, 86400, BucketType.user)
+    async def daily(self, ctx):
+        await AssetCreation.giveRubidics(self.client.pg_con, 2, ctx.author.id)
+        await ctx.reply('You received 2 rubidics!')
         
     @commands.command(description='Link to a place to report bugs in AyeshaBot.')
     async def report(self,ctx):
@@ -49,21 +44,45 @@ class Misc(commands.Cog):
     @commands.command(pass_context=True, aliases=['cd'], description='View any cooldowns your character has.')
     async def cooldowns(self, ctx):
         cooldowns = []
+        output = ""
         for command in self.client.walk_commands():
             if command.is_on_cooldown(ctx):
-                cooldowns.append((f'{command.name}', f'{time.strftime("%M:%S", time.gmtime(command.get_cooldown_retry_after(ctx)))}'))
+                if command.get_cooldown_retry_after(ctx) >= 3600:
+                    cooldowns.append((f'{command.name}', f'{time.strftime("%H:%M:%S", time.gmtime(command.get_cooldown_retry_after(ctx)))}'))
+                else:
+                    cooldowns.append((f'{command.name}', f'{time.strftime("%M:%S", time.gmtime(command.get_cooldown_retry_after(ctx)))}'))
+        adv = await AssetCreation.getAdventure(self.client.pg_con, ctx.author.id)
+
+        if adv['adventure'] is not None:
+            if adv['adventure'] > int(time.time()):
+                time_left = adv['adventure'] - int(time.time())
+                output = f"You will arrive at `{adv['destination']}` in `{time.strftime('%H:%M:%S', time.gmtime(time_left))}`.\n"
+            else:
+                time_left = 0   
+        else:
+            time_left = 0  
+
+        #Create embed to send
         embed = discord.Embed(color=0xBEDCF6)
         if not cooldowns:
-            await ctx.reply('You have no cooldowns.')
-            return
-        output = ""
+            # await ctx.reply('You have no cooldowns.')
+            # return
+            output += 'You have no cooldowns.'
         for cmd in cooldowns:
-            output = output + f'`{cmd[0]}`: {cmd[1]}\n'
+            output += f'`{cmd[0]}`: {cmd[1]}\n'
         embed.add_field(name=f'{ctx.author.display_name}\'s Cooldowns', value=output)
         await ctx.reply(embed=embed)
 
-    @commands.command(description='Hi')
+    @commands.group(aliases=['lb', 'board'], brief='<Sort: XP/PvE/PvP/Gold>', description='See the leaderboards. Do this command without any arguments for more help.', invoke_without_command=True, case_insensitive=True)
     async def leaderboard(self, ctx):
+        embed = discord.Embed(title='Ayesha Help: Leaderboards', color=0xBEDCF6)
+        embed.set_thumbnail(url=ctx.author.avatar_url)
+        embed.add_field(name = '```leaderboard xp/pve/pvp/gold```', 
+            value='Invoke the leaderboard command followed by one of the options to see the top 5 players of those areas.')
+        await ctx.reply(embed=embed)
+
+    @leaderboard.command(aliases=['exp', 'xp'])
+    async def experience(self, ctx):
         board = await AssetCreation.getTopXP(self.client.pg_con)
         embed = discord.Embed(title='AyeshaBot Leaderboards', color=0xBEDCF6)
         
@@ -76,8 +95,8 @@ class Misc(commands.Cog):
 
         await ctx.reply(embed=embed)
 
-    @commands.command(description='Hi')
-    async def toppve(self, ctx):
+    @leaderboard.command(aliases=['bosses', 'bounties'])
+    async def pve(self, ctx):
         board = await AssetCreation.getTopBosses(self.client.pg_con)
         embed = discord.Embed(title='AyeshaBot Leaderboards', color=0xBEDCF6)
         
@@ -90,12 +109,35 @@ class Misc(commands.Cog):
 
         await ctx.reply(embed=embed)
 
-    @commands.command(description='Get 2 rubidics daily!')
-    @commands.check(Checks.is_player)
-    @cooldown(1, 86400, BucketType.user)
-    async def daily(self, ctx):
-        await AssetCreation.giveRubidics(self.client.pg_con, 2, ctx.author.id)
-        await ctx.reply('You received 2 rubidics!')
+    @leaderboard.command(aliases=['richest', 'money'])
+    async def gold(self, ctx):
+        board = await AssetCreation.getTopGold(self.client.pg_con)
+        embed = discord.Embed(title='AyeshaBot Leaderboards', color=0xBEDCF6)
+        
+        output = ''
+        for entry in board:
+            player = await self.client.fetch_user(entry[0])
+            output = output + f'**{player.name}#{player.discriminator}\'s** `{entry[1]}`: `{entry[2]}` gold.\n'
+
+        embed.add_field(name='Richest Players', value=output)
+
+        await ctx.reply(embed=embed)
+
+    @leaderboard.command()
+    async def pvp(self, ctx):
+        board = await AssetCreation.getTopPvP(self.client.pg_con)
+        embed = discord.Embed(title='AyeshaBot Leaderboards', color=0xBEDCF6)
+        
+        output = ''
+        for entry in board:
+            player = await self.client.fetch_user(entry[0])
+            output = output + f'**{player.name}#{player.discriminator}\'s** `{entry[1]}`: `{entry[2]}` battle wins.\n'
+
+        embed.add_field(name='Greatest Combatants', value=output)
+
+        await ctx.reply(embed=embed)
+
+
 
 def setup(client):
     client.add_cog(Misc(client))

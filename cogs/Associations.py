@@ -132,7 +132,7 @@ class Associations(commands.Cog):
         #Also calculate how much more xp is needed for a level up
         xp = await AssetCreation.getGuildXP(self.client.pg_con, guild['ID'])
         needed = 100000 - (xp % 100000)
-        await ctx.reply(f'You contributed `{donation}` gold to your brotherhood. It will become level `{level+1}` at `{needed}` more xp.')
+        await ctx.reply(f'You contributed `{donation}` gold to your brotherhood. It will become level `{int(xp/100000)+1}` at `{needed}` more xp.')
 
     @brotherhood.command(description='View the other members of your guild.')
     @commands.check(Checks.in_brotherhood)
@@ -241,8 +241,8 @@ class Associations(commands.Cog):
         await AssetCreation.createGuild(self.client.pg_con, name, "Guild", ctx.author.id, 'https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-ios7-contact-512.png')
         await ctx.reply('Guild founded. Do `guild` to see it or `guild` for more commands!')
 
-    @guild.command(description='Leave your brotherhood.')
-    @commands.check(Checks.in_brotherhood)
+    @guild.command(aliases=['leave'], description='Leave your guild.')
+    @commands.check(Checks.in_guild)
     @commands.check(Checks.is_not_guild_leader)
     async def _leave(self, ctx):
         await AssetCreation.leaveGuild(self.client.pg_con, ctx.author.id)
@@ -355,33 +355,31 @@ class Associations(commands.Cog):
         #Ensure they have enough money to invest
         if await AssetCreation.getGold(self.client.pg_con, ctx.author.id) < capital:
             await ctx.reply('You don\'t have enough money to invest that much.')
+            ctx.command.reset_cooldown(ctx)
             return
+        if capital > 250000:
+            await ctx.reply('Whoa, that investment is too excessive. Please invest only up to 250,000 gold.')
+            ctx.command.reset_cooldown(ctx)
+            return
+
         #Get a random multplier of the money
-        initial = capital
-        result = random.randint(100,175) / 100
-        outcome = random.randint(1,10)
-        if outcome == 1: #Player loses money 10% of the time.
-            result *= .25
-            capital = int(capital * result)
-        elif outcome < 10: #Player gains a fair amount 80% of the time.
-            capital = int(capital * result)
-        else: #Player gets a good amount
-            result *= 2
-            capital = int(capital * result)
+        multplier = random.randint(40,150) / 100.0
+        capital_gain = math.floor(capital * multplier)
+
         #Class bonus
         role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
         if role == 'Engineer':
-            capital *= math.floor(capital * 1.25)
+            capital_gain = math.floor(capital_gain * 1.25)
+
         #Choose a random project and location
         projects = ('a museum', 'a church', 'a residence', 'a fishing company', 'a game company', 'a guild', 'a boat', 'road construction')
         locations = ('Aramithea', 'Riverburn', 'Thenuille', 'the Mythic Forest', 'Fernheim', 'Thanderlands Marsh', 'Glakelys', 'Croire', 'Crumidia', 'Mooncastle', 'Felescity', 'Mysteria', 'a local village', 'your hometown', 'Oshwega')
         project = random.choice(projects)
         location = random.choice(locations)
-        #Update player's money and send output
-        money = capital - initial
-        await AssetCreation.giveGold(self.client.pg_con, money, ctx.author.id)
 
-        await ctx.reply(f'You invested `{initial}` gold in {project} in {location} and earned a return of `{capital}` gold.')
+        #Update player's money and send output
+        await AssetCreation.giveGold(self.client.pg_con, capital_gain, ctx.author.id)
+        await ctx.reply(f'You invested `{capital}` gold in {project} in {location} and earned a return of `{capital_gain}` gold.')
 
     # THESE COMMANDS ARE COMMON TO BOTH GUILDS AND BROTHERHOODS, AND THUS ARE NOT GROUPED WITH EITHER
     @commands.command(aliases=['guildinfo', 'bhinfo'], brief='<guild ID>', description='See info on another guild based on their ID')
@@ -513,17 +511,40 @@ class Associations(commands.Cog):
             await ctx.reply('This person does not have a character.')
             return
         if await Checks.target_not_in_guild(self.client.pg_con, player):
-            await ctx.reply('This person is not in your brotherhood.')
+            await ctx.reply('This person is not in your association.')
             return
         leader_guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         target_guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, player.id)
         if leader_guild['ID'] != target_guild['ID']:
-            await ctx.reply('This person is not in your brotherhood.')
+            await ctx.reply('This person is not in your association.')
             return
         # Otherwise make them leader - make sure to update leader field in guilds table and remove former leader
         await AssetCreation.changeGuildRank(self.client.pg_con, "Leader", player.id)
         await AssetCreation.changeGuildRank(self.client.pg_con, "Officer", ctx.author.id)
         await ctx.reply(f"`{player.name}` has been demoted to `Leader` of `{leader_guild['Name']}`. You are now an `Officer`.")
+
+    @commands.command(brief='<player>', description='Kick someone from your association.')
+    @commands.check(Checks.is_guild_officer)
+    async def kick(self, ctx, player : commands.MemberConverter):
+        #Make sure target has a char, in same guild, isn't an officer or leader
+        if not await Checks.has_char(self.client.pg_con, player):
+            await ctx.reply('This person does not have a character.')
+            return
+        if await Checks.target_not_in_guild(self.client.pg_con, player):
+            await ctx.reply('This person is not in your association.')
+            return
+        leader_guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        target_guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, player.id)
+        if leader_guild['ID'] != target_guild['ID']:
+            await ctx.reply('This person is not in your association.')
+            return
+        if await Checks.target_is_guild_officer(self.client.pg_con, player.id):
+            await ctx.reply('You cannot kick your officer or leader.')
+            return
+
+        #Otherwise remove the targeted person from the association
+        await AssetCreation.leaveGuild(self.client.pg_con, player.id)
+        await ctx.reply(f'You kicked {player.display_name} from your association.')
 
     @brotherhood.command(description='Shows this command.')
     async def help(self, ctx):

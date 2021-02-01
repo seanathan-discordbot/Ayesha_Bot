@@ -64,9 +64,9 @@ class Items(commands.Cog):
     #COMMANDS
     @commands.command(aliases=['i', 'inv'], description='View your inventory of items')
     @commands.check(Checks.is_player)
-    async def inventory(self, ctx):
+    async def inventory(self, ctx, sort = None):
         invpages = []
-        inv = await AssetCreation.getAllItemsFromPlayer(self.client.pg_con, ctx.author.id)
+        inv = await AssetCreation.getAllItemsFromPlayer(self.client.pg_con, ctx.author.id, sort)
         for i in range(0, len(inv), 5): #list 5 entries at a time
             invpages.append(self.write(i, inv, ctx.author.display_name)) # Write will create the embeds
         if len(invpages) == 0:

@@ -4,7 +4,7 @@ import asyncio
 from discord.ext import commands
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
-from Utilities import Checks, AssetCreation, PageSourceMaker
+from Utilities import Checks, AssetCreation, PageSourceMaker, Links
 
 from dpymenus import Page, PaginatedMenu
 
@@ -169,7 +169,7 @@ class Acolytes(commands.Cog):
 
     @commands.command(brief='<name>', description='Learn more about each of your acolytes!')
     async def acolyte(self, ctx, *, name):
-        with open(r"F:\OneDrive\Ayesha\Assets\Acolyte_List.json", "r") as f:
+        with open(Links.acolyte_list, "r") as f:
             info = json.load(f)
 
         try:
