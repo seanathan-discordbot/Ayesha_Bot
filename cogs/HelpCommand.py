@@ -11,13 +11,14 @@ from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 import ayesha
 
+# **Music:** Ayesha's own music player! (it sucks)
+
 listCogs = """**Acolytes:** Commands involving your party members
 **Associations:** Join a brotherhood or guild for bonuses!
 **Classes:** Customize your character!
 **Gacha:** Roll for weapons and acolytes!
 **Items:** View your inventory and other commands involving items
 **Misc:** Other Ayesha-related commands
-**Music:** Ayesha's own music player! (it sucks)
 **Profile:** Create a character and view your stats!
 **PvE:** Basic gameplay in AyeshaBot
 **Travel:** Explore the land of Rabidus and get items for your party members!"""
@@ -91,6 +92,9 @@ class HelpCommand(commands.Cog):
                 inline=False)   
             embed.add_field(name='ping', #PING
                 value='`ping`\nSee if the bot is online.', 
+                inline=False)
+            embed.add_field(name='ping', #SERVERS
+                value='`servers`\nSee how many servers this bot is in!', 
                 inline=False)
             
             entries = [helpEmbed, embed]

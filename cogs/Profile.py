@@ -6,7 +6,7 @@ from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 from dpymenus import Page, PaginatedMenu
 
-from Utilities import Checks, AssetCreation
+from Utilities import Checks, AssetCreation, Links
 
 import math
 
@@ -160,17 +160,17 @@ class Profile(commands.Cog):
     #Add a tutorial command at the end of alpha
     @commands.group(description='Learn the game.', case_insensitive=True, invoke_without_command=True)
     async def tutorial(self, ctx):
-        with open(r"F:\OneDrive\Ayesha\Assets\Tutorial.txt", "r") as f:
+        with open(Links.tutorial, "r") as f:
             tutorial = f.readlines()
 
         embed1 = Page(title='Ayesha Tutorial', color=0xBEDCF6)
-        embed1.add_field(name='Welcome to Ayesha Alpha!', value=f"{tutorial[2]}\n{tutorial[3]}\n{tutorial[4]}")
+        embed1.add_field(name='Welcome to Ayesha Alpha!', value=f"{tutorial[1]}\n{tutorial[2]}\n{tutorial[3]}")
 
         embed2 = Page(title='Ayesha Tutorial', color=0xBEDCF6)
-        embed2.add_field(name='Intro to PvE', value=f'{tutorial[7]}\n{tutorial[8]}\n{tutorial[9]}\n{tutorial[10]}')
+        embed2.add_field(name='Intro to PvE', value=f'{tutorial[6]}\n{tutorial[7]}\n{tutorial[8]}\n{tutorial[9]}')
 
         embed3 = Page(title='Ayesha Tutorial', color=0xBEDCF6)
-        embed3.add_field(name='Intro to Gacha', value=f'{tutorial[13]}\n{tutorial[14]}')
+        embed3.add_field(name='Intro to Gacha', value=f'{tutorial[12]}\n{tutorial[13]}')
 
         menu = PaginatedMenu(ctx)
         menu.add_pages([embed1, embed2, embed3])
@@ -181,17 +181,17 @@ class Profile(commands.Cog):
 
     @tutorial.command(aliases=['acolyte'], description='Learn more about Acolytes!')
     async def Acolytes(self, ctx):
-        with open(r"F:\OneDrive\Ayesha\Assets\Tutorial.txt", "r") as f:
+        with open(Links.tutorial, "r") as f:
             tutorial = f.readlines()
 
         embed1 = Page(title='Ayesha Tutorial: Acolytes', color=0xBEDCF6)
-        embed1.add_field(name='Welcome to Ayesha Alpha!', value=f"{tutorial[17]}\n{tutorial[18]}\n{tutorial[19]}")
+        embed1.add_field(name='Welcome to Ayesha Alpha!', value=f"{tutorial[16]}\n{tutorial[17]}\n{tutorial[18]}")
 
         embed2 = Page(title='Ayesha Tutorial: Acolytes', color=0xBEDCF6)
-        embed2.add_field(name='The Tavern and Effects', value=f'{tutorial[22]}\n{tutorial[23]}')
+        embed2.add_field(name='The Tavern and Effects', value=f'{tutorial[21]}\n{tutorial[22]}\n{tutorial[23]}')
 
         embed3 = Page(title='Ayesha Tutorial: Acolytes', color=0xBEDCF6)
-        embed3.add_field(name='Strengthening your Acolytes', value=f'{tutorial[27]}\n{tutorial[28]}\n{tutorial[29]}\n{tutorial[30]}')
+        embed3.add_field(name='Strengthening your Acolytes', value=f'{tutorial[26]}\n{tutorial[27]}\n{tutorial[28]}\n{tutorial[29]}')
 
         menu = PaginatedMenu(ctx)
         menu.add_pages([embed1, embed2, embed3])
@@ -202,27 +202,27 @@ class Profile(commands.Cog):
 
     @tutorial.command(aliases=['item', 'weapon', 'weapons'], description='Learn more about Items!')
     async def Items(self, ctx):
-        with open(r"F:\OneDrive\Ayesha\Assets\Tutorial.txt", "r") as f:
+        with open(Links.tutorial, "r") as f:
             tutorial = f.readlines()
 
         embed1 = discord.Embed(title='Ayesha Tutorial: Items', color=0xBEDCF6)
-        embed1.add_field(name='Everything on Items', value=f"{tutorial[33]}\n{tutorial[34]}\n{tutorial[35]}\n{tutorial[36]}")
+        embed1.add_field(name='Everything on Items', value=f"{tutorial[32]}\n{tutorial[33]}\n{tutorial[34]}\n{tutorial[35]}")
 
         await ctx.reply(embed=embed1)
 
     @tutorial.command(description='Learn more about PvE!')
     async def pve(self, ctx):
-        with open(r"F:\OneDrive\Ayesha\Assets\Tutorial.txt", "r") as f:
+        with open(Links.tutorial, "r") as f:
             tutorial = f.readlines()
 
         embed1 = discord.Embed(title='Ayesha Tutorial: PvE', color=0xBEDCF6)
-        embed1.add_field(name='Everything on PvE', value=f"{tutorial[39]}\n{tutorial[40]}\n{tutorial[41]}\n{tutorial[42]}\n{tutorial[43]}")
+        embed1.add_field(name='Everything on PvE', value=f"{tutorial[38]}\n{tutorial[39]}\n{tutorial[40]}\n{tutorial[41]}\n{tutorial[42]}\n{tutorial[43]}")
 
         await ctx.reply(embed=embed1)
 
     @tutorial.command(description='Learn more about Travel!')
     async def Travel(self, ctx):
-        with open(r"F:\OneDrive\Ayesha\Assets\Tutorial.txt", "r") as f:
+        with open(Links.tutorial, "r") as f:
             tutorial = f.readlines()
 
         embed1 = discord.Embed(title='Ayesha Tutorial: Travel', color=0xBEDCF6)
