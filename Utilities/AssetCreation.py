@@ -49,6 +49,7 @@ async def createCharacter(pool, user_id, name):
     async with pool.acquire() as conn:
         await conn.execute('INSERT INTO players (user_id, user_name) VALUES ($1, $2)', user_id, name)
         await conn.execute('INSERT INTO resources (user_id) VALUES ($1)', user_id)
+        await conn.execute('INSERT INTO strategy (user_id) VALUES ($1)', user_id)
     await pool.release(conn)
     await createItem(pool, user_id, 20, 'Common', crit=0, weaponname='Wooden Spear', weapontype='Spear')
 
@@ -86,10 +87,22 @@ async def createItem(pool, owner_id, attack, rarity, crit = None, weaponname = N
         }
         return item_info
 
-async def getAllItemsFromPlayer(pool, user_id : int):
+async def getAllItemsFromPlayer(pool, user_id : int, sort):
     async with pool.acquire() as conn:
-        inv = await conn.fetch('SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 AND is_equipped = True', user_id)
-        other = await conn.fetch('SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 AND is_equipped = False', user_id)
+        if sort is not None:
+            if sort.title() == 'Rarity':
+                inv = await conn.fetch('SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 AND is_equipped = True', user_id)
+                other = await conn.fetch("SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 AND is_equipped = False ORDER BY CASE rarity WHEN 'Legendary' THEN 1 WHEN 'Epic' THEN 2 WHEN 'Rare' THEN 3 WHEN 'Uncommon' THEN 4 ELSE 5 END", user_id)
+            elif sort.title() == 'Crit':
+                inv = await conn.fetch('SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 AND is_equipped = True', user_id)
+                other = await conn.fetch('SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 AND is_equipped = False ORDER BY crit DESC', user_id)
+            else:
+                inv = await conn.fetch('SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 AND is_equipped = True', user_id)
+                other = await conn.fetch('SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 AND is_equipped = False ORDER BY attack DESC', user_id)
+        else:
+            inv = await conn.fetch('SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 AND is_equipped = True', user_id)
+            other = await conn.fetch('SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 AND is_equipped = False ORDER BY attack DESC', user_id)
+
         for item in other:
             inv.append(item)
         await pool.release(conn)
@@ -250,6 +263,13 @@ async def getLevel(pool, user_id : int):
         level = await conn.fetchrow('SELECT lvl FROM Players WHERE user_id = $1', user_id)
         return level['lvl']
 
+async def getAcolyteXP(pool, instance_id : int):
+    async with pool.acquire() as conn:
+        info = await conn.fetchrow('SELECT lvl, xp FROM acolytes WHERE instance_id = $1', instance_id)
+        await pool.release(conn)
+
+    return info
+
 async def getAcolyteAttack(pool, instance_id : int):
     info = await getAcolyteByID(pool, instance_id)
     if info['Dupes'] > 5:
@@ -261,7 +281,6 @@ async def getAcolyteAttack(pool, instance_id : int):
 
 async def getAttack(pool, user_id, returnothers = False):
     charattack, weaponattack, guildattack, acolyteattack, attack, crit, hp = 20, 0, 0, 0, 0, 5, 500
-    acolyte1, acolyte2 = None, None
     async with pool.acquire() as conn:
         char = await conn.fetchrow('SELECT lvl, equipped_item, acolyte1, acolyte2, occupation FROM players WHERE user_id = $1', user_id)
         charattack += char['lvl'] * 2
@@ -308,7 +327,7 @@ async def getAttack(pool, user_id, returnothers = False):
     if not returnothers:
         return int(attack), crit
     else:
-        return int(attack), crit, hp, char['occupation'], acolyte1, acolyte2 #returns Class, then acolytes
+        return int(attack), crit, hp, char['occupation'], char['acolyte1'], char['acolyte2'] #returns Class, then acolytes
 
 def getAcolyteByName(name : str):
     with open(ACOLYTE_PATH, 'r') as acolyte_list:
@@ -444,17 +463,19 @@ async def getGuildByID(pool, guild_id : int):
 
 async def getGuildLevel(pool, guild_id : int, returnline = False):
     async with pool.acquire() as conn:
-        level = await conn.fetchrow('SELECT guild_level FROM guild_levels WHERE guild_id = $1', guild_id)
+        level = await conn.fetchval('SELECT guild_level FROM guild_levels WHERE guild_id = $1', guild_id)
+        if level > 10:
+            level = 10
 
         if returnline: #Also create a string to show progress
-            xp = await conn.fetchrow('SELECT guild_xp FROM guilds WHERE guild_id = $1', guild_id)
-            progress = int((xp['guild_xp'] % 100000) / 20000)
+            xp = await conn.fetchval('SELECT guild_xp FROM guilds WHERE guild_id = $1', guild_id)
+            progress = int((xp % 100000) / 20000)
             progressStr = dashes[progress]+'◆'+dashes[4-progress]
             await pool.release(conn)
-            return level['guild_level'], progressStr
+            return level, progressStr
         else:
             await pool.release(conn)
-            return level['guild_level']
+            return level
 
 async def getGuildMemberCount(pool, guild_id : int):
     async with pool.acquire() as conn:
@@ -465,10 +486,12 @@ async def getGuildMemberCount(pool, guild_id : int):
 
 async def getGuildCapacity(pool, guild_id : int):
     async with pool.acquire() as conn:
-        capacity = await conn.fetchrow('SELECT capacity FROM guild_capacities WHERE guild_id = $1', guild_id)
+        capacity = await conn.fetchval('SELECT capacity FROM guild_capacities WHERE guild_id = $1', guild_id)
+        if capacity > 50:
+            capacity = 50
         await pool.release(conn)
         
-    return capacity['capacity']
+    return capacity
 
 async def giveGuildXP(pool, amount : int, guild_id : int):
     async with pool.acquire() as conn:
@@ -740,6 +763,22 @@ async def getTopBosses(pool):
     
     return board
 
+async def getTopGold(pool):
+    async with pool.acquire() as conn:
+        board = await conn.fetch("""SELECT user_id, user_name, gold FROM players
+            ORDER BY gold DESC LIMIT 5""")
+        await pool.release(conn)
+
+    return board
+
+async def getTopPvP(pool):
+    async with pool.acquire() as conn:
+        board = await conn.fetch("""SELECT user_id, user_name, pvpwins FROM players
+            ORDER BY bosswins DESC LIMIT 5""")
+        await pool.release(conn)
+
+    return board  
+
 async def getRubidics(pool, user_id : int):
     async with pool.acquire() as conn:
         info = await conn.fetchrow('SELECT rubidic, pitycounter FROM players WHERE user_id = $1', user_id)
@@ -766,3 +805,15 @@ async def giveRubidics(pool, amount : int, user_id : int):
     async with pool.acquire() as conn:
         await conn.execute('UPDATE players SET rubidic = rubidic + $1 WHERE user_id = $2', amount, user_id)
         await pool.release(conn)
+
+async def setStrategy(pool, user_id : int, attack : int, block : int, parry : int, heal : int, bide : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE strategy SET attack = $1, block = $2, parry = $3, heal = $4, bide = $5 WHERE user_id = $6', attack, block, parry, heal, bide, user_id)
+        await pool.release(conn)
+
+async def getStrategy(pool, user_id : int):
+    async with pool.acquire() as conn:
+        strategy = await conn.fetchrow('SELECT attack, block, parry, heal, bide FROM strategy WHERE user_id = $1', user_id)
+        await pool.release(conn)
+
+    return strategy

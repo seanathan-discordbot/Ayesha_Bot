@@ -106,6 +106,17 @@ async def is_guild_officer(ctx):
     elif is_guild_leader(ctx):
         return True
 
+async def target_is_guild_officer(pool, user_id : int): #NOT A CHECK
+    async with pool.acquire() as conn:
+        rank = await conn.fetchval('SELECT guild_rank FROM players WHERE user_id = $1', user_id)
+        await pool.release(conn)
+
+    if rank == 'Officer' or rank == 'Leader':
+        return True
+
+    else:
+        return False
+
 async def guild_has_vacancy(ctx): 
     guild = await AssetCreation.getGuildFromPlayer(ctx.bot.pg_con, ctx.author.id)
     members = await AssetCreation.getGuildMemberCount(ctx.bot.pg_con, guild['ID'])
@@ -119,3 +130,8 @@ async def target_guild_has_vacancy(pool, guild_id : int): #NOT A CHECK. ALT VERS
     capacity = await AssetCreation.getGuildCapacity(pool, guild['ID'])
     if members < capacity:
         return True 
+
+admins = [196465885148479489, 325080171591761921, 530760994289483790, 465388103792590878] #Seb, Sean, Demi, Bort
+async def is_admin(ctx):
+    if ctx.author.id in admins:
+        return True
