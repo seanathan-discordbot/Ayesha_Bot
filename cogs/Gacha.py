@@ -8,7 +8,6 @@ from discord.ext import commands
 import asyncpg
 
 import random
-import ayesha
 
 #Randomize at bot startup
 l=list(range(1,101))
@@ -140,6 +139,107 @@ class Gacha(commands.Cog):
     async def rubidics(self, ctx):
         info = await AssetCreation.getRubidics(self.client.pg_con, ctx.author.id)
         await ctx.reply(f"You have **{info['rubidic']}** rubidics.\nYou will get a 5⭐ weapon or acolyte in **{80-info['pitycounter']}** summons.")
+
+    @commands.group(description='Exchange extra gold for some stuff!', invoke_without_command=True, case_insensitive=True)
+    @commands.check(Checks.is_player)
+    async def shop(self, ctx):
+        shop = discord.Embed(title='Gold Shop', description='Exchange your gold for some items!', color=0xBEDCF6)
+        shop.add_field(name='Weapon and Acolyte Materials', value='Do `shop material <material> <amount>` to buy this!\nEach material costs 200 gold.', inline=False)
+        shop.add_field(name='Epic Weapon', value='Do `shop epic` to buy this!\nReceive a random epic item for 500,000 gold.', inline=False)
+        shop.add_field(name='Rare Weapon', value='Do `shop rare` to buy this!\nReceive a random rare item for 50,000 gold.', inline=False)
+        shop.add_field(name='Rubidic', value='Do `shop rubidic` to buy this!\nReceive 1 rubidic for 10,000,000 gold.')
+        await ctx.reply(embed=shop)
+
+
+    @shop.command(brief='<material> <amount>', description='Purchase a resource. Each resource costs 200 gold.')
+    @commands.check(Checks.is_player)
+    async def material(self, ctx, material : str, amount : int):
+        #Make sure the material and amount is a valid amount
+        material = material.lower()
+        mats = ('fur', 'bone', 'iron', 'silver', 'wood', 'wheat', 'oat', 'reeds', 'pine', 'moss', 'cacao')
+        if material not in mats:
+            await ctx.reply('That is not a valid material. The purchaseable materials are those listed in the `backpack` command.')
+            return
+
+        if amount < 1:
+            await ctx.reply('You cannot purchase less than 1 of a material!')
+            return
+        
+        #Make sure player has enough gold for this transaction
+        player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
+        cost = amount * 200
+        if player_gold < cost:
+            await ctx.reply(f'Buying `{amount}` of this resources costs `{cost}` gold. You don\'t have enough gold (you have `{player_gold}`).')
+            return
+
+        #Fulfill the transaction
+        await AssetCreation.giveMat(self.client.pg_con, material, amount, ctx.author.id)
+        await AssetCreation.giveGold(self.client.pg_con, 0-cost, ctx.author.id)
+
+        await ctx.reply(f'Successfully bought {amount} {material} for {cost} gold.')
+
+    @shop.command(description='Get a new epic weapon! Costs 500,000 gold.')
+    @commands.check(Checks.is_player)
+    async def epic(self, ctx):
+        #Make sure player has enough gold for this transaction
+        player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
+        if player_gold < 500000:
+            await ctx.reply(f'Buying an epic weapon costs `500,000` gold. You don\'t have enough gold (you have `{player_gold}`).')
+            return
+
+        item_info = await AssetCreation.createItem(self.client.pg_con, ctx.author.id, random.randint(75,120), 'Epic', returnstats=True)
+        await AssetCreation.giveGold(self.client.pg_con, -500000, ctx.author.id)
+
+        embed = discord.Embed(title=f"You received {item_info['Name']} ({item_info['Rarity']})!", color=0xBEDCF6)            
+        embed.add_field(name='Type', value=f"{item_info['Type']}")
+        embed.add_field(name='Attack', value=f"{item_info['Attack']}")
+        embed.add_field(name='Crit', value=f"{item_info['Crit']}")
+        embed.set_footer(text=f"You now have {player_gold - 500000} gold.")
+
+        await ctx.reply(embed=embed)
+
+    @shop.command(description='Get a new rare weapon! Costs 50,000 gold.')
+    @commands.check(Checks.is_player)
+    async def rare(self, ctx):
+        #Make sure player has enough gold for this transaction
+        player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
+        if player_gold < 50000:
+            await ctx.reply(f'Buying a rare weapon costs `50,000` gold. You don\'t have enough gold (you have `{player_gold}`).')
+            return
+
+        item_info = await AssetCreation.createItem(self.client.pg_con, ctx.author.id, random.randint(45,90), 'Rare', returnstats=True)
+        await AssetCreation.giveGold(self.client.pg_con, -50000, ctx.author.id)
+
+        embed = discord.Embed(title=f"You received {item_info['Name']} ({item_info['Rarity']})!", color=0xBEDCF6)            
+        embed.add_field(name='Type', value=f"{item_info['Type']}")
+        embed.add_field(name='Attack', value=f"{item_info['Attack']}")
+        embed.add_field(name='Crit', value=f"{item_info['Crit']}")
+        embed.set_footer(text=f"You now have {player_gold - 50000} gold.")
+
+        await ctx.reply(embed=embed)
+
+    @shop.command(description='Get a rubidic. 1 rubidic for 10,000,000 gold.')
+    @commands.check(Checks.is_player)
+    async def rubidic(self, ctx, amount : int):
+        #Make sure player has enough gold for this transaction
+        if amount < 1:
+            await ctx.reply('Lol')
+            return
+
+        player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
+        cost = amount * 10000000
+        if player_gold < cost:
+            await ctx.reply(f'Buying a rubidic costs `10,000,000` gold. You don\'t have enough gold (you have `{player_gold}`).')
+            return
+
+        #Otherwise process the transaction
+        await AssetCreation.giveRubidics(self.client.pg_con, amount, ctx.author.id)
+        await AssetCreation.giveGold(self.client.pg_con, 0-cost, ctx.author.id)
+
+        if amount == 1:
+            await ctx.reply(f'Successfully bought `1` rubidic for `{cost}` gold.')
+        else:
+            await ctx.reply(f'Successfully bought `{amount}` rubidics for `{cost}` gold.')
 
 def setup(client):
     client.add_cog(Gacha(client))
