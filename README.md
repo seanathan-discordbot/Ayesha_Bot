@@ -1,4 +1,4 @@
-# seanathan
+# Ayesha
 
 ##Required libraries:
 * Python 3.7
