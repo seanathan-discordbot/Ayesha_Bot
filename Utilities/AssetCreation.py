@@ -274,9 +274,18 @@ async def getAcolyteAttack(pool, instance_id : int):
     info = await getAcolyteByID(pool, instance_id)
     if info['Dupes'] > 5:
         info['Dupes'] = 5
-    attack = int(info['Attack'] + (info['Scale'] * info['Level']) + (info['Dupes'] * 5))
-    crit = int(info['Crit'] + info['Dupes'])
-    hp = int(info['HP'] + (info['Dupes'] * 20))
+    if info['Rarity'] == 4:
+        attack = int(info['Attack'] + (info['Scale'] * info['Level']) + (info['Dupes'] * 7.5))
+        crit = int(info['Crit'] + info['Dupes'] * 1.5)
+        hp = int(info['HP'] + (info['Dupes'] * 30))
+    elif info['Rarity'] == 5:
+        attack = int(info['Attack'] + (info['Scale'] * info['Level']) + (info['Dupes'] * 10))
+        crit = int(info['Crit'] + info['Dupes'] * 2)
+        hp = int(info['HP'] + (info['Dupes'] * 40))
+    else:
+        attack = int(info['Attack'] + (info['Scale'] * info['Level']) + (info['Dupes'] * 5))
+        crit = int(info['Crit'] + info['Dupes'])
+        hp = int(info['HP'] + (info['Dupes'] * 20))
     return attack, crit, hp
 
 async def getAttack(pool, user_id, returnothers = False):
