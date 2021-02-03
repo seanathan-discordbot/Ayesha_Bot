@@ -139,9 +139,9 @@ class Acolytes(commands.Cog):
 
         await ctx.reply(f"Dismissed acolyte `{removed['ID']}: {removed['Name']}`")
 
-    @commands.command(brief='<acolyte id>', description='Train your acolyte, giving it xp and potentially levelling it up!')
+    @commands.command(brief='<acolyte id> <amount = 1>', description='Train your acolyte, giving it xp and potentially levelling it up! Each training session with your acolyte costs 50 of its upgrade material and 250 gold.')
     @commands.check(Checks.is_player)
-    async def train(self, ctx, instance_id : int):
+    async def train(self, ctx, instance_id : int, iterations : int = 1):
         if not await AssetCreation.verifyAcolyteOwnership(self.client.pg_con, instance_id, ctx.author.id):
             await ctx.reply('This acolyte isn\'t in your tavern.')
             return
@@ -151,20 +151,26 @@ class Acolytes(commands.Cog):
             await ctx.reply(f"{acolyte['Name']} is already at maximum level!")
             return
 
+        if iterations < 1:
+            await ctx.reply('No.')
+            return
+
         #Make sure player has the resources and gold to train
         #5000 xp = 50 of the mat + 250 gold
         material = await AssetCreation.getPlayerMat(self.client.pg_con, acolyte['Mat'], ctx.author.id)
         gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
+        material_cost = iterations * 50
+        gold_cost = iterations * 250
 
-        if material < 50 or gold < 250:
-            await ctx.reply(f"Training your acolyte costs `50` {acolyte['Mat']} and `250` gold. You don\'t have enough resources to train.")
+        if material < material_cost or gold < gold_cost:
+            await ctx.reply(f"Training your acolyte costs `{material_cost}` {acolyte['Mat']} and `{gold_cost}` gold. You don\'t have enough resources to train.")
             return
         
-        await AssetCreation.giveAcolyteXP(self.client.pg_con, 5000, instance_id)
-        await AssetCreation.giveGold(self.client.pg_con, -250, ctx.author.id)
-        await AssetCreation.giveMat(self.client.pg_con, acolyte['Mat'], -50, ctx.author.id)
+        await AssetCreation.giveAcolyteXP(self.client.pg_con, 5000 * iterations, instance_id)
+        await AssetCreation.giveGold(self.client.pg_con, -250 * iterations, ctx.author.id)
+        await AssetCreation.giveMat(self.client.pg_con, acolyte['Mat'], -50 * iterations, ctx.author.id)
 
-        await ctx.reply(f"You trained with `{acolyte['Name']}`, consuming `50` {acolyte['Mat']} and `250` gold in the process. As a result, `{acolyte['Name']}` gained 5,000 exp!")
+        await ctx.reply(f"You trained with `{acolyte['Name']}`, consuming `{material_cost}` {acolyte['Mat']} and `{gold_cost}` gold in the process. As a result, `{acolyte['Name']}` gained {5000 * iterations} exp!")
         await AssetCreation.checkAcolyteLevel(self.client.pg_con, ctx, instance_id)
 
     @commands.command(brief='<name>', description='Learn more about each of your acolytes!')
