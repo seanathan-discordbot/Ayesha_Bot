@@ -131,7 +131,7 @@ class Associations(commands.Cog):
 
         #Also calculate how much more xp is needed for a level up
         xp = await AssetCreation.getGuildXP(self.client.pg_con, guild['ID'])
-        needed = 100000 - (xp % 100000)
+        needed = 1000000 - (xp % 1000000)
         await ctx.reply(f'You contributed `{donation}` gold to your brotherhood. It will become level `{int(xp/100000)+1}` at `{needed}` more xp.')
 
     @brotherhood.command(description='View the other members of your guild.')
@@ -314,8 +314,8 @@ class Associations(commands.Cog):
 
         #Also calculate how much more xp is needed for a level up
         xp = await AssetCreation.getGuildXP(self.client.pg_con, guild['ID'])
-        needed = 100000 - (xp % 100000)
-        await ctx.reply(f'You contributed `{donation}` gold to your guild. It will become level `{level+1}` at `{needed}` more xp.')
+        needed = 1000000 - (xp % 1000000)
+        await ctx.reply(f'You contributed `{donation}` gold to your guild. It will become level `{int(xp/100000)+1}` at `{needed}` more xp.')
 
     @guild.command(aliases=['members'], description='View the other members of your guild.')
     @commands.check(Checks.in_guild)

@@ -113,7 +113,7 @@ class Profile(commands.Cog):
             acolyte2 = None
 
         #Create Embed
-        embed = discord.Embed(title=f"{player.display_name}\'s Profile: {character['Name']}", color=0xBEDCF6)
+        embed = discord.Embed(title=f"{player.display_name}\'s Profile: {character['Name']} ({character['prestige']} \u2604)", color=0xBEDCF6)
         embed.set_thumbnail(url=f'{player.avatar_url}')
         embed.add_field(
             name='Character Info',
@@ -156,6 +156,27 @@ class Profile(commands.Cog):
             return
         await AssetCreation.setPlayerName(self.client.pg_con, ctx.author.id, name)
         await ctx.reply(f'Name changed to `{name}`.')
+
+    @commands.command(description='Rebirth your character, resetting their level and giving them 30 attack and 50 HP.')
+    @commands.check(Checks.is_player)
+    async def prestige(self, ctx):
+        #Make sure player is lvl 100
+        level = await AssetCreation.getLevel(self.client.pg_con, ctx.author.id)
+        if level < 100:
+            await ctx.reply('You can only prestige at level 100.')
+            return
+
+        #Reset level, gold, resources
+        await AssetCreation.resetPlayerLevel(self.client.pg_con, ctx.author.id)
+        await AssetCreation.setGold(self.client.pg_con, ctx.author.id, 0)
+        await AssetCreation.resetResources(self.client.pg_con, ctx.author.id)
+
+        #Give 10 rubidics and add 1 to prestige
+        await AssetCreation.giveRubidics(self.client.pg_con, 10, ctx.author.id)
+        prestige = await AssetCreation.prestigeCharacter(self.client.pg_con, ctx.author.id)
+
+        #Send response
+        await ctx.reply(f"Successfully reset your character! You are now prestige {prestige}!")
 
     #Add a tutorial command at the end of alpha
     @commands.group(description='Learn the game.', case_insensitive=True, invoke_without_command=True)
