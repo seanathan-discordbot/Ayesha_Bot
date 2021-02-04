@@ -83,6 +83,7 @@ class HelpCommand(commands.Cog):
                 name = f'Please enter `{prefix}help <Module>` for more info on that module',
                 value = listCogs, inline=False #LIST THE COGS
             )
+            helpEmbed.set_footer(text='Use the tutorial command to get started!')
             
             embed = discord.Embed(color=0xBEDCF6)
             embed.set_thumbnail(url=ctx.author.avatar_url)
@@ -96,6 +97,7 @@ class HelpCommand(commands.Cog):
             embed.add_field(name='ping', #SERVERS
                 value='`servers`\nSee how many servers this bot is in!', 
                 inline=False)
+            embed.set_footer(text='Use the tutorial command to get started!')
             
             entries = [helpEmbed, embed]
                 

@@ -89,7 +89,7 @@ class Misc(commands.Cog):
         output = ''
         for entry in board:
             player = await self.client.fetch_user(entry[0])
-            output = output + f'**{player.name}#{player.discriminator}\'s** `{entry[1]}`: Level `{entry[2]}`, with `{entry[3]}` xp.\n'
+            output = output + f'**{player.name}#{player.discriminator}\'s** `{entry[1]}`: Prestige `{entry[4]}`, Level `{entry[2]}`, `{entry[3]}` xp.\n'
 
         embed.add_field(name='Most Experienced Players', value=output)
 
