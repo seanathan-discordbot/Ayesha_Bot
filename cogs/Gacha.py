@@ -126,7 +126,7 @@ class Gacha(commands.Cog):
             if reward[0] == 'acolyte':
                 output += f"{acolyte_list[name]['Rarity']}⭐ Acolyte: {acolyte_list[name]['Name']}\n"
             elif reward[0] == 'weapon':
-                output += f"({item_info['Rarity']}) {item_info['Name']}, with {item_info['Attack']} ATK\n"
+                output += f"({item_info['Rarity']}) {item_info['Name']}, with {item_info['Attack']} ATK and {item_info['Crit']} CRIT.\n"
 
         output += f"\nYou have {info['rubidic']-rolls} rubidics. You will receive a 5⭐ acolyte in {80-pity} summons."
 
