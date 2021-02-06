@@ -65,7 +65,7 @@ class Acolytes(commands.Cog):
             menu.show_command_message()
             await menu.open()
 
-    @commands.command(aliases=['hire'], brief='<acolyte_id : int> <slot : int>', description='Add an acolyte to your party')
+    @commands.command(aliases=['hire'], brief='<acolyte_id : int> <slot (1 or 2)>', description='Add an acolyte to your party')
     @commands.check(Checks.is_player)
     async def recruit(self, ctx, instance_id : int, slot : int):
         if slot < 1 or slot > 2:
@@ -209,7 +209,10 @@ class Acolytes(commands.Cog):
         embed = discord.Embed(color=0xBEDCF6)
         embed.add_field(name='Level', value=f"{info['lvl']}")
         embed.add_field(name='EXP', value=f"{info['xp']}")
-        embed.add_field(name=f"EXP until Level {info['lvl']+1}", value=f"{tonext}")
+        if info['lvl'] != 100:
+            embed.add_field(name=f"EXP until Level {info['lvl']+1}", value=f"{tonext}")
+        else:
+            embed.add_field(name=f"EXP until Level {info['lvl']+1}", value="∞")
         await ctx.reply(embed=embed)
 
 def setup(client):
