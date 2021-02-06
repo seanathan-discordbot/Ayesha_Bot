@@ -503,6 +503,9 @@ class PvE(commands.Cog):
                 crit, is_crit, damage, enemyhp, attack = self.checkCrit(level, crit, damage, enemyhp, attack, acolyte1, acolyte2)
 
                 enemyhp = enemyhp - damage
+
+                #Calculate player damage
+                your_damage = bossaction['Damage']
                 if level == 18:
                     your_damage = math.floor(bossaction['Damage']/2 + damage/20)
                 if level == 19 and turnCounter == 0:
@@ -512,6 +515,7 @@ class PvE(commands.Cog):
                 if level == 14:
                     your_damage = math.floor(your_damage / 5)
                 hp = hp - your_damage
+
                 if level == 20:
                     enemyhp += 100
                 turnCounter += 1
