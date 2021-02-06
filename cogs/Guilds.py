@@ -319,6 +319,10 @@ class Guilds(commands.Cog):
     @guild.command(brief='<player>', description='Transfer guild ownership to another member.')
     @commands.check(Checks.is_guild_leader)
     async def transfer(self, ctx, player : commands.MemberConverter):
+        if ctx.author.id == player.id:
+            await ctx.reply('?')
+            return
+
         # Make sure target has a char, is in the same guild
         if not await Checks.has_char(self.client.pg_con, player):
             await ctx.reply('This person does not have a character.')
