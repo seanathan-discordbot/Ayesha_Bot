@@ -486,5 +486,10 @@ class Travel(commands.Cog):
         await AssetCreation.giveMat(self.client.pg_con, 'iron', 0 - iron_cost, ctx.author.id)
         await ctx.reply(f"Success! You consumed `{gold_cost}` gold and `{iron_cost}` iron to upgrade your `{item['Name']}` to `{item['Attack']+1}` ATK.")
 
+    @commands.command(description='See the map!')
+    async def map(self, ctx):
+        map_file = discord.File(r'C:\Users\sebas\OneDrive\Ayesha\Assets\Map.jpg')
+        await ctx.reply(file=map_file)
+
 def setup(client):
     client.add_cog(Travel(client))
