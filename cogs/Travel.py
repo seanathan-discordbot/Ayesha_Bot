@@ -579,6 +579,32 @@ class Travel(commands.Cog):
         await AssetCreation.giveMat(self.client.pg_con, 'iron', 0 - iron_cost, ctx.author.id)
         await ctx.reply(f"Success! You consumed `{gold_cost}` gold and `{iron_cost}` iron to upgrade your `{item['Name']}` to `{item['Attack']+1}` ATK.")
 
+    @commands.command(description='Work a shift at a nearby shoppe to gain some cash.')
+    @commands.check(Checks.is_player)
+    @cooldown(1, 7200, type=BucketType.user)
+    async def work(self, ctx):
+        #Upgrade only in Cities or Towns
+        location = await AssetCreation.getLocation(self.client.pg_con, ctx.author.id)
+        if location != 'Thenuille' and location != 'Aramithea' and location != 'Riverburn':
+            await ctx.reply('You can only work in an urban center!')
+            ctx.command.reset_cooldown(ctx)
+            return
+
+        #Choose random workplace and gold amount
+        workplaces = ('blacksmith', 'cartographer\'s study', 'library', 'manor', 'doctor\'s office', 'carpenter\'s studio', 'farm', 'general goods store', 'bar')
+        workplace = random.choice(workplaces)
+
+        gold_made = random.randint(1,10)
+        if gold_made == 10:
+            gold = random.randint(10000, 20000)
+        else:
+            gold = random.randint(2000,10000)
+
+        await AssetCreation.giveGold(self.client.pg_con, gold, ctx.author.id)
+
+        #Send output
+        await ctx.reply(f'You worked at the local {workplace} and made `{gold}` gold.')
+
     @commands.command(description='See the map!')
     async def map(self, ctx):
         map_file = discord.File(r'C:\Users\sebas\OneDrive\Ayesha\Assets\Map.jpg')
