@@ -179,7 +179,9 @@ class Acolytes(commands.Cog):
             info = json.load(f)
 
         try:
-            if name != "PrxRdr":
+            if name.lower() == "prxrdr":
+                name = 'PrxRdr'
+            else:
                 name = name.title()
             acolyte = info[name]
         except KeyError:
