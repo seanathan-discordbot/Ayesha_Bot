@@ -43,12 +43,13 @@ Some bosses have special effects that may make you rethink how to approach them.
 When you defeat a boss, you will gain lots of gold and xp, and possibly a weapon. Losing heavily reduces the xp you gain.
 Have fun defeating every boss!
 
--- TRAVEL TUTORIAL -- [46,48]
+-- TRAVEL TUTORIAL -- [46,49]
 You can check your location at anytime using the `Profile` command. Depending on your location, you can use the `hunt`, `forage`, `mine`, `upgrade`, or `fish` commands to gain additional gold, resources, or upgrade your weapon!
 You will need to travel for a set period of time before arriving at a new location. Do `travel` to see the list of places you can go and what commands and resources are available there. Then, you can do `travel <destination>` to set off towards that place.
 Once you have reached your destination, use the `arrive` command to gain some rewards.
+If you don't want to travel anywhere, but still passively gain gold, experience, and resources, you can use the `expedition` command instead! You will gain rewards for up to 7 days of an expedition. You get increased rewards the longer you're on an expedition. The `arrive` command is used to return from an expedition as well.
 
--- STRATEGY TUTORIAL --  [51, 54]
+-- STRATEGY TUTORIAL --  [52, 55]
 What if you don't want to block in a level? Or what if you only want to attack? The `strategy` command let's you change the weighting of each of these actions!
 If you want to use a command more, assign it a higher weighting; less, give it a smaller number. What if you only want to attack? Do `strategy 1 0 0 0 0`. This sets the attack weight to 1, and the rest to 0. What if you want to parry a lot, and not so much the rest? Do `strategy 5 5 10 5 5`, setting the chance to parry to be double the chance of any other reaction. You could even use big numbers, like `strategy 35 288 16 45 8`, to show all the possibilities of the command.
 After setting your strategy, I will convert it to percentages. You put `strategy 1 1 1 1 1`? That means each action has a 20% chance of occuring. 
