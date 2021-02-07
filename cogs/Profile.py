@@ -136,6 +136,12 @@ class Profile(commands.Cog):
         
         await ctx.reply(embed=embed)
 
+    @commands.command(aliases=['e', 'econ', 'economy', 'wallet'], description='See how much gold you have.')
+    @commands.check(Checks.is_player)
+    async def gold(self, ctx):
+        gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
+        await ctx.reply(f'You have `{gold}` gold.')
+
     @commands.command(aliases=['xp'], description='Check your xp and level.')
     @commands.check(Checks.is_player)
     async def level(self, ctx):

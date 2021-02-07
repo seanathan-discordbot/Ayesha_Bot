@@ -45,6 +45,13 @@ class Admin(commands.Cog):
         await AssetCreation.giveRubidics(self.client.pg_con, amount, player.id)
         await ctx.reply('Rubidics given.')
 
+    @commands.command(description='None')
+    @commands.check(Checks.is_admin)
+    async def rcd(self, ctx):
+        for cmd in self.client.walk_commands():
+            cmd.reset_cooldown(ctx)
+        await ctx.reply('Reset your cooldowns.')
+
     # @commands.command(description='None')
     # @commands.check(Ayesha.is_admin)
     # async def aacolyte(self, ctx, acolyte_name, player : commands.MemberConverter):

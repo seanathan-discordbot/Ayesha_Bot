@@ -51,12 +51,17 @@ class Misc(commands.Cog):
                     cooldowns.append((f'{command.name}', f'{time.strftime("%H:%M:%S", time.gmtime(command.get_cooldown_retry_after(ctx)))}'))
                 else:
                     cooldowns.append((f'{command.name}', f'{time.strftime("%M:%S", time.gmtime(command.get_cooldown_retry_after(ctx)))}'))
+        
         adv = await AssetCreation.getAdventure(self.client.pg_con, ctx.author.id)
-
         if adv['adventure'] is not None:
             if adv['adventure'] > int(time.time()):
                 time_left = adv['adventure'] - int(time.time())
                 output = f"You will arrive at `{adv['destination']}` in `{time.strftime('%H:%M:%S', time.gmtime(time_left))}`.\n"
+            elif adv['destination'] == 'EXPEDITION':
+                elapsed_time = int(time.time()) - adv['adventure']
+                leftovers = elapsed_time % 86400
+                duration = time.strftime("%H:%M:%S", time.gmtime(leftovers))
+                output = f"You have been on an expedition for `{int(elapsed_time / 86400)}:{duration}`.\n"
             else:
                 time_left = 0   
         else:
