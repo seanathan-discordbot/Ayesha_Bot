@@ -229,6 +229,26 @@ class Guilds(commands.Cog):
         await AssetCreation.setGuildDescription(self.client.pg_con, desc, guild['ID'])
         await ctx.reply('Description updated!')
 
+    @guild.command(brief='<img url>', description='Set the icon for your guild.')
+    @commands.check(Checks.is_guild_officer)
+    async def icon(self, ctx, *, url : str):
+        if len(url) > 256:
+            await ctx.reply('Icon URL max 256 characters. Please upload your image to imgur or tinurl for an appropriate link.')
+            return
+
+        if not url.startswith('http'):
+            await ctx.reply('That is not a link!')
+            return
+
+        if not url.endswith('.jpg') and not url.endswith('.png') and not url.endswith('.gif') and not url.endswith('.jpeg'):
+            await ctx.reply('Only JPG, PNG, and GIFs are supported.')
+            return
+        
+        #Get guild and change icon
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        await AssetCreation.setGuildIcon(self.client.pg_con, url, guild['ID'])
+        await ctx.reply('Icon updated!')
+
     @guild.command(description='Lock/unlock your guild from letting anyone join without an invite.')
     @commands.check(Checks.is_guild_leader)
     async def lock(self, ctx):

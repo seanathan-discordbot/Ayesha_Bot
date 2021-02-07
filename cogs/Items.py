@@ -138,7 +138,7 @@ class Items(commands.Cog):
             guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
             if guild['Type'] == 'Guild':
                 guild_level = await AssetCreation.getGuildLevel(self.client.pg_con, guild['ID'])
-                guild_bonus = 1.5 + (guild_level * .25)
+                guild_bonus = 1.5 + (guild_level * .1)
         except TypeError:
             pass   
 
