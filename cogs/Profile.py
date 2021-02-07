@@ -151,7 +151,10 @@ class Profile(commands.Cog):
         embed = discord.Embed(color=0xBEDCF6)
         embed.add_field(name='Level', value=f'{level}')
         embed.add_field(name='EXP', value=f'{xp}')
-        embed.add_field(name=f'EXP until Level {level+1}', value=f'{tonext}')
+        if level != 100:
+            embed.add_field(name=f'EXP until Level {level+1}', value=f'{tonext}')
+        else:
+            embed.add_field(name=f'EXP until Level {level+1}', value='∞')
         await ctx.reply(embed=embed)
 
     @commands.command(brief='<name>', description='Change your character name.')
