@@ -253,7 +253,7 @@ class Profile(commands.Cog):
             tutorial = f.readlines()
 
         embed1 = discord.Embed(title='Ayesha Tutorial: Travel', color=0xBEDCF6)
-        embed1.add_field(name='Everything on Travel', value=f"{tutorial[46]}\n{tutorial[47]}\n{tutorial[48]}")
+        embed1.add_field(name='Everything on Travel', value=f"{tutorial[46]}\n{tutorial[47]}\n{tutorial[48]}\n{tutorial[49]}")
 
         await ctx.reply(embed=embed1)
 
