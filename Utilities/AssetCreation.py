@@ -539,6 +539,11 @@ async def setGuildDescription(pool, description, guild_id : int):
         await conn.execute('UPDATE guilds SET guild_desc = $1 WHERE guild_id = $2', description, guild_id)
         await pool.release(conn)
 
+async def setGuildIcon(pool, url : str, guild_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE guilds SET guild_icon = $1 WHERE guild_id = $2', url, guild_id)
+        await pool.release(conn)
+
 async def lockGuild(pool, guild_id : int):
     async with pool.acquire() as conn:
         await conn.execute("UPDATE guilds SET join_status = 'closed' WHERE guild_id = $1", guild_id)
