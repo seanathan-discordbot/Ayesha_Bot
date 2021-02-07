@@ -9,8 +9,6 @@ import discord
 from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
-import ayesha
-
 # **Music:** Ayesha's own music player! (it sucks)
 
 listCogs = """**Acolytes:** Commands involving your party members
