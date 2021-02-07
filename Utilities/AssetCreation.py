@@ -291,7 +291,7 @@ async def getAcolyteAttack(pool, instance_id : int):
 async def getAttack(pool, user_id, returnothers = False):
     charattack, weaponattack, guildattack, acolyteattack, attack, crit, hp = 20, 0, 0, 0, 0, 5, 500
     async with pool.acquire() as conn:
-        char = await conn.fetchrow('SELECT lvl, equipped_item, acolyte1, acolyte2, occupation FROM players WHERE user_id = $1', user_id)
+        char = await conn.fetchrow('SELECT lvl, equipped_item, acolyte1, acolyte2, occupation, prestige FROM players WHERE user_id = $1', user_id)
         charattack += char['lvl'] * 2
 
         if char['equipped_item'] is not None:
@@ -328,6 +328,10 @@ async def getAttack(pool, user_id, returnothers = False):
                 crit = crit + guild_level
         except TypeError:
             pass
+
+        #Add prestige bonus
+        charattack += 30 * char['prestige']
+        hp += 50 * char['prestige']
 
         attack = charattack + weaponattack + acolyteattack + guildattack
 
@@ -428,6 +432,11 @@ async def giveAcolyteXP(pool, amount : int, instance_id : int):
         await conn.execute('UPDATE acolytes SET xp = xp + $1 WHERE instance_id = $2', amount, instance_id)
         await pool.release(conn)
 
+async def givePlayerXP(pool, amount : int, user_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE players SET xp = xp + $1 WHERE user_id = $2', amount, user_id)
+        await pool.release(conn)
+
 async def createGuild(pool, name, guild_type, leader, icon):
     async with pool.acquire() as conn:
         await conn.execute('INSERT INTO guilds (guild_name, guild_type, leader_id, guild_icon) VALUES ($1, $2, $3, $4)', name, guild_type, leader, icon)
@@ -478,8 +487,8 @@ async def getGuildLevel(pool, guild_id : int, returnline = False):
 
         if returnline: #Also create a string to show progress
             xp = await conn.fetchval('SELECT guild_xp FROM guilds WHERE guild_id = $1', guild_id)
-            progress = int((xp % 100000) / 20000)
-            progressStr = dashes[progress]+'◆'+dashes[4-progress]
+            progress = int((xp % 1000000) / 100000)
+            progressStr = dashes[progress]+'◆'+dashes[9-progress]
             await pool.release(conn)
             return level, progressStr
         else:
@@ -530,6 +539,11 @@ async def setGuildDescription(pool, description, guild_id : int):
         await conn.execute('UPDATE guilds SET guild_desc = $1 WHERE guild_id = $2', description, guild_id)
         await pool.release(conn)
 
+async def setGuildIcon(pool, url : str, guild_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE guilds SET guild_icon = $1 WHERE guild_id = $2', url, guild_id)
+        await pool.release(conn)
+
 async def lockGuild(pool, guild_id : int):
     async with pool.acquire() as conn:
         await conn.execute("UPDATE guilds SET join_status = 'closed' WHERE guild_id = $1", guild_id)
@@ -559,10 +573,10 @@ async def getAdventure(pool, user_id : int):
 
 async def getLocation(pool, user_id : int):
     async with pool.acquire() as conn:
-        location = await conn.fetchrow('SELECT loc FROM players WHERE user_id = $1', user_id)
+        location = await conn.fetchval('SELECT loc FROM players WHERE user_id = $1', user_id)
         await pool.release(conn)
     
-    return location[0]
+    return location
 
 async def giveMat(pool, material : str, amount : int, user_id : int):
     async with pool.acquire() as conn:
@@ -643,6 +657,11 @@ async def getPlayerMat(pool, material : str, user_id : int):
     
     return c[0]
 
+async def resetResources(pool, user_id : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE resources SET fur = 0, bone = 0, iron = 0, silver = 0, wood = 0, wheat = 0, oat = 0, reeds = 0, pine = 0, moss = 0, cacao = 0 WHERE user_id = $1', user_id)
+        await pool.release(conn)
+
 async def giveGold(pool, amount : int, user_id : int):
     async with pool.acquire() as conn:
         await conn.execute('UPDATE players SET gold = gold + $1 WHERE user_id = $2', amount, user_id)
@@ -652,6 +671,11 @@ async def getGold(pool, user_id : int):
     async with pool.acquire() as conn:
         gold = await conn.fetchrow('SELECT gold FROM players WHERE user_id = $1', user_id)
         return gold['gold']
+
+async def setGold(pool, user_id : int, gold : int):
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE players SET gold = $1 WHERE user_id = $2', gold, user_id)
+        await pool.release(conn)
 
 async def getClass(pool, user_id : int):
     async with pool.acquire() as conn:
@@ -673,7 +697,7 @@ async def getPlayerCount(pool):
 async def getPlayerByID(pool, user_id: int):
     async with pool.acquire() as conn:
         info = await conn.fetchrow("""SELECT num, user_name, lvl, equipped_item, acolyte1, acolyte2, guild, guild_rank, 
-            gold, occupation, origin, loc, pvpwins, pvpfights, bosswins, bossfights
+            gold, occupation, origin, loc, pvpwins, pvpfights, bosswins, bossfights, prestige
             FROM players WHERE user_id = $1""", user_id)
         await pool.release(conn)
 
@@ -693,7 +717,8 @@ async def getPlayerByID(pool, user_id: int):
         'pvpwins' : info[12],
         'pvpfights' : info[13],
         'bosswins' : info[14],
-        'bossfights' : info[15]
+        'bossfights' : info[15],
+        'prestige' : info[16]
     }
 
     return player
@@ -729,6 +754,11 @@ async def getPlayerXP(pool, user_id : int):
 
     return level, xp
 
+async def resetPlayerLevel(pool, user_id : int): #DONT USE THIS
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE players SET lvl = 0, xp = 0 WHERE user_id = $1', user_id)
+        await pool.release(conn)
+
 async def setPlayerName(pool, user_id : int, name : str):
     async with pool.acquire() as conn:
         await conn.execute('UPDATE players SET user_name = $1 WHERE user_id = $2', name, user_id)
@@ -758,8 +788,8 @@ async def setAdventure(pool, adventure : int, destination : str, user_id : int):
 
 async def getTopXP(pool):
     async with pool.acquire() as conn:
-        board = await conn.fetch("""SELECT user_id, user_name, lvl, xp FROM players
-            ORDER BY xp DESC LIMIT 5""")
+        board = await conn.fetch("""SELECT user_id, user_name, lvl, xp, prestige FROM players
+            ORDER BY prestige DESC, xp DESC LIMIT 5""")
         await pool.release(conn)
     
     return board
@@ -826,3 +856,11 @@ async def getStrategy(pool, user_id : int):
         await pool.release(conn)
 
     return strategy
+
+async def prestigeCharacter(pool, user_id : int):
+    async with pool.acquire() as conn:
+        await pool.execute('UPDATE players SET prestige = prestige + 1 WHERE user_id = $1', user_id)
+        prestige = await pool.fetchval('SELECT prestige FROM players WHERE user_id = $1', user_id)
+        await pool.release(conn)
+
+    return prestige

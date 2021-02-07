@@ -2,22 +2,34 @@ import discord
 from discord.ext import commands
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
-import json
 import os
-
 import time
 import traceback
+import logging
 
 import asyncpg
 
 from Utilities import Links
 
-def get_prefix(client, message):
-    with open(Links.prefix_file,'r') as f:
-        prefixes = json.load(f)
-    return prefixes[str(message.guild.id)]
+logger = logging.getLogger('discord')
+logger.setLevel(logging.WARNING)
+handler = logging.FileHandler(filename=Links.log_file, encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler)
 
-client = commands.Bot(command_prefix=get_prefix, help_command=None)
+async def get_prefix(client, message):
+    if isinstance(message.channel, discord.DMChannel):
+        return '%'
+
+    conn = await asyncpg.connect(database=Links.database_name, user=Links.database_user, password=Links.database_password)
+    prefix = await conn.fetchval('SELECT prefix FROM prefixes WHERE server = $1', message.guild.id)
+    if prefix is None: #bot joined server while offline
+        await conn.execute("INSERT INTO prefixes (server, prefix) VALUES ($1, '%')", message.guild.id)
+        prefix = '%'
+    await conn.close()
+    return prefix
+
+client = commands.Bot(command_prefix=get_prefix, help_command=None, case_insensitive=True)
 
 admins = [196465885148479489, 325080171591761921, 530760994289483790, 465388103792590878] #Seb, Sean, Demi, Bort
 def is_admin(ctx):
@@ -40,37 +52,37 @@ async def on_ready():
     await client.change_presence(activity=discord.Game('Say %tutorial to get started!'))
     print('Hi my name is Ayesha.')        
 
-# ----- PREFIX CHANGES ------
+# ----- PREFIX CHANGING STUFF -----
+
 @client.event #the default prefix is %
 async def on_guild_join(guild):
-    with open(Links.prefix_file,'r') as f:
-        prefixes = json.load(f)
-    prefixes[str(guild.id)] = '%'
-    with open(Links.prefix_file,'w') as f:
-        json.dump(prefixes, f, indent=4)
+    async with client.pg_con.acquire() as conn:
+        await conn.execute("INSERT INTO prefixes (server, prefix) VALUES ($1, '%')", guild.id) 
 
 @client.event #deletes the set prefix when a bot leaves the server
 async def on_guild_remove(guild):
-    with open(Links.prefix_file,'r') as f:
-        prefixes = json.load(f)
-    prefixes.pop(str(guild.id))
-    with open(Links.prefix_file,'w') as f:
-        json.dump(prefixes, f, indent=4)
+    async with client.pg_con.acquire() as conn:
+        await conn.execute("DELETE FROM prefixes WHERE server = $1", guild.id) 
 
 @client.command()
+@cooldown(1, 30, BucketType.default)
 @commands.has_guild_permissions(manage_permissions=True)
-@cooldown(1, 30, BucketType.guild)
 async def changeprefix(ctx, prefix):
-    with open(Links.prefix_file,'r') as f:
-        prefixes = json.load(f)
-    prefixes[str(ctx.guild.id)] = prefix
-    with open(Links.prefix_file,'w') as f:
-        json.dump(prefixes, f, indent=4)
-    await ctx.send(f'Prefix changed to {prefix}') 
+    if isinstance(ctx.message.channel, discord.DMChannel):
+        await ctx.reply('You can\'t do that here.')
+        return
+
+    if len(prefix) > 10:
+        await ctx.reply('Your prefix can only be a maximum of 10 characters.')
+        return
+    async with client.pg_con.acquire() as conn:
+        await conn.execute('UPDATE prefixes SET prefix = $1 WHERE server = $2', prefix, ctx.guild.id)
+        await ctx.send(f'Prefix changed to `{prefix}`.')
 
 # ----- ERROR HANDLER -----
 @client.event
 async def on_command_error(ctx, error):
+    printerror = True
     if isinstance(error, commands.MissingRequiredArgument) or isinstance(error, commands.BadArgument):
         embed = discord.Embed(title=f'You forgot an argument', color=0xBEDCF6)
         if ctx.command.brief and ctx.command.aliases:
@@ -82,24 +94,31 @@ async def on_command_error(ctx, error):
         else:
             embed.add_field(name=f'{ctx.command.name}', value=f'{ctx.command.description}', inline=False)
         await ctx.reply(embed=embed)
+        printerror = not printerror
     if isinstance(error, commands.CheckFailure):
         await ctx.reply('You are ineligible to use this command.')
+        printerror = not printerror
     if isinstance(error, commands.MaxConcurrencyReached):
-        await ctx.send('Max concurrency reached. Please wait until this command ends.')
+        await ctx.reply('Max concurrency reached. Please wait until this command ends.')
+        printerror = not printerror
     if isinstance(error, commands.MemberNotFound):
         await ctx.reply('Could not find a player with that name.')
+        printerror = not printerror
     if isinstance(error, CommandOnCooldown): #Please stop printing this
         if error.retry_after >= 3600:
-            await ctx.send(f'You are on cooldown for `{time.strftime("%H:%M:%S", time.gmtime(error.retry_after))}`.')
+            await ctx.reply(f'You are on cooldown for `{time.strftime("%H:%M:%S", time.gmtime(error.retry_after))}`.')
         elif error.retry_after >= 60:
-            await ctx.send(f'You are on cooldown for `{time.strftime("%M:%S", time.gmtime(error.retry_after))}`.')
+            await ctx.reply(f'You are on cooldown for `{time.strftime("%M:%S", time.gmtime(error.retry_after))}`.')
         else:
-            await ctx.send(f'You are on cooldown for another `{error.retry_after:.2f}` seconds.')
+            await ctx.reply(f'You are on cooldown for another `{error.retry_after:.2f}` seconds.')
+        printerror = not printerror
     if isinstance(error, commands.BotMissingPermissions):
         await ctx.reply('sssss')
+    if isinstance(error, commands.CommandNotFound):
+        printerror = not printerror
 
-    if not isinstance(error, CommandOnCooldown) and not isinstance(error, commands.CheckFailure):
-        print('Ignoring exception in command {}:'.format(ctx.command))
+    if printerror:
+        print(f'Ignoring exception in command {ctx.command.name}:')
         traceback.print_exception(type(error), error, error.__traceback__)
 
 # ----- OTHER COMMANDS -----
@@ -107,6 +126,10 @@ async def on_command_error(ctx, error):
 async def ping(ctx):
     embed = discord.Embed(title="Pong!", description=f"Latency is {client.latency * 1000:.2f} ms", color=0xBEDCF6)
     await ctx.send(embed=embed)
+
+@client.command(brief=None, description='Returns the amount of servers this bot is in')
+async def servers(ctx):
+    await ctx.send("This bot is in "+str(len(ctx.bot.guilds))+" servers.")
 
 # ----- LOAD COGS -----
 @client.command()
@@ -135,14 +158,14 @@ async def create_db_pool():
 client.loop.run_until_complete(create_db_pool())
 
 # Runs at bot startup to load all cogs
-for filename in os.listdir(r'F:\OneDrive\Ayesha\cogs'):
-# for filename in os.listdir(r'C:\Users\sebas\OneDrive\Ayesha\cogs'):
+# for filename in os.listdir(r'F:\OneDrive\Ayesha\cogs'):
+for filename in os.listdir(r'C:\Users\sebas\OneDrive\Ayesha\cogs'):
     if filename.endswith('.py'): # see if the file is a python file
         client.load_extension(f'cogs.{filename[:-3]}')
 
 #Also delete the music files downloaded
-for filename in os.listdir(r'F:\OneDrive\NguyenBot\Music Files'):
+# for filename in os.listdir(r'F:\OneDrive\NguyenBot\Music Files'):
 # for filename in os.listdir(r'C:\Users\sebas\OneDrive\Ayesha\Music Files'):
-    os.remove(f'F:/OneDrive/Ayesha/Music Files/{filename}')
+#     os.remove(f'F:/OneDrive/Ayesha/Music Files/{filename}')
 
 client.run(Links.Token)

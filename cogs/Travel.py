@@ -110,6 +110,78 @@ class Travel(commands.Cog):
                 embeds.append(embed)
         return embeds
 
+    async def completeExpedition(self, ctx, start_time : int):
+        elapsed_time = int(time.time() - start_time)
+        if elapsed_time > 604800:
+            elapsed_time = 604800
+
+        hours = elapsed_time / 3600
+
+        #Calculate xp, gold, and materials based off elapsed time (in hours)
+        if elapsed_time < 3600: #Less than 1 hour, ~100 gold/hr
+            gold = math.floor(hours * 100)
+            mats = random.randint(10,30)
+        elif elapsed_time < 10800: #1-3 hrs, ~175 gold/hr, 50 mats/hr
+            gold = math.floor(hours * 175)
+            mats = math.floor(hours * 50)
+        elif elapsed_time < 43200: #3-12 hrs, ~200 gold/hr, 75 mats/hr
+            gold = math.floor(hours * 265)
+            mats = math.floor(hours * 75)
+        elif elapsed_time < 259200: #12hrs - 3 days, ~300 gold/hr, 110 mats/hr
+            gold = math.floor(hours * 375)
+            mats = math.floor(hours * 110)
+        else: #Up to 7 days, ~500 gold/hr, 150 mats/hr
+            gold = math.floor(hours * 500)
+            mats = math.floor(hours * 150)
+        
+        xp = math.floor(gold / 4 + 50)
+        acolyte_xp = math.floor(xp / 10)
+
+        #Give those materials
+        await AssetCreation.giveGold(self.client.pg_con, gold, ctx.author.id)
+        await AssetCreation.givePlayerXP(self.client.pg_con, xp, ctx.author.id)
+
+        acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(self.client.pg_con, ctx.author.id)
+        if acolyte1 is not None:
+            await AssetCreation.giveAcolyteXP(self.client.pg_con, acolyte_xp, acolyte1)
+        if acolyte2 is not None:
+            await AssetCreation.giveAcolyteXP(self.client.pg_con, acolyte_xp, acolyte2)
+
+        location = await AssetCreation.getLocation(self.client.pg_con, ctx.author.id)
+        if location == 'Mythic Forest':
+            resource = 'wood'
+            await AssetCreation.giveMat(self.client.pg_con, 'wood', mats, ctx.author.id)
+        elif location == 'Fernheim' or location == 'Croire':
+            resource = 'wheat'
+            await AssetCreation.giveMat(self.client.pg_con, 'wheat', mats, ctx.author.id)
+        elif location == 'Sunset Prairie' or location == 'Glakelys':
+            resource = 'oats'
+            await AssetCreation.giveMat(self.client.pg_con, 'oats', mats, ctx.author.id)
+        elif location == 'Thanderlans':
+            resource = 'reeds'
+            await AssetCreation.giveMat(self.client.pg_con, 'reeds', mats, ctx.author.id)
+        elif location == 'Russe':
+            resource = random.choice(['pine', 'moss'])
+            await AssetCreation.giveMat(self.client.pg_con, resource, mats, ctx.author.id)
+        elif location == 'Crumidia':
+            resource = 'silver'
+            await AssetCreation.giveMat(self.client.pg_con, 'silver', mats, ctx.author.id)
+        elif location == 'Kucre':
+            resource = 'cacao'
+            await AssetCreation.giveMat(self.client.pg_con, 'cacao', mats, ctx.author.id)
+        else: #then theyre in the city
+            resource = random.choice(['fur', 'bone'])
+            await AssetCreation.giveMat(self.client.pg_con, resource, mats, ctx.author.id)
+
+        await AssetCreation.setAdventure(self.client.pg_con, None, None, ctx.author.id)
+
+        #Send results of player
+        await ctx.reply(f'You returned from your expedition and received `{gold}` gold, `{xp}` xp, and `{mats}` {resource}.')
+
+        await AssetCreation.checkLevel(self.client.pg_con, ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
+
+        return
+
     #COMMANDS
     @commands.command(brief='<destination>', description='Travel to another area of the map, unlocking a different subset of commands.')
     @commands.check(Checks.is_player)
@@ -149,6 +221,22 @@ class Travel(commands.Cog):
         # Tell player when their adventure will be done
         await ctx.reply(f"You will arrive at `{destination}` in `{self.convertagain(loc['CD'])}`.")
 
+    @commands.command(description='Go on an expedition for a time, returning with materials!')
+    @commands.check(Checks.is_player)
+    @cooldown(1, 900, type=BucketType.user)
+    async def expedition(self, ctx):
+        #Make sure they're not on an adventure or traveling
+        adventure = await AssetCreation.getAdventure(self.client.pg_con, ctx.author.id)
+        if adventure['adventure'] is not None:
+            await ctx.reply('You are currently traveling. Please wait until you arrive at your destination before traveling again.')
+            return
+
+        #Tell database they're going on an expedition
+        await AssetCreation.setAdventure(self.client.pg_con, int(time.time()), "EXPEDITION", ctx.author.id)
+
+        #Send message
+        await ctx.reply('You have went on an expedition! You can return at any time with the `arrive` command.\nYou will gain increased rewards the longer you are on expedition, but only for 1 week.')
+
     @commands.command(description='See how long until you arrive at your new location or collect rewards for moving.')
     @commands.check(Checks.is_player)
     async def arrive(self, ctx):
@@ -156,6 +244,11 @@ class Travel(commands.Cog):
         if adv[0] is None:
             await ctx.reply('You aren\'t travelling. Use `travel` to explore somewhere new!')
             return
+
+        #If they're on an expedition, handle it differently
+        if adv['destination'] == 'EXPEDITION':
+            await self.completeExpedition(ctx, adv['adventure'])
+            return 
 
         current = int(time.time())
         if current >= adv[0]: #Then enough time has passed and the adv is complete
@@ -485,6 +578,37 @@ class Travel(commands.Cog):
         await AssetCreation.giveGold(self.client.pg_con, 0 - gold_cost, ctx.author.id)
         await AssetCreation.giveMat(self.client.pg_con, 'iron', 0 - iron_cost, ctx.author.id)
         await ctx.reply(f"Success! You consumed `{gold_cost}` gold and `{iron_cost}` iron to upgrade your `{item['Name']}` to `{item['Attack']+1}` ATK.")
+
+    @commands.command(description='Work a shift at a nearby shoppe to gain some cash.')
+    @commands.check(Checks.is_player)
+    @cooldown(1, 7200, type=BucketType.user)
+    async def work(self, ctx):
+        #Upgrade only in Cities or Towns
+        location = await AssetCreation.getLocation(self.client.pg_con, ctx.author.id)
+        if location != 'Thenuille' and location != 'Aramithea' and location != 'Riverburn':
+            await ctx.reply('You can only work in an urban center!')
+            ctx.command.reset_cooldown(ctx)
+            return
+
+        #Choose random workplace and gold amount
+        workplaces = ('blacksmith', 'cartographer\'s study', 'library', 'manor', 'doctor\'s office', 'carpenter\'s studio', 'farm', 'general goods store', 'bar')
+        workplace = random.choice(workplaces)
+
+        gold_made = random.randint(1,10)
+        if gold_made == 10:
+            gold = random.randint(10000, 20000)
+        else:
+            gold = random.randint(2000,10000)
+
+        await AssetCreation.giveGold(self.client.pg_con, gold, ctx.author.id)
+
+        #Send output
+        await ctx.reply(f'You worked at the local {workplace} and made `{gold}` gold.')
+
+    @commands.command(description='See the map!')
+    async def map(self, ctx):
+        map_file = discord.File(r'C:\Users\sebas\OneDrive\Ayesha\Assets\Map.jpg')
+        await ctx.reply(file=map_file)
 
 def setup(client):
     client.add_cog(Travel(client))

@@ -608,7 +608,7 @@ class PvE(commands.Cog):
                 tutorial = f.readlines()
 
             embed1 = discord.Embed(title='Ayesha Tutorial: Strategy', color=0xBEDCF6, description = '```strategy <attack> <block> <parry> <heal> <bide>```')
-            embed1.add_field(name='You can customize how you fight bosses with the Strategy Command!', value=f"{tutorial[51]}\n{tutorial[52]}\n{tutorial[53]}\n{tutorial[54]}")
+            embed1.add_field(name='You can customize how you fight bosses with the Strategy Command!', value=f"{tutorial[52]}\n{tutorial[53]}\n{tutorial[54]}\n{tutorial[55]}")
 
             await ctx.reply(embed=embed1)
             return
