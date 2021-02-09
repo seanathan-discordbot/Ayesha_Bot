@@ -196,7 +196,7 @@ class Travel(commands.Cog):
             return
 
         adv = await AssetCreation.getAdventure(self.client.pg_con, ctx.author.id)
-        if adv[0] is not None:
+        if adv['adventure'] is not None:
             await ctx.reply('You are currently traveling. Please wait until you arrive at your destination before traveling again.')
             return
 
@@ -241,7 +241,7 @@ class Travel(commands.Cog):
     @commands.check(Checks.is_player)
     async def arrive(self, ctx):
         adv = await AssetCreation.getAdventure(self.client.pg_con, ctx.author.id)
-        if adv[0] is None:
+        if adv['adventure'] is None:
             await ctx.reply('You aren\'t travelling. Use `travel` to explore somewhere new!')
             return
 
@@ -251,9 +251,9 @@ class Travel(commands.Cog):
             return 
 
         current = int(time.time())
-        if current >= adv[0]: #Then enough time has passed and the adv is complete
-            low_bound = math.floor((location_dict[adv[1]]['CD']**1.5)/2500)
-            high_bound = math.floor((location_dict[adv[1]]['CD']**1.6)/5000)
+        if current >= adv['adventure']: #Then enough time has passed and the adv is complete
+            low_bound = math.floor((location_dict[adv['destination']]['CD']**1.5)/2500)
+            high_bound = math.floor((location_dict[adv['destination']]['CD']**1.6)/5000)
             gold = random.randint(low_bound, high_bound)
             xp = random.randint(low_bound, high_bound)
             acolyte_xp = math.floor(xp / 10)
@@ -266,7 +266,7 @@ class Travel(commands.Cog):
             if role == 'Traveler':
                 gold *= 3
 
-            await AssetCreation.giveAdventureRewards(self.client.pg_con, xp, gold, adv[1], ctx.author.id)
+            await AssetCreation.giveAdventureRewards(self.client.pg_con, xp, gold, adv['destination'], ctx.author.id)
 
             #Also give bonuses to acolytes if any
             acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(self.client.pg_con, ctx.author.id)
@@ -277,16 +277,16 @@ class Travel(commands.Cog):
                 await AssetCreation.giveAcolyteXP(self.client.pg_con, acolyte_xp, acolyte2)
 
             if getWeapon == 1:
-                await ctx.reply(f'You arrived at `{adv[1]}`! On the way you earned `{xp}` xp and `{gold}` gold. You also found a weapon!')
+                await ctx.reply(f"You arrived at `{adv['destination']}`! On the way you earned `{xp}` xp and `{gold}` gold. You also found a weapon!")
             else:
-                await ctx.reply(f'You arrived at `{adv[1]}`! On the way you earned `{xp}` xp and `{gold}` gold.')
+                await ctx.reply(f"You arrived at `{adv['destination']}`! On the way you earned `{xp}` xp and `{gold}` gold.")
 
             #Check for level ups
             await AssetCreation.checkLevel(self.client.pg_con, ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
 
         else: 
             wait = adv[0] - current
-            await ctx.reply(f'You will arrive at `{adv[1]}` in `{self.convertagain(wait)}`.')
+            await ctx.reply(f"You will arrive at `{adv['destination']}` in `{self.convertagain(wait)}`.")
 
     @commands.command(description='Cancel your current travel-state.')
     @commands.check(Checks.is_player)
@@ -296,10 +296,15 @@ class Travel(commands.Cog):
             await ctx.reply('You aren\'t travelling. Use `travel` to explore somewhere new!')
             return
 
+        #If they're on an expedition, handle it differently
+        if adv['destination'] == 'EXPEDITION':
+            await self.completeExpedition(ctx, adv['adventure'])
+            return 
+
         current = int(time.time())
-        if current >= adv[0]: #Then enough time has passed and the adv is complete
-            low_bound = math.floor((location_dict[adv[1]]['CD']**1.5)/2500)
-            high_bound = math.floor((location_dict[adv[1]]['CD']**1.6)/5000)
+        if current >= adv['adventure']: #Then enough time has passed and the adv is complete
+            low_bound = math.floor((location_dict[adv['destination']]['CD']**1.5)/2500)
+            high_bound = math.floor((location_dict[adv['destination']]['CD']**1.6)/5000)
             gold = random.randint(low_bound, high_bound)
             xp = random.randint(low_bound, high_bound)
             acolyte_xp = math.floor(xp / 10)
@@ -312,7 +317,7 @@ class Travel(commands.Cog):
             if role == 'Traveler':
                 gold *= 3
 
-            await AssetCreation.giveAdventureRewards(self.client.pg_con, xp, gold, adv[1], ctx.author.id)
+            await AssetCreation.giveAdventureRewards(self.client.pg_con, xp, gold, adv['destination'], ctx.author.id)
 
             #Also give bonuses to acolytes if any
             acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(self.client.pg_con, ctx.author.id)
@@ -323,9 +328,9 @@ class Travel(commands.Cog):
                 await AssetCreation.giveAcolyteXP(self.client.pg_con, acolyte_xp, acolyte2)
 
             if getWeapon == 1:
-                await ctx.reply(f'You arrived at `{adv[1]}`! On the way you earned `{xp}` xp and `{gold}` gold. You also found a weapon!')
+                await ctx.reply(f"You arrived at `{adv['destination']}`! On the way you earned `{xp}` xp and `{gold}` gold. You also found a weapon!")
             else:
-                await ctx.reply(f'You arrived at `{adv[1]}`! On the way you earned `{xp}` xp and `{gold}` gold.')
+                await ctx.reply(f"You arrived at `{adv['destination']}`! On the way you earned `{xp}` xp and `{gold}` gold.")
 
             #Check for level ups
             await AssetCreation.checkLevel(self.client.pg_con, ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
@@ -336,7 +341,7 @@ class Travel(commands.Cog):
 
     @commands.command(description='Hunt for food. You may get fur and bone, which is needed to buff your acolytes.')
     @commands.check(Checks.is_player)
-    @cooldown(1, 15, type=BucketType.user)
+    @cooldown(1, 10, type=BucketType.user)
     async def hunt(self, ctx):
         #Make sure they're in hunting territory
         location = await AssetCreation.getLocation(self.client.pg_con, ctx.author.id)
@@ -377,7 +382,7 @@ class Travel(commands.Cog):
 
     @commands.command(description='Mine for ore. You may get iron or silver, which is needed to buff your acolytes.')
     @commands.check(Checks.is_player)
-    @cooldown(1, 15, type=BucketType.user)
+    @cooldown(1, 10, type=BucketType.user)
     async def mine(self, ctx):
         #Make sure they're in mining territory
         location = await AssetCreation.getLocation(self.client.pg_con, ctx.author.id)
@@ -411,7 +416,7 @@ class Travel(commands.Cog):
 
     @commands.command(description='Forage for materials depending on your location. These materials may buff your acolytes.')
     @commands.check(Checks.is_player)
-    @cooldown(1, 15, type=BucketType.user)
+    @cooldown(1, 10, type=BucketType.user)
     async def forage(self, ctx):
         #Get player location and materials.
         location = await AssetCreation.getLocation(self.client.pg_con, ctx.author.id)
@@ -475,7 +480,7 @@ class Travel(commands.Cog):
 
     @commands.command(description='Fish for food.')
     @commands.check(Checks.is_player)
-    @cooldown(1,15,type=BucketType.user)
+    @cooldown(1,10,type=BucketType.user)
     async def fish(self, ctx):
         #Fishing only in Thenuille
         location = await AssetCreation.getLocation(self.client.pg_con, ctx.author.id)
@@ -506,11 +511,11 @@ class Travel(commands.Cog):
 
     @commands.command(brief='<item id>', description='Upgrade the ATK stat of a weapon.')
     @commands.check(Checks.is_player)
-    @cooldown(1,120,type=BucketType.user)
+    @cooldown(1,90,type=BucketType.user)
     async def upgrade(self, ctx, item_id : int = None):
         if item_id is None:
             embed = discord.Embed(title='Upgrade', color=0xBEDCF6)
-            embed.add_field(name='Upgrade an item\'s attack stat by 1.', value='The cost of upgrading scales with the attack of the item. You will have to pay `3*(ATK+1)` iron and `20*(ATK+1)` gold to upgrade an item\'s ATK stat.\nEach rarity also has a maximum ATK:\n**Common:** 50\n**Uncommon:** 75\n**Rare:** 100\n**Epic:** 125\n**Legendary:** 160\n`Upgrade` has a 2 minute cooldown.')
+            embed.add_field(name='Upgrade an item\'s attack stat by 1.', value='The cost of upgrading scales with the attack of the item. You will have to pay `3*(ATK+1)` iron and `20*(ATK+1)` gold to upgrade an item\'s ATK stat.\nEach rarity also has a maximum ATK:\n**Common:** 50\n**Uncommon:** 75\n**Rare:** 100\n**Epic:** 125\n**Legendary:** 160\n`Upgrade` has a 90 second cooldown.')
             await ctx.reply(embed=embed)
             ctx.command.reset_cooldown(ctx)
             return
