@@ -226,8 +226,8 @@ async def checkAcolyteLevel(pool, ctx, instance_id):
 async def checkLevel(pool, ctx, user_id, aco1=None, aco2=None):
     """Updates given player's level if necessary, as well that player's acolytes. Prints its own output."""
     async with pool.acquire() as conn:
-        current = await conn.fetchrow('SELECT lvl, xp, user_name FROM Players WHERE user_id = $1', user_id)
-        if current['lvl'] < calcLevel(current['xp']):
+        current = await conn.fetchrow('SELECT lvl, xp, user_name, prestige FROM Players WHERE user_id = $1', user_id)
+        if current['lvl'] < calcLevel(current['xp'], current['prestige']):
             #Give some rewards
             gold = (current['lvl'] + 1) * 500
             rubidic = math.ceil((current['lvl'] + 1) / 10)
@@ -261,12 +261,13 @@ def getAcolyteLevel(xp):
 
     return level
 
-def calcLevel(xp):
+def calcLevel(xp, prestige):
     """Calculate a player's level. Returns an int."""
+    # CHANGING THIS REQUIRES CHANGING THE LEVEL COMMAND IN PROFILE.PY
     level = 0
 
     def f(x):
-        w = 6000000
+        w = 6000000 + (250000 * prestige)
         y = math.floor(w * math.cos((x/64)+3.14) + w)
         return y 
     
@@ -987,6 +988,14 @@ async def prestigeCharacter(pool, user_id : int):
     """Adds 1 to a player's prestige and returns the new amount (int)."""
     async with pool.acquire() as conn:
         await pool.execute('UPDATE players SET prestige = prestige + 1 WHERE user_id = $1', user_id)
+        prestige = await pool.fetchval('SELECT prestige FROM players WHERE user_id = $1', user_id)
+        await pool.release(conn)
+
+    return prestige
+
+async def getPrestige(pool, user_id : int):
+    """Returns a player's prestige (int)."""
+    async with pool.acquire() as conn:
         prestige = await pool.fetchval('SELECT prestige FROM players WHERE user_id = $1', user_id)
         await pool.release(conn)
 
