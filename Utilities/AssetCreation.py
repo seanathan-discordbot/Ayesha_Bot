@@ -8,6 +8,7 @@ import asyncpg
 import json
 import random
 import math
+import time
 import coolname
 
 from Utilities import Links
@@ -404,7 +405,7 @@ async def getAllAcolytesFromPlayer(pool, user_id : int): #Returns tuple of every
         inv = await conn.fetch("""SELECT instance_id, acolyte_name, lvl, is_equipped, duplicate FROM acolytes
                 WHERE owner_id = $1 AND (is_equipped = 1 OR is_equipped = 2)""", user_id)
         other = await conn.fetch("""SELECT instance_id, acolyte_name, lvl, is_equipped, duplicate FROM acolytes
-                WHERE owner_id = $1 AND is_equipped = 0""", user_id)
+                WHERE owner_id = $1 AND is_equipped = 0 ORDER BY acolyte_name""", user_id)
         for item in other: 
             inv.append(item)
         await pool.release(conn)
@@ -618,13 +619,37 @@ async def changeGuildRank(pool, rank : str, user_id : int):
         await pool.release(conn)
 
 async def getAdventure(pool, user_id : int):
-    """Returns a record/dict of the player's adventure info.
-    Record: adventure (int specifying time), destination (str)"""
+    """Returns a dict of the player's adventure info.
+    Dict: adventure (int specifying time), destination (str)"""
     async with pool.acquire() as conn:
         adventure = await conn.fetchrow('SELECT adventure, destination FROM players WHERE user_id = $1', user_id)
+        
+
+        adv = {
+            'adventure' : adventure['adventure'],
+            'destination' : adventure['destination']
+        }
+
+        #Implement Radishes Acolyte Passive (here is best)
+        #What this does is change the start time in such a way to increase the total length by 5% for later calculations
+        if adventure['destination'] == 'EXPEDITION':
+            acolyte1, acolyte2 = await getAcolyteFromPlayer(pool, user_id)
+            if acolyte1 is not None:
+                a1 = await getAcolyteByID(pool, acolyte1)
+            if acolyte2 is not None:
+                a2 = await getAcolyteByID(pool, acolyte2)
+
+            try:
+                if a1['Name'] == 'Radishes' or a2['Name'] == 'Radishes':
+                    time_diff = int(time.time() - adventure['adventure'])
+                    ten_percent_bonus = int(time_diff / 10)
+                    adv['adventure'] -= ten_percent_bonus
+            except KeyError:
+                pass
+
         await pool.release(conn)
     
-    return adventure
+    return adv
 
 async def getLocation(pool, user_id : int):
     """Returns the player's current location (str)."""
