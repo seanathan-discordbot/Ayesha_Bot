@@ -23,6 +23,7 @@ class Guilds(commands.Cog):
         print('Guilds is ready.')
 
     @commands.group(invoke_without_command=True, case_insensitive=True, description='See your guild.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.in_guild)
     async def guild(self, ctx):
         info = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
@@ -43,6 +44,7 @@ class Guilds(commands.Cog):
         await ctx.reply(embed=embed)
 
     @guild.command(aliases=['found', 'establish', 'form', 'make'], brief='<name>', description='Found a guild. Costs 15,000 gold.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.not_in_guild)
     async def create(self, ctx, *, name : str):
         if len(name) > 32:
@@ -56,6 +58,7 @@ class Guilds(commands.Cog):
         await ctx.reply('Guild founded. Do `guild` to see it or `guild` for more commands!')
 
     @guild.command(description='Leave your guild.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.in_guild)
     @commands.check(Checks.is_not_guild_leader)
     async def leave(self, ctx):
@@ -63,6 +66,7 @@ class Guilds(commands.Cog):
         await ctx.reply('You left your guild.')
 
     @guild.command(aliases=['inv'], brief='<url>', description='Invite a player to your guild.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_officer)
     @commands.check(Checks.guild_has_vacancy)
     async def invite(self, ctx, player : commands.MemberConverter):
@@ -109,6 +113,7 @@ class Guilds(commands.Cog):
                 await ctx.send('They did not respond to your invitation.')
 
     @guild.command(aliases=['donate'], brief='<money : int>', description='Donate to your association, increasing its xp!')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.in_guild)
     async def contribute(self, ctx, donation : int):
         #Make sure they have the money they're paying and that the guild is <lvl 10
@@ -132,6 +137,7 @@ class Guilds(commands.Cog):
         await ctx.reply(f'You contributed `{donation}` gold to your guild. It will become level `{int(xp/1000000)+1}` at `{needed}` more xp.')
 
     @guild.command(description='View the other members of your guild.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.in_guild)
     async def members(self, ctx):
         # Get the list of members, theoretically sorted by rank
@@ -163,6 +169,7 @@ class Guilds(commands.Cog):
         await menu.open()
 
     @guild.command(brief='<gold : int>', description='Invest in a project at a random location and gain/lose some money. 2 hour cooldown.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.in_guild)
     @cooldown(1, 7200, BucketType.user)
     async def invest(self, ctx, capital : int):
@@ -219,6 +226,7 @@ class Guilds(commands.Cog):
         await ctx.reply(embed=embed)
 
     @guild.command(aliases=['desc'], brief='<desc>', description='Change your brotherhood\'s description. [GUILD OFFICER+ ONLY]')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_officer)
     async def description(self, ctx, *, desc : str):
         if len(desc) > 256:
@@ -230,6 +238,7 @@ class Guilds(commands.Cog):
         await ctx.reply('Description updated!')
 
     @guild.command(brief='<img url>', description='Set the icon for your guild.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_officer)
     async def icon(self, ctx, *, url : str):
         if len(url) > 256:
@@ -250,6 +259,7 @@ class Guilds(commands.Cog):
         await ctx.reply('Icon updated!')
 
     @guild.command(description='Lock/unlock your guild from letting anyone join without an invite.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)
     async def lock(self, ctx):
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
@@ -261,6 +271,7 @@ class Guilds(commands.Cog):
             await ctx.reply('Your guild is now open to members. Anyone may join with the `join` command!')
 
     @guild.command(brief='<guild id : int>', description='Join the target guild if its open!')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.not_in_guild)
     async def join(self, ctx, guild_id : int):
         #Make sure that guild exists, is open, and has an open slot
@@ -282,6 +293,7 @@ class Guilds(commands.Cog):
         await ctx.reply(f"Welcome to {guild['Name']}! Use `brotherhood` or `guild` to see your new association.")
 
     @guild.command(brief='<player> <Officer/Adept>', description='Promote a member of your guild. Officers have limited administrative powers. Adepts have no powers. [LEADER ONLY]')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)        
     async def promote(self, ctx, player : commands.MemberConverter = None, rank : str = None):
         #Tell players what officers and adepts do if no input is given
@@ -315,6 +327,7 @@ class Guilds(commands.Cog):
         await ctx.reply(f'`{player.name}` is now an `{rank}`.')
 
     @guild.command(brief='<player>', description='Demote a member of your guild back to member.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)
     async def demote(self, ctx, player : commands.MemberConverter):
         #Otherwise check if player is in guild -> also not the leader
@@ -337,6 +350,7 @@ class Guilds(commands.Cog):
         await ctx.reply(f'`{player.name}` has been demoted to `Member`.')
 
     @guild.command(brief='<player>', description='Transfer guild ownership to another member.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)
     async def transfer(self, ctx, player : commands.MemberConverter):
         if ctx.author.id == player.id:
@@ -361,6 +375,7 @@ class Guilds(commands.Cog):
         await ctx.reply(f"`{player.name}` has been demoted to `Leader` of `{leader_guild['Name']}`. You are now an `Officer`.")
 
     @guild.command(brief='<player>', description='Kick someone from your association.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_officer)
     async def kick(self, ctx, player : commands.MemberConverter):
         #Make sure target has a char, in same guild, isn't an officer or leader

@@ -24,6 +24,7 @@ class Brotherhoods(commands.Cog):
 
     #COMMANDS
     @commands.group(aliases=['bh'], invoke_without_command=True, case_insensitive=True, description='See your brotherhood')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.in_brotherhood)
     async def brotherhood(self, ctx):
         info = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
@@ -44,6 +45,7 @@ class Brotherhoods(commands.Cog):
         await ctx.reply(embed=embed)
 
     @brotherhood.command(aliases=['found', 'establish', 'form', 'make'], brief='<name>', description='Found a brotherhood. Costs 15,000 gold.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.not_in_guild)
     async def create(self, ctx, *, name : str):
         if len(name) > 32:
@@ -57,6 +59,7 @@ class Brotherhoods(commands.Cog):
         await ctx.reply('Brotherhood founded. Do `brotherhood` to see it or `brotherhood help` for more commands!')
 
     @brotherhood.command(aliases=['inv'], brief='<url>', description='Invite a player to your guild.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_officer)
     @commands.check(Checks.guild_has_vacancy)
     async def invite(self, ctx, player : commands.MemberConverter):
@@ -103,6 +106,7 @@ class Brotherhoods(commands.Cog):
                 await ctx.send('They did not respond to your invitation.')
 
     @brotherhood.command(description='Leave your brotherhood.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.in_brotherhood)
     @commands.check(Checks.is_not_guild_leader)
     async def leave(self, ctx):
@@ -110,6 +114,7 @@ class Brotherhoods(commands.Cog):
         await ctx.reply('You left your brotherhood.')
 
     @brotherhood.command(aliases=['donate'], brief='<money : int>', description='Donate to your association, increasing its xp!')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.in_brotherhood)
     async def contribute(self, ctx, donation : int):
         #Make sure they have the money they're paying and that the guild is <lvl 10
@@ -133,6 +138,7 @@ class Brotherhoods(commands.Cog):
         await ctx.reply(f'You contributed `{donation}` gold to your brotherhood. It will become level `{int(xp/1000000)+1}` at `{needed}` more xp.')
 
     @brotherhood.command(description='View the other members of your guild.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.in_brotherhood)
     async def members(self, ctx):
         # Get the list of members, theoretically sorted by rank
@@ -166,6 +172,7 @@ class Brotherhoods(commands.Cog):
         await menu.open()
 
     @brotherhood.command(description='Steal 5% of a random player\'s cash. The probability of stealing is about your brotherhood\'s level * .05 + .2. 30 minute cooldown.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.in_brotherhood)
     @cooldown(1, 1800, BucketType.user)
     async def steal(self, ctx):
@@ -229,6 +236,7 @@ class Brotherhoods(commands.Cog):
         await ctx.reply(embed=embed)
 
     @brotherhood.command(aliases=['desc'], brief='<desc>', description='Change your brotherhood\'s description. [GUILD OFFICER+ ONLY]')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_officer)
     async def description(self, ctx, *, desc : str):
         if len(desc) > 256:
@@ -240,6 +248,7 @@ class Brotherhoods(commands.Cog):
         await ctx.reply('Description updated!')
 
     @brotherhood.command(brief='<img url>', description='Set the icon for your brotherhood.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_officer)
     async def icon(self, ctx, *, url : str):
         if len(url) > 256:
@@ -260,6 +269,7 @@ class Brotherhoods(commands.Cog):
         await ctx.reply('Icon updated!')
 
     @brotherhood.command(description='Lock/unlock your guild from letting anyone join without an invite.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)
     async def lock(self, ctx):
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
@@ -271,6 +281,7 @@ class Brotherhoods(commands.Cog):
             await ctx.reply('Your guild is now open to members. Anyone may join with the `join` command!')
 
     @brotherhood.command(brief='<guild id : int>', description='Join the target guild if its open!')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.not_in_guild)
     async def join(self, ctx, guild_id : int):
         #Make sure that guild exists, is open, and has an open slot
@@ -292,6 +303,7 @@ class Brotherhoods(commands.Cog):
         await ctx.reply(f"Welcome to {guild['Name']}! Use `brotherhood` or `guild` to see your new association.")
 
     @brotherhood.command(brief='<player> <Officer/Adept>', description='Promote a member of your guild. Officers have limited administrative powers. Adepts have no powers. [LEADER ONLY]')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)        
     async def promote(self, ctx, player : commands.MemberConverter = None, rank : str = None):
         #Tell players what officers and adepts do if no input is given
@@ -325,6 +337,7 @@ class Brotherhoods(commands.Cog):
         await ctx.reply(f'`{player.name}` is now an `{rank}`.')
 
     @brotherhood.command(brief='<player>', description='Demote a member of your guild back to member.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)
     async def demote(self, ctx, player : commands.MemberConverter):
         #Otherwise check if player is in guild -> also not the leader
@@ -347,6 +360,7 @@ class Brotherhoods(commands.Cog):
         await ctx.reply(f'`{player.name}` has been demoted to `Member`.')
 
     @brotherhood.command(brief='<player>', description='Transfer guild ownership to another member.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)
     async def transfer(self, ctx, player : commands.MemberConverter):
         if ctx.author.id == player.id:
@@ -370,6 +384,7 @@ class Brotherhoods(commands.Cog):
         await ctx.reply(f"`{player.name}` has been demoted to `Leader` of `{leader_guild['Name']}`. You are now an `Officer`.")
 
     @brotherhood.command(brief='<player>', description='Kick someone from your association.')
+    @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_officer)
     async def kick(self, ctx, player : commands.MemberConverter):
         #Make sure target has a char, in same guild, isn't an officer or leader

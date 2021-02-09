@@ -7,6 +7,11 @@ from Utilities import AssetCreation
 
 import asyncpg
 
+class NoChar(commands.CommandError):
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
 async def not_player(ctx):
     async with ctx.bot.pg_con.acquire() as conn:
         result = await conn.fetchrow('SELECT user_id FROM players WHERE user_id = $1', ctx.author.id)
@@ -22,6 +27,8 @@ async def is_player(ctx):
         
     if result is not None: #Then there is a char for this id
         return True
+    else:
+        raise NoChar(ctx.message.author)
 
 async def has_char(pool, user : discord.user): #NOT A CHECK --> in-function version of is_player
     async with pool.acquire() as conn:

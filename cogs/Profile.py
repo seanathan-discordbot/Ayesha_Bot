@@ -146,7 +146,9 @@ class Profile(commands.Cog):
     @commands.check(Checks.is_player)
     async def level(self, ctx):
         level, xp = await AssetCreation.getPlayerXP(self.client.pg_con, ctx.author.id)
-        tonext = math.floor(6000000 * math.cos(((level+1)/64)+3.14) + 6000000) - xp
+        prestige = await AssetCreation.getPrestige(self.client.pg_con, ctx.author.id)
+        w = 6000000 + (250000 * prestige)
+        tonext = math.floor(w * math.cos(((level+1)/64)+3.14) + w) - xp
 
         embed = discord.Embed(color=0xBEDCF6)
         embed.add_field(name='Level', value=f'{level}')

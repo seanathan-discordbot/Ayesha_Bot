@@ -9,7 +9,8 @@ import logging
 
 import asyncpg
 
-from Utilities import Links
+from Utilities import Links, Checks
+from Utilities.Checks import NoChar
 
 logger = logging.getLogger('discord')
 logger.setLevel(logging.WARNING)
@@ -83,6 +84,11 @@ async def changeprefix(ctx, prefix):
 @client.event
 async def on_command_error(ctx, error):
     printerror = True
+
+    if isinstance(error, NoChar):
+        await ctx.reply('You don\'t have a character yet. Do `start` to make one!')
+        printerror = not printerror
+
     if isinstance(error, commands.MissingRequiredArgument) or isinstance(error, commands.BadArgument):
         embed = discord.Embed(title=f'You forgot an argument', color=0xBEDCF6)
         if ctx.command.brief and ctx.command.aliases:
@@ -116,6 +122,8 @@ async def on_command_error(ctx, error):
         await ctx.reply('sssss')
     if isinstance(error, commands.CommandNotFound):
         printerror = not printerror
+
+
 
     if printerror:
         print(f'Ignoring exception in command {ctx.command.name}:')
