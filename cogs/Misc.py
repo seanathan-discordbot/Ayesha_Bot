@@ -9,6 +9,7 @@ from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 from Utilities import Checks, AssetCreation, PageSourceMaker
 
 import time
+import random
 
 class Misc(commands.Cog):
     def __init__(self,client):
@@ -142,6 +143,31 @@ class Misc(commands.Cog):
 
         await ctx.reply(embed=embed)
 
+    @commands.command(description='Partake in a criminal activity. There is a chance you may become very rich. There is also the risk you get fined for lots of gold.')
+    @commands.check(Checks.is_player)
+    @cooldown(1, 7200, type=BucketType.user)
+    async def crime(self, ctx):
+        #Determine success or failure; 5% crit, 55% success, 40% failure
+        result = random.choices(['critical success', 'success', 'failure'], [5, 55, 40])
+        if result[0] == 'critical success':
+            gain = random.randint(5, 8) / 100
+        elif result[0] == 'success':
+            gain = random.randint(2, 5) / 100
+        else:
+            gain = random.randint(10, 15) / 100 * -1
+
+        #Calculate gold and add/withdraw a random percentage
+        player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
+        player_gain = int(player_gold * gain) + 1
+        await AssetCreation.giveGold(self.client.pg_con, player_gain, ctx.author.id)
+
+        #Send results
+        place = ('bank', 'guild', 'blacksmith', 'quarry', 'farmer', 'merchant', 'store', 'passerby', 'prison', 'foreign trader', 'church')
+
+        if result[0] == 'failure':
+            await ctx.reply(f"Your attempt to rob a {random.choice(place)} was a {result[0]}! You were fined for `{player_gain * -1}` gold.")
+        else:
+            await ctx.reply(f"Your attempt to rob a {random.choice(place)} was a {result[0]}! You ran off with `{player_gain}` gold.")
 
 
 def setup(client):
