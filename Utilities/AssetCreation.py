@@ -636,8 +636,12 @@ async def getAdventure(pool, user_id : int):
             acolyte1, acolyte2 = await getAcolyteFromPlayer(pool, user_id)
             if acolyte1 is not None:
                 a1 = await getAcolyteByID(pool, acolyte1)
+            else:
+                a1 = {'Name' : None}
             if acolyte2 is not None:
                 a2 = await getAcolyteByID(pool, acolyte2)
+            else:
+                a2 = {'Name' : None}
 
             try:
                 if a1['Name'] == 'Radishes' or a2['Name'] == 'Radishes':
