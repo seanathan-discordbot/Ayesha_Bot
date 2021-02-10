@@ -45,7 +45,7 @@ bounty_levels = {
         'LowHP' : 200,
         'HighHP' : 250,
         'Effect' : None,
-        'Image' : None
+        'Image' : 'https://i.imgur.com/I1V9GAQ.png'
     },
     5 : { 
         'Name' : 'Sean', #SPECIAL: 50% INCREASED ATTACK
@@ -66,24 +66,33 @@ bounty_levels = {
         'Image' : None
     },
     7 : {
-        'Name' : 'Eques Maledicens',
-        'LowATK' : 150,
-        'HighATK' : 175,
-        'LowHP' : 800,
+        'Name' : 'Verricosus',
+        'LowATK' : 130,
+        'HighATK' : 160,
+        'LowHP' : 900,
         'HighHP' : 1000,
         'Effect' : None,
         'Image' : None
     },
     8 : {
+        'Name' : 'Eques Maledicens',
+        'LowATK' : 150,
+        'HighATK' : 175,
+        'LowHP' : 900,
+        'HighHP' : 1000,
+        'Effect' : None,
+        'Image' : None
+    },
+    9 : {
         'Name' : 'Rabid Bear',
         'LowATK' : 300,
         'HighATK' : 350,
         'LowHP' : 400,
         'HighHP' : 500,
         'Effect' : None,
-        'Image' : None
+        'Image' : 'https://i.imgur.com/aW7gAqZ.png'
     },
-    9 : {
+    10 : {
         'Name' : 'Maritimialan Shaman', #SPECIAL: ATTACK REDUCED BY 20%
         'LowATK' : 190,
         'HighATK' : 225,
@@ -92,7 +101,7 @@ bounty_levels = {
         'Effect' : 'Players have 20% reduced attack when fighting this boss.',
         'Image' : None
     },
-    10 : {
+    11 : {
         'Name' : 'Apprenticeship Loan Debt Collector',
         'LowATK' : 200,
         'HighATK' : 250,
@@ -101,7 +110,7 @@ bounty_levels = {
         'Effect' : None,
         'Image' : None
     },
-    11 : {
+    12 : {
         'Name' : 'Maritimialan Blood Warrior',
         'LowATK' : 300,
         'HighATK' : 400,
@@ -110,82 +119,118 @@ bounty_levels = {
         'Effect' : None,
         'Image' : None
     },
-    12 : {
+    13 : {
         'Name' : 'Moonlight Wolf Pack', #SPECIAL: NO HEALING
         'LowATK' : 250,
         'HighATK' : 275,
         'LowHP' : 1500,
         'HighHP' : 1650,
         'Effect' : 'Players cannot heal when fighting this boss.',
+        'Image' : 'https://i.imgur.com/epRUIYs.jpg'
+    },
+    14 : {
+        'Name' : 'Cursed Huntress', #SPECIAL: CANNOT BE BLOCKED
+        'LowATK' : 320,
+        'HighATK' : 340,
+        'LowHP' : 900,
+        'HighHP' : 1100,
+        'Effect' : 'Players cannot block Cursed Huntress\' attacks.',
         'Image' : None
     },
-    13 : {
+    15 : {
         'Name' : 'Crumidian Warriors', 
-        'LowATK' : 260,
-        'HighATK' : 290,
+        'LowATK' : 280,
+        'HighATK' : 300,
         'LowHP' : 1300,
         'HighHP' : 1500,
         'Effect' : None,
         'Image' : None
     },
-    14 : {
+    16 : {
         'Name' : 'Naysayers of the Larry Almighty', #SPECIAL: -80% DAMAGE TAKEN IF PARRYING
-        'LowATK' : 400,
+        'LowATK' : 450,
         'HighATK' : 700,
         'LowHP' : 1300,
-        'HighHP' : 1300,
+        'HighHP' : 1350,
         'Effect' : 'Players take 80% reduced damage instead of 50% when parrying this boss\' attacks.',
         'Image' : None
     },
-    15 : {
-        'Name' : 'Osprey Imperial Assassin', 
-        'LowATK' : 280,
+    17 : {
+        'Name' : 'John', 
+        'LowATK' : 295,
         'HighATK' : 310,
+        'LowHP' : 1200,
+        'HighHP' : 1400,
+        'Effect' : None,
+        'Image' : 'https://i.imgur.com/XFIlLi0.png'
+    },
+    18 : {
+        'Name' : 'Osprey Imperial Assassin', 
+        'LowATK' : 305,
+        'HighATK' : 325,
         'LowHP' : 1300,
         'HighHP' : 1450,
         'Effect' : None,
         'Image' : None
     },
-    16 : {
+    19 : {
+        'Name' : 'Arquitenio', #SPECIAL: ATTACKS EVERY TURN
+        'LowATK' : 325,
+        'HighATK' : 350,
+        'LowHP' : 1400,
+        'HighHP' : 1450,
+        'Effect' : 'Aruitenio never misses. He attacks every turn.',
+        'Image' : None
+    },
+    20 : {
         'Name' : 'Tomyris', 
-        'LowATK' : 300,
-        'HighATK' : 325,
+        'LowATK' : 340,
+        'HighATK' : 360,
         'LowHP' : 1500,
         'HighHP' : 1500,
         'Effect' : None,
         'Image' : None
     },
-    17 : {
+    21 : {
         'Name' : 'Lucius Porcius Magnus Dux', #SPECIAL: ENEMY HEALS 50 HP INSTEAD OF TAKING DAMAGE IF CRIT
-        'LowATK' : 325,
-        'HighATK' : 350,
+        'LowATK' : 360,
+        'HighATK' : 375,
         'LowHP' : 1400,
         'HighHP' : 1600,
         'Effect' : 'L. Porcius Magnus heals 50 HP instead of taking damage when struck by a critical strike.',
         'Image' : None
     },
-    18 : {
+    22 : {
         'Name' : 'Laidirix', #SPECIAL: REFLECTS 5% OF DAMAGE TAKEN
-        'LowATK' : 350,
-        'HighATK' : 380,
+        'LowATK' : 375,
+        'HighATK' : 395,
         'LowHP' : 1500,
         'HighHP' : 2000,
         'Effect' : 'Laidirix reflects 5% of all damage taken.',
         'Image' : None
     },
-    19 : {
+    23 : {
         'Name' : 'Sanguirix', #SPECIAL: DOUBLE ATTACK AT TURN 0
-        'LowATK' : 380,
-        'HighATK' : 400,
+        'LowATK' : 400,
+        'HighATK' : 420,
         'LowHP' : 1750,
         'HighHP' : 2000,
         'Effect' : 'Sanguirix attacks twice at the beginning of the fight if you damage him.',
         'Image' : None
     },
-    20 : {
+    24 : {
+        'Name' : 'Supreme Duck', 
+        'LowATK' : 480,
+        'HighATK' : 550,
+        'LowHP' : 2300,
+        'HighHP' : 2500,
+        'Effect' : None,
+        'Image' : 'https://i.imgur.com/hPFZte9.png'
+    },
+    25 : {
         'Name' : 'Draconicus Rex', #SPECIAL: HEALS 100 HP EVERY TURN
-        'LowATK' : 400,
-        'HighATK' : 450,
+        'LowATK' : 500,
+        'HighATK' : 520,
         'LowHP' : 3000,
         'HighHP' : 3000,
         'Effect' : 'The Draconicus Rex heals 100 HP every turn.',
@@ -193,30 +238,35 @@ bounty_levels = {
     },
 }
 
-#Rewards follow this equation: 600*sin[(x/15)-(3/2)]+625 < y < f(x+2). 
-# Max is 15: Re-adjust this function to ensure the max > highest level 
+#Rewards follow this equation: 800*sin[(x/20)-(3/2)]+825 < y < f(x+2). 
+# Max is 30: Re-adjust this function to ensure the max > highest level 
 
 gold_rewards = {
-    1 : {'Min' : 30, 'Max' : 46},
-    2 : {'Min' : 37, 'Max' : 58},
-    3 : {'Min' : 46, 'Max' : 73},
-    4 : {'Min' : 58, 'Max' : 90},
-    5 : {'Min' : 73, 'Max' : 109},
-    6 : {'Min' : 90, 'Max' : 131},
-    7 : {'Min' : 109, 'Max' : 155},
-    8 : {'Min' : 131, 'Max' : 180},
-    9 : {'Min' : 155, 'Max' : 208},
-    10 : {'Min' : 180, 'Max' : 238},
-    11 : {'Min' : 208, 'Max' : 269},
-    12 : {'Min' : 238, 'Max' : 302},
-    13 : {'Min' : 269, 'Max' : 337},
-    14 : {'Min' : 302, 'Max' : 373},
-    15 : {'Min' : 337, 'Max' : 409},
-    16 : {'Min' : 373, 'Max' : 447},
-    17 : {'Min' : 409, 'Max' : 486},
-    18 : {'Min' : 447, 'Max' : 525},
-    19 : {'Min' : 486, 'Max' : 565},
-    20 : {'Min' : 525, 'Max' : 605}
+    1 : {'Min' : 30, 'Max' : 44},
+    2 : {'Min' : 36, 'Max' : 54},
+    3 : {'Min' : 44, 'Max' : 65},
+    4 : {'Min' : 54, 'Max' : 79},
+    5 : {'Min' : 65, 'Max' : 94},
+    6 : {'Min' : 79, 'Max' : 112},
+    7 : {'Min' : 94, 'Max' : 131},
+    8 : {'Min' : 112, 'Max' : 151},
+    9 : {'Min' : 131, 'Max' : 174},
+    10 : {'Min' : 151, 'Max' : 198},
+    11 : {'Min' : 174, 'Max' : 223},
+    12 : {'Min' : 198, 'Max' : 251},
+    13 : {'Min' : 223, 'Max' : 279},
+    14 : {'Min' : 251, 'Max' : 309},
+    15 : {'Min' : 279, 'Max' : 340},
+    16 : {'Min' : 309, 'Max' : 373},
+    17 : {'Min' : 340, 'Max' : 406},
+    18 : {'Min' : 373, 'Max' : 441},
+    19 : {'Min' : 406, 'Max' : 477},
+    20 : {'Min' : 441, 'Max' : 513},
+    21 : {'Min' : 477, 'Max' : 550},
+    22 : {'Min' : 513, 'Max' : 588},
+    23 : {'Min' : 550, 'Max' : 627},
+    24 : {'Min' : 588, 'Max' : 666},
+    25 : {'Min' : 627, 'Max' : 705}
 }
 
 class PvE(commands.Cog):
@@ -233,6 +283,10 @@ class PvE(commands.Cog):
     def getBossAction(self, level):
         action = {'Action' : None, 'Damage' : None, 'DamageTaken' : 1}
         actiondet = random.randint(1,10)
+        
+        if level == 19: #Arquitenio effect - always attack
+            actiondet = 1
+
         if actiondet < 7:
             action['Action'] = 'attacked' 
             action['Damage'] = random.randint(bounty_levels[level]['LowATK'], bounty_levels[level]['HighATK'])
@@ -264,24 +318,29 @@ class PvE(commands.Cog):
         getweapon = False
         #Calculate chance of receiving a weapon: 25%
         if random.randint(1,4) == 1:
-            if level <= 5:
+            if level <= 8:
                 attack = random.randint(15, 40)
                 rarity = 'Common'
                 await AssetCreation.createItem(self.client.pg_con, player, attack, rarity)
-            elif level <= 12:
+            elif level <= 16:
                 attack = random.randint(30, 70)
                 rarity = 'Uncommon'
                 await AssetCreation.createItem(self.client.pg_con, player, attack, rarity)
-            else:
+            elif level <= 24:
                 attack = random.randint(45, 100)
                 rarity = 'Rare'
                 await AssetCreation.createItem(self.client.pg_con, player, attack, rarity)
+            else:
+                attack = random.randint(75, 120)
+                rarity = 'Epic'
+                await AssetCreation.createItem(self.client.pg_con, player, attack, rarity)
+            
             getweapon = not getweapon
         #Calculate gold, xp, acolyte xp rewards
         if hp < 1:
             hp = 1
         gold = random.randint(gold_rewards[level]['Min'], gold_rewards[level]['Max'])
-        xp = math.floor(2**(level/7) * ((level+10)**2) * ((hp/1250) + .2))
+        xp = math.floor(2**(level/12) * ((level+10)**2) * ((hp/1250) + .2))
         try:
             if acolyte1['Name'] == 'Sean' or acolyte2['Name'] == 'Sean':
                 xp = math.floor(xp * 1.1)
@@ -347,7 +406,7 @@ class PvE(commands.Cog):
     def checkCrit(self, level, crit, damage, enemyhp, attack, acolyte1, acolyte2):
         is_crit = random.choices(['Normal', 'Crit'], [100-crit, crit])
         if is_crit[0] == 'Crit':
-            if level == 17: #Lvl 17 special prevents crits
+            if level == 21: #Magnus special prevents crits
                 damage = 0
                 enemyhp += 50
             else:
@@ -402,9 +461,9 @@ class PvE(commands.Cog):
         if acolyte2 is not None:
             acolyte2 = await AssetCreation.getAcolyteByID(self.client.pg_con, acolyte2)
         
-        if level == 5:
+        if level == 5: #Sean
             attack = math.floor(attack * 1.5)
-        if level == 9:
+        if level == 10: #Maritimialian Shaman
             attack = math.floor(attack * (4/5))
         enemyhp = random.randint(bounty_levels[level]['LowHP'], bounty_levels[level]['HighHP'])
 
@@ -417,6 +476,8 @@ class PvE(commands.Cog):
         embed.add_field(name='HP', value=f'{hp}') #field 2
         embed.add_field(name=f'Enemy HP: `{enemyhp}`', value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', inline=False) #field 3
         embed.add_field(name='You get initiative', value='Turn `0`') #field 4
+        if bounty_levels[level]['Image'] is not None:
+            embed.set_thumbnail(url=bounty_levels[level]['Image'])
         message = await ctx.reply(embed=embed)
 
         readReactions = True
@@ -434,13 +495,13 @@ class PvE(commands.Cog):
                 crit, is_crit, damage, enemyhp, attack = self.checkCrit(level, crit, damage, enemyhp, attack, acolyte1, acolyte2)
 
                 enemyhp = enemyhp - damage
-                if level == 18:
+                if level == 22: #Laidirix reflects damage
                     hp = hp - (bossaction['Damage'] + math.floor(damage / 20))
                 else:
-                    if level == 19 and turnCounter == 0:
+                    if level == 23 and turnCounter == 0: #Sanguirix
                         bossaction['Damage'] *= 2
                     hp = hp - bossaction['Damage']
-                if level == 20:
+                if level == 25:
                     enemyhp += 100
                 turnCounter += 1
 
@@ -468,14 +529,17 @@ class PvE(commands.Cog):
                 crit, is_crit, damage, enemyhp, attack = self.checkCrit(level, crit, damage, enemyhp, attack, acolyte1, acolyte2)
 
                 enemyhp = enemyhp - damage
-                if level == 18:
+                if level == 22: #Laidirix
                     your_damage = math.floor((bossaction['Damage'] / 20) + (damage / 20))
                 else:
-                    if level == 19 and turnCounter == 0:
+                    if level == 23 and turnCounter == 0: #Sanguirix
                         bossaction['Damage'] *= 2
-                    your_damage = math.floor(bossaction['Damage'] / 20)
+                    if level == 14:
+                        your_damage = bossaction['Damage']
+                    else:
+                        your_damage = math.floor(bossaction['Damage'] / 20)
                 hp = hp - your_damage
-                if level == 20:
+                if level == 25:
                     enemyhp += 100
                 turnCounter += 1
 
@@ -506,17 +570,17 @@ class PvE(commands.Cog):
 
                 #Calculate player damage
                 your_damage = bossaction['Damage']
-                if level == 18:
+                if level == 22: #Laidirix
                     your_damage = math.floor(bossaction['Damage']/2 + damage/20)
-                if level == 19 and turnCounter == 0:
+                if level == 23 and turnCounter == 0: #Sanguirix
                     pass
                 else:
                     your_damage = math.floor(bossaction['Damage']/2)
-                if level == 14:
+                if level == 16:
                     your_damage = math.floor(your_damage / 5)
                 hp = hp - your_damage
 
-                if level == 20:
+                if level == 25:
                     enemyhp += 100
                 turnCounter += 1
 
@@ -541,10 +605,10 @@ class PvE(commands.Cog):
                 heal = math.floor((1500 - hp) / 8)
                 if playerjob == 'Butcher':
                     heal = heal * 2
-                if level == 12:
+                if level == 13: #Moonlight Wolf Pack
                     heal = 0
                 hp = hp + heal
-                if level == 20:
+                if level == 25:
                     enemyhp += 100
                 turnCounter += 1
 
@@ -566,7 +630,7 @@ class PvE(commands.Cog):
                 your_damage = math.floor(bossaction['Damage'] * (3/4))
                 hp = hp - your_damage
                 attack = math.floor(attack * (1.1))
-                if level == 20:
+                if level == 25:
                     enemyhp += 100
                 turnCounter += 1
 
@@ -588,16 +652,6 @@ class PvE(commands.Cog):
                 break                
 
             await asyncio.sleep(2.0)
-
-    # @bounty.error
-    # async def on_bounty_error(self, ctx, error):
-    #     #If you guys know how to make this work contact me thanks
-    #     if isinstance(error, commands.MaxConcurrencyReached):
-    #         pass
-    #     elif isinstance(error, commands.CommandOnCooldown):
-    #         pass
-    #     else: #When the error is Missing Perms but that wont work for some reason
-    #         await ctx.reply('The bot is missing permissions here! Make sure the bot can send, edit, and manage messages in this channel.')
 
     @commands.command(aliases=['strat', 'st'], brief='<attack> <block> <parry> <heal> <bide>', description='Set the action weighting when fighting bosses. Do this command without any arguments for more info.')
     @commands.check(Checks.is_player)
