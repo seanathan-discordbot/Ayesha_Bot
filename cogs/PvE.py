@@ -340,7 +340,7 @@ class PvE(commands.Cog):
         if hp < 1:
             hp = 1
         gold = random.randint(gold_rewards[level]['Min'], gold_rewards[level]['Max'])
-        xp = math.floor(2**(level/12) * ((level+10)**2) * ((hp/1250) + .2))
+        xp = math.floor(2**(level/10) * ((level+10)**2) * ((hp/1250) + .2))
         try:
             if acolyte1['Name'] == 'Sean' or acolyte2['Name'] == 'Sean':
                 xp = math.floor(xp * 1.1)
@@ -428,7 +428,7 @@ class PvE(commands.Cog):
 
     def showBounties(self):
         embeds = []
-        for i in range(1,21):
+        for i in range(1,26):
             embed = discord.Embed(title=f"Level {i}: {bounty_levels[i]['Name']}", color=0xBEDCF6)
             embed.add_field(name='Attack Range', value=f"{bounty_levels[i]['LowATK']} - {bounty_levels[i]['HighATK']}")
             embed.add_field(name='HP Range', value=f"{bounty_levels[i]['LowHP']} - {bounty_levels[i]['HighHP']}")
@@ -450,7 +450,7 @@ class PvE(commands.Cog):
             #Show the list of enemies
             ctx.command.reset_cooldown(ctx)
             return
-        if level < 1 or level > 20:
+        if level < 1 or level > 25:
             await ctx.reply('Please supply a valid level.')
             ctx.command.reset_cooldown(ctx)
             return
