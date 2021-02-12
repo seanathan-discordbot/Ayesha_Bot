@@ -43,7 +43,7 @@ class Gacha(commands.Cog):
     #     acolyte=returnStatement
     #     await AssetCreation.createAcolyte(self.client.pg_con, ctx.author.id, acolyte)
 
-    @commands.command(aliases=['summon'], description='Spend 1 rubidic to get a random acolyte or weapon!')
+    @commands.command(aliases=['summon'], brief='<rolls (1-10)>', description='Spend 1 rubidic to get a random acolyte or weapon!')
     @commands.check(Checks.is_player)
     async def roll(self, ctx, rolls : int = 1):
         #Make sure they have rubidics
@@ -160,6 +160,103 @@ class Gacha(commands.Cog):
         else:
             await ctx.reply(f"```{output}```")
 
+    @commands.command(aliases=['goldsummon', 'gr', 'gs'], brief='<rolls (1-10)>', description='Spend 100,000 gold to get a random acolyte or weapon! This gives inferior drops to the the `roll` command.')
+    @commands.check(Checks.is_player)
+    async def goldroll(self, ctx, rolls : int = 1):
+        #Make sure they have enough gold
+        if rolls > 10:
+            await ctx.reply('You can only roll up to 10 times at once!')
+            return
+        
+        if await AssetCreation.getGold(self.client.pg_con, ctx.author.id) < rolls * 100000:
+            await ctx.reply('You don\'t have enough gold to roll this many times.')
+            return
+
+        #Load the list of acolytes
+        with open(Links.acolyte_list) as f:
+            acolyte_list=json.load(f) #This stores all the acolytes' info
+            star_data=dict() #This sorts all the acolytes by their rarity
+            for key in acolyte_list:
+                if acolyte_list[key]["Rarity"] not in star_data:
+                    star_data[acolyte_list[key]['Rarity']]=[key]
+                else:
+                    star_data[acolyte_list[key]['Rarity']].append(key)
+
+        output = ''
+
+        for _ in range(rolls):
+            winner=random.randint(1,250)
+
+            #Determine if reward will be a weapon
+            reward = random.choices(['weapon', 'acolyte'], [85, 15])
+
+            #Select a random weapon or acolyte
+            if winner in two_star or winner >= 200:
+                if reward[0] == 'weapon':
+                    item_info = await AssetCreation.createItem(self.client.pg_con, ctx.author.id, random.randint(30,60), 'Uncommon', returnstats=True)
+                else:
+                    name=random.choice(star_data[2])
+                    await self.doDupe(ctx.author.id, name)
+
+            elif winner in three_star or winner >= 110:
+                if reward[0] == 'weapon':
+                    item_info = await AssetCreation.createItem(self.client.pg_con, ctx.author.id, random.randint(45,90), 'Rare', returnstats=True)
+                else:
+                    name=random.choice(star_data[3])
+                    await self.doDupe(ctx.author.id, name)
+
+            elif winner in four_star or winner > 100:
+                if reward[0] == 'weapon':
+                    item_info = await AssetCreation.createItem(self.client.pg_con, ctx.author.id, random.randint(75,110), 'Epic', returnstats=True)
+                else:
+                    name=random.choice(star_data[4])
+                    await self.doDupe(ctx.author.id, name)
+
+            elif winner in five_star:
+                if reward[0] == 'weapon':
+                    item_info = await AssetCreation.createItem(self.client.pg_con, ctx.author.id, random.randint(90,140), 'Legendary', returnstats=True)
+
+            elif winner in one_star:
+                if reward[0] == 'weapon': #Minimum 2 star weapons from gacha
+                    item_info = await AssetCreation.createItem(self.client.pg_con, ctx.author.id, random.randint(30,60), 'Uncommon', returnstats=True)
+                else:
+                    name=random.choice(star_data[1])
+                    await self.doDupe(ctx.author.id, name)
+
+            if reward[0] == 'acolyte':
+                output += f"{acolyte_list[name]['Rarity']}⭐ Acolyte: {acolyte_list[name]['Name']}\n"
+            elif reward[0] == 'weapon':
+                output += f"({item_info['Rarity']}) {item_info['Name']}, with {item_info['Attack']} ATK and {item_info['Crit']} CRIT.\n"
+
+        #With acolyte(s) chosen, update gold
+        await AssetCreation.giveGold(self.client.pg_con, -100000 * rolls, ctx.author.id)
+
+        #Send embed
+        if rolls == 1:
+            if reward[0] == 'acolyte':
+                embed = discord.Embed(title=f"{name} ({acolyte_list[name]['Rarity']}⭐) has entered the tavern!", color=0xBEDCF6)
+                if acolyte_list[name]['Image'] is not None:
+                    embed.set_thumbnail(url=f"{acolyte_list[name]['Image']}")
+                embed.add_field(name='Attack', value=f"{acolyte_list[name]['Attack']} + {acolyte_list[name]['Scale']}/lvl")
+                embed.add_field(name='Crit', value=f"{acolyte_list[name]['Crit']}")
+                embed.add_field(name='HP', value=f"{acolyte_list[name]['HP']}")
+                if acolyte_list[name]['Effect'] is None:
+                    embed.add_field(name='Effect', value=f" No effect.\n{name} uses {acolyte_list[name]['Mat']} to level up.")
+                else:
+                    embed.add_field(name='Effect', value=f"{acolyte_list[name]['Effect']}\n{name} uses `{acolyte_list[name]['Mat']}` to level up.", inline=False)
+                # embed.set_footer(text=f"You have {rubidics} rubidics. You will receive a 5-star in {80-pity} summons.")
+            else:
+                embed = discord.Embed(title=f"You received {item_info['Name']} ({item_info['Rarity']})!", color=0xBEDCF6)
+                embed.add_field(name='Type', value=f"{item_info['Type']}")
+                embed.add_field(name='Attack', value=f"{item_info['Attack']}")
+                embed.add_field(name='Crit', value=f"{item_info['Crit']}")
+                # embed.set_footer(text=f"You have {rubidics} rubidics. You will receive a 5-star in {80-pity} summons.")
+
+            await ctx.reply(embed=embed)
+        else:
+            await ctx.reply(f"```{output}```")
+
+        #Send output
 
     @commands.command(aliases=['rolls', 'summons'], description='See how many rubidics you have and how many more summons are needed until receiving guaranteed 5*')
     @commands.check(Checks.is_player)
