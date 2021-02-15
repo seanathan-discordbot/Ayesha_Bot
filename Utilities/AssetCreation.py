@@ -543,10 +543,10 @@ async def getGuildLevel(pool, guild_id : int, returnline = False):
 async def getGuildMemberCount(pool, guild_id : int):
     """Returns the amount of players in the specified guild (int)."""
     async with pool.acquire() as conn:
-        count = await conn.fetchrow('SELECT member_count FROM guild_membercount WHERE guild_id = $1', guild_id)
+        count = await conn.fetchval('SELECT member_count FROM guild_membercount WHERE guild_id = $1', guild_id)
         await pool.release(conn)
     
-    return count['member_count']
+    return count
 
 async def getGuildCapacity(pool, guild_id : int):
     """Returns the maximum amount of player's a guild can have (int)."""
