@@ -123,10 +123,7 @@ async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         printerror = not printerror
 
-
-
     if printerror:
-        print(f'Ignoring exception in command {ctx.command.name}:')
         traceback.print_exception(type(error), error, error.__traceback__)
 
 # ----- OTHER COMMANDS -----
