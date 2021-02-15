@@ -120,19 +120,19 @@ class Travel(commands.Cog):
         #Calculate xp, gold, and materials based off elapsed time (in hours)
         if elapsed_time < 3600: #Less than 1 hour, ~100 gold/hr
             gold = math.floor(hours * 100)
-            mats = random.randint(10,30)
-        elif elapsed_time < 10800: #1-3 hrs, ~175 gold/hr, 50 mats/hr
+            mats = random.randint(10,20)
+        elif elapsed_time < 10800: #1-3 hrs, ~175 gold/hr, 30 mats/hr
             gold = math.floor(hours * 175)
-            mats = math.floor(hours * 50)
-        elif elapsed_time < 43200: #3-12 hrs, ~200 gold/hr, 75 mats/hr
+            mats = math.floor(hours * 30)
+        elif elapsed_time < 43200: #3-12 hrs, ~200 gold/hr, 45 mats/hr
             gold = math.floor(hours * 265)
-            mats = math.floor(hours * 75)
-        elif elapsed_time < 259200: #12hrs - 3 days, ~300 gold/hr, 110 mats/hr
+            mats = math.floor(hours * 45)
+        elif elapsed_time < 259200: #12hrs - 3 days, ~300 gold/hr, 70 mats/hr
             gold = math.floor(hours * 375)
-            mats = math.floor(hours * 110)
-        else: #Up to 7 days, ~500 gold/hr, 150 mats/hr
+            mats = math.floor(hours * 70)
+        else: #Up to 7 days, ~500 gold/hr, 100 mats/hr
             gold = math.floor(hours * 500)
-            mats = math.floor(hours * 150)
+            mats = math.floor(hours * 100)
         
         xp = math.floor(gold / 4 + 50)
         acolyte_xp = math.floor(xp / 10)
