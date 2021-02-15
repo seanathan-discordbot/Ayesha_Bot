@@ -493,6 +493,12 @@ class PvE(commands.Cog):
 
                 #Critical Strike handling - implement bonuses for having certain acolytes
                 crit, is_crit, damage, enemyhp, attack = self.checkCrit(level, crit, damage, enemyhp, attack, acolyte1, acolyte2)
+                if is_crit == 'Crit': #Implement Ayesha
+                    try:
+                        if acolyte1['Name'] == 'Ayesha' or acolyte2['Name'] == 'Ayesha':
+                            hp += 35 + int(attack * .3)
+                    except TypeError:
+                        pass
 
                 enemyhp = enemyhp - damage
                 if level == 22: #Laidirix reflects damage
@@ -565,6 +571,12 @@ class PvE(commands.Cog):
 
                 #Critical Strike handling - implement bonuses for having certain acolytes
                 crit, is_crit, damage, enemyhp, attack = self.checkCrit(level, crit, damage, enemyhp, attack, acolyte1, acolyte2)
+                if is_crit == 'Crit': #Implement Ayesha
+                    try:
+                        if acolyte1['Name'] == 'Ayesha' or acolyte2['Name'] == 'Ayesha':
+                            hp += 35 + int(attack * .2)
+                    except TypeError:
+                        pass
 
                 enemyhp = enemyhp - damage
 
@@ -645,6 +657,13 @@ class PvE(commands.Cog):
                 embed.set_field_at(3, name=f'Enemy HP: `{enemyhp}`', value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', inline=False)
                 embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You bided your time and boosted your attack. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", inline=False)
                 await message.edit(embed=embed)
+
+            if turnCounter == 6: #Add Onion's Effect
+                try:
+                    if acolyte1['Name'] == 'Onion' or acolyte2['Name'] == 'Onion':
+                        crit *= 2
+                except TypeError:
+                    pass      
 
             if turnCounter == 51: #50 turn limit
                 loss = await self.doDefeat(ctx.author.id, level, enemyhp, acolyte1, acolyte2)
