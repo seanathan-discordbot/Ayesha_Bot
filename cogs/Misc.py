@@ -30,6 +30,17 @@ class Misc(commands.Cog):
 
         await ctx.reply(embed=embed)
 
+    @commands.command(description='Join the support server here!')
+    async def support(self, ctx):
+        await ctx.reply('https://discord.gg/FRTTARhN44')
+
+    @commands.command(description='Vote for the bot to receive a rubidic!')
+    async def vote(self, ctx):
+        embed = discord.Embed(title='Receive 1 rubidic each time you for the bot, up to 2 rubidics a day!',
+            description='Vote on [Discord Bot List!](https://discordbotlist.com/bots/ayesha) (12 hr cooldown)',
+            color=0xBEDCF6)
+        await ctx.reply(embed=embed)
+
     @commands.command(description='Get 2 rubidics daily!')
     @commands.check(Checks.is_player)
     @cooldown(1, 86400, BucketType.user)
