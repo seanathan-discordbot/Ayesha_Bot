@@ -9,6 +9,7 @@ from Utilities import Checks, AssetCreation, PageSourceMaker
 
 import random
 import math
+import aiohttp
 
 # There will be brotherhoods, guilds, and later colleges for combat, economic, and political gain
 
@@ -245,13 +246,28 @@ class Guilds(commands.Cog):
             await ctx.reply('Icon URL max 256 characters. Please upload your image to imgur or tinurl for an appropriate link.')
             return
 
-        if not url.startswith('http'):
-            await ctx.reply('That is not a link!')
+        #Make sure the URL is valid
+        file_types = ('image/jpeg', 'image/png', 'image/webp', 'image/gif')
+        try:
+            async with aiohttp.ClientSession() as client:
+                resp = await client.get(url)
+                img = resp.headers.get('content-type')
+                if img in file_types:
+                    pass
+                else:
+                    await ctx.reply('This is an invalid URL.')
+
+        except aiohttp.InvalidURL:
+            await ctx.reply('This is an invalid URL.')
             return
 
-        if not url.endswith('.jpg') and not url.endswith('.png') and not url.endswith('.gif') and not url.endswith('.jpeg'):
-            await ctx.reply('Only JPG, PNG, and GIFs are supported.')
-            return
+        # if not url.startswith('http'):
+        #     await ctx.reply('That is not a link!')
+        #     return
+
+        # if not url.endswith('.jpg') and not url.endswith('.png') and not url.endswith('.gif') and not url.endswith('.jpeg'):
+        #     await ctx.reply('Only JPG, PNG, and GIFs are supported.')
+        #     return
         
         #Get guild and change icon
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
