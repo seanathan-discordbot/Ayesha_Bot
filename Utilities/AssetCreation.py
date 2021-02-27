@@ -785,10 +785,10 @@ async def getClass(pool, user_id : int):
 async def getPlayerCount(pool):
     """Returns the amount of player's in the database (int)."""
     async with pool.acquire() as conn:
-        records = await conn.fetchrow('SELECT COUNT(*) FROM Players')
+        records = await conn.fetchval('SELECT COUNT(*) FROM Players')
         await pool.release(conn)
 
-    return records[0]
+    return records
 
 async def getPlayerByID(pool, user_id: int):
     """Returns the info of a player of the specified ID.

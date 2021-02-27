@@ -105,12 +105,10 @@ async def is_not_guild_leader(ctx):
 
 async def is_guild_officer(ctx):
     async with ctx.bot.pg_con.acquire() as conn:
-        rank = await conn.fetchrow('SELECT guild_rank FROM players WHERE user_id = $1', ctx.author.id)
+        rank = await conn.fetchval('SELECT guild_rank FROM players WHERE user_id = $1', ctx.author.id)
         await ctx.bot.pg_con.release(conn)
     
-    if rank[0] == 'Officer' or rank[0]:
-        return True
-    elif is_guild_leader(ctx):
+    if rank == 'Officer' or rank == 'Leader':
         return True
 
 async def target_is_guild_officer(pool, user_id : int): #NOT A CHECK
