@@ -1,12 +1,14 @@
 import discord
 import asyncio
 
-from discord.ext import commands, menus
+from discord.ext import commands
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
-import aiosqlite
-from Utilities import Checks, AssetCreation, PageSourceMaker
+from Utilities import Checks, AssetCreation, PageSourceMaker, Links
 
+from dpymenus import Page, PaginatedMenu
+
+import json
 import random
 import math
 
@@ -21,21 +23,22 @@ class Acolytes(commands.Cog):
         print('Acolytes is ready.')
 
     #INVISIBLE
-    def write(self, start, inv, player):
-        embed = discord.Embed(title=f'{player}\'s Tavern', color=0xBEDCF6)
+    async def write(self, start, inv, player):
+        embed = Page(title=f'{player}\'s Tavern', color=0xBEDCF6)
 
         iteration = 0
         while start < len(inv) and iteration < 5: #Loop til 5 entries or none left
-            if inv[start][5] == 1 or inv[start][5] == 2:
-                acolyte = AssetCreation.getAcolyteByName(inv[start][2])
-                embed.add_field(name = f"({acolyte['Rarity']}\u2B50) {inv[start][2]}: `{inv[start][0]}` [Equipped]",
-                    value = f"**Level:** {inv[start][3]}, **Attack:** {int(acolyte['Attack'] + (acolyte['Scale'] * inv[start][3]))}, **Crit:** {acolyte['Crit']}%\n**Effect:** {acolyte['Effect']}",
+            attack, crit, hp = await AssetCreation.getAcolyteAttack(self.client.pg_con, inv[start][0])
+            if inv[start][3] == 1 or inv[start][3] == 2:
+                acolyte = AssetCreation.getAcolyteByName(inv[start][1])
+                embed.add_field(name = f"({acolyte['Rarity']}\u2B50) {inv[start][1]}: `{inv[start][0]}` [Equipped]",
+                    value = f"**Level:** {inv[start][2]}, **Attack:** {attack}, **Crit:** {crit}%, **Dupes:** {inv[start][4]}\n**Effect:** {acolyte['Effect']}",
                     inline=False
                 )
             else:
-                acolyte = AssetCreation.getAcolyteByName(inv[start][2])
-                embed.add_field(name = f"({acolyte['Rarity']}\u2B50) {inv[start][2]}: `{inv[start][0]}`",
-                    value = f"**Level:** {inv[start][3]}, **Attack:** {int(acolyte['Attack'] + (acolyte['Scale'] * inv[start][3]))}, **Crit:** {acolyte['Crit']}%\n**Effect:** {acolyte['Effect']}",
+                acolyte = AssetCreation.getAcolyteByName(inv[start][1])
+                embed.add_field(name = f"({acolyte['Rarity']}\u2B50) {inv[start][1]}: `{inv[start][0]}`",
+                    value = f"**Level:** {inv[start][2]}, **Attack:** {attack}, **Crit:** {crit}%, **Dupes:** {inv[start][4]}\n**Effect:** {acolyte['Effect']}",
                     inline=False
                 )
             iteration += 1
@@ -46,81 +49,67 @@ class Acolytes(commands.Cog):
     @commands.command(aliases=['acolytes'], description='View your acolytes')
     @commands.check(Checks.is_player)
     async def tavern(self, ctx):
-        user = (ctx.author.id,)
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            c = await conn.execute("""
-                SELECT * FROM Acolytes
-                WHERE owner_id = ? AND (is_equipped = 1 OR is_equipped = 2)""",
-                user)
-            inv = await c.fetchall()
-            c = await conn.execute("""
-                SELECT * FROM Acolytes
-                WHERE owner_id = ? AND is_equipped = 0""",
-                user)
-            for item in (await c.fetchall()): 
-                inv.append(item) 
-            invpages = []
-            for i in range(0, len(inv), 5): #list 5 entries at a time
-                invpages.append(self.write(i, inv, ctx.author.display_name)) # Write will create the embeds
+        inv = await AssetCreation.getAllAcolytesFromPlayer(self.client.pg_con, ctx.author.id)
+
+        invpages = []
+        for i in range(0, len(inv), 5): #list 5 entries at a time
+            invpages.append(await self.write(i, inv, ctx.author.display_name)) # Write will create the embeds
         if len(invpages) == 0:
             await ctx.reply('Your tavern is empty!')
         else:
-            tavern = menus.MenuPages(source=PageSourceMaker.PageMaker(invpages), clear_reactions_after=True, delete_message_after=True)
-            await tavern.start(ctx)
+            # tavern = menus.MenuPages(source=PageSourceMaker.PageMaker(invpages), clear_reactions_after=True, delete_message_after=True)
+            # await tavern.start(ctx)
+            menu = PaginatedMenu(ctx)
+            menu.add_pages(invpages)
+            menu.set_timeout(30)
+            menu.show_command_message()
+            await menu.open()
 
-    @commands.command(brief='<acolyte_id : int> <slot : int>', description='Add an acolyte to your party')
+    @commands.command(aliases=['hire'], brief='<acolyte_id : int> <slot (1 or 2)>', description='Add an acolyte to your party')
     @commands.check(Checks.is_player)
     async def recruit(self, ctx, instance_id : int, slot : int):
         if slot < 1 or slot > 2:
             await ctx.reply('You can only place an acolyte in slots 1 or 2 of your party.')
             return
-        query = (instance_id, ctx.author.id) # Make sure that 1. acolyte exists 2. they own this item
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            c = await conn.execute('SELECT * FROM Acolytes WHERE instance_id = ? AND owner_id = ?', query)
-            acolyte = await c.fetchone()
-            if acolyte is None:
-                await ctx.reply("This acolyte isn\'t in your tavern.")
+
+        if not await AssetCreation.verifyAcolyteOwnership(self.client.pg_con, instance_id, ctx.author.id):
+            await ctx.reply('This acolyte isn\'t in your tavern.')
+            return
+
+        #Equip new acolyte, update new acolyte, update old acolyte
+        acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(self.client.pg_con, ctx.author.id)
+        
+        if slot == 1:
+            oldacolyte = acolyte1
+            other = acolyte2
+        else:
+            oldacolyte = acolyte2
+            other = acolyte1
+
+        #Make sure they don't try to use the same acolyte twice - if you find a better way to do this change it
+        try:
+            if oldacolyte == instance_id:
+                await ctx.send('This acolyte is already in your party.')
                 return
-            #Equip new acolyte, update new acolyte, update old acolyte
-            d = await conn.execute('SELECT instance_id, is_equipped FROM Acolytes WHERE owner_id = ? AND is_equipped = 1', (ctx.author.id,))
-            e = await conn.execute('SELECT instance_id, is_equipped FROM Acolytes WHERE owner_id = ? AND is_equipped = 2', (ctx.author.id,))
-            if slot == 1:
-                oldacolyte = await d.fetchone()
-                other = await e.fetchone()
-            else:
-                oldacolyte = await e.fetchone()
-                other = await d.fetchone()
+        except TypeError:
+            pass
 
-            #Make sure they don't try to use the same acolyte twice - if you find a better way to do this change it
-            try:
-                if oldacolyte[0] == instance_id:
-                    await ctx.send('This acolyte is already in your party')
-                    return
-            except TypeError:
-                pass
+        try:
+            if other == instance_id:
+                await ctx.send('This acolyte is already in your party.')
+                return
+        except TypeError:
+            pass
 
-            try:
-                if other[0] == instance_id:
-                    await ctx.send('This acolyte is already in your party')
-                    return
-            except TypeError:
-                pass
+        try:
+            await AssetCreation.unequipAcolyte(self.client.pg_con, oldacolyte)
+        except TypeError:
+            pass
 
-            try:
-                await conn.execute('UPDATE Acolytes SET is_equipped = 0 WHERE instance_id = ?', (oldacolyte[0],))
-            except TypeError:
-                pass
-
-            # Otherwise add the new acolyte
-            added = await AssetCreation.getAcolyteByID(instance_id)
-
-            await conn.execute('UPDATE Acolytes SET is_equipped = ? WHERE instance_id = ?', (slot, instance_id))
-            if slot == 1:
-                await conn.execute('UPDATE Players SET acolyte1 = ? WHERE user_id = ?', (instance_id, ctx.author.id))
-            else:
-                await conn.execute('UPDATE Players SET acolyte2 = ? WHERE user_id = ?', (instance_id, ctx.author.id))
-            await ctx.reply(f"Added `{instance_id}: {added['Name']}` to your party.")
-            await conn.commit()
+        # Otherwise add the new acolyte
+        added = await AssetCreation.getAcolyteByID(self.client.pg_con, instance_id)
+        await AssetCreation.equipAcolyte(self.client.pg_con, instance_id, slot, ctx.author.id)
+        await ctx.reply(f"Added `{instance_id}: {added['Name']}` to your party.")
 
     @commands.command(brief='<slot : int>', description='Dismiss an acolyte from the slot in your party.')
     @commands.check(Checks.is_player)
@@ -128,62 +117,105 @@ class Acolytes(commands.Cog):
         if slot < 1 or slot > 2:
             await ctx.reply('Please input a valid slot (1 or 2).')
             return
-        query = (ctx.author.id,)
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            if slot == 1:
-                c = await conn.execute('SELECT acolyte1 FROM Players WHERE user_id = ?', query)
-            else:
-                c = await conn.execute('SELECT acolyte2 FROM Players WHERE user_id = ?', query)
-            equipped = await c.fetchone()
-            if equipped is None:
+        
+        #Make sure the slot they ask for has something in it
+        acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(self.client.pg_con, ctx.author.id)
+        if slot == 1:
+            if acolyte1 is None:
                 await ctx.reply('You don\'t have an acolyte equipped in that slot.')
                 return
-            if slot == 1:
-                await conn.execute('UPDATE Players SET acolyte1 = NULL where user_id = ?', query)
-            else:
-                await conn.execute('UPDATE Players SET acolyte2 = NULL where user_id = ?', query)
-            await conn.execute('UPDATE Acolytes SET is_equipped = 0 WHERE owner_id = ? AND is_equipped = ?', (ctx.author.id, slot))
-            await conn.commit()
-            removed = await AssetCreation.getAcolyteByID(equipped[0])
-            await ctx.reply(f"Dismissed acolyte `{equipped[0]}: {removed['Name']}`")
+        else:
+            if acolyte2 is None:
+                await ctx.reply('You don\'t have an acolyte equipped in that slot.')
+                return
 
-    @commands.command(brief='<acolyte id>', description='Train your acolyte, giving it xp and potentially levelling it up!')
+        #Unequip the acolyte
+        if slot == 1:
+            await AssetCreation.unequipAcolyte(self.client.pg_con, acolyte1, 1, ctx.author.id)
+            removed = await AssetCreation.getAcolyteByID(self.client.pg_con, acolyte1)
+        if slot == 2:
+            await AssetCreation.unequipAcolyte(self.client.pg_con, acolyte2, 2, ctx.author.id)
+            removed = await AssetCreation.getAcolyteByID(self.client.pg_con, acolyte2)
+
+        await ctx.reply(f"Dismissed acolyte `{removed['ID']}: {removed['Name']}`")
+
+    @commands.command(brief='<acolyte id> <amount = 1>', description='Train your acolyte, giving it xp and potentially levelling it up! Each training session with your acolyte costs 50 of its upgrade material and 250 gold.')
     @commands.check(Checks.is_player)
-    async def train(self, ctx, instance_id : int):
-        #Make sure the acolyte exists and they own it
-        async with aiosqlite.connect(AssetCreation.PATH) as conn:
-            c = await conn.execute('SELECT acolyte_name, level FROM Acolytes WHERE instance_id = ? AND owner_id = ?', (instance_id, ctx.author.id))
-            try:
-                name, level = await c.fetchone()
-            except TypeError: 
-                await ctx.reply("This acolyte isn\'t in your tavern.")
-                return
+    async def train(self, ctx, instance_id : int, iterations : int = 1):
+        if not await AssetCreation.verifyAcolyteOwnership(self.client.pg_con, instance_id, ctx.author.id):
+            await ctx.reply('This acolyte isn\'t in your tavern.')
+            return
 
-            #Make sure acolyte is not at max level
-            if level >= 100:
-                await ctx.reply(f'{name} is already at maximum level!')
-                return
+        acolyte = await AssetCreation.getAcolyteByID(self.client.pg_con, instance_id)
+        if acolyte['Level'] >= 100:
+            await ctx.reply(f"{acolyte['Name']} is already at maximum level!")
+            return
 
-            #Make sure player has the resources and gold to train
-            #5000 xp = 50 of the mat + 250 gold
-            acolyte = await AssetCreation.getAcolyteByID(instance_id)
-            material = await AssetCreation.getPlayerMat(acolyte['Mat'], ctx.author.id)
-            gold = await AssetCreation.getGold(ctx.author.id)
+        if iterations < 1:
+            await ctx.reply('No.')
+            return
 
-            if material < 50 or gold < 250:
-                await ctx.reply(f"Training your acolyte costs `50` {acolyte['Mat']} and `250` gold. You don\'t have enough resources to train.")
-                return
+        #Make sure player has the resources and gold to train
+        #5000 xp = 50 of the mat + 250 gold
+        material = await AssetCreation.getPlayerMat(self.client.pg_con, acolyte['Mat'], ctx.author.id)
+        gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
+        material_cost = iterations * 50
+        gold_cost = iterations * 250
 
-            #Update acolyte and player resources
-            await conn.execute('UPDATE acolytes SET xp = xp + 5000 WHERE instance_id = ?', (instance_id,))
-            await conn.execute('UPDATE players SET gold = gold - 250 WHERE user_id = ?', (ctx.author.id,))
-            await conn.commit()
-            await AssetCreation.takeMat(acolyte['Mat'], 50, ctx.author.id)
+        if material < material_cost or gold < gold_cost:
+            await ctx.reply(f"Training your acolyte costs `{material_cost}` {acolyte['Mat']} and `{gold_cost}` gold. You don\'t have enough resources to train.")
+            return
+        
+        await AssetCreation.giveAcolyteXP(self.client.pg_con, 5000 * iterations, instance_id)
+        await AssetCreation.giveGold(self.client.pg_con, -250 * iterations, ctx.author.id)
+        await AssetCreation.giveMat(self.client.pg_con, acolyte['Mat'], -50 * iterations, ctx.author.id)
 
-            await ctx.reply(f"You trained with `{name}`, consuming `50` {acolyte['Mat']} and `250` gold in the process. As a result, {name} gained 5,000 exp!")
-            await AssetCreation.checkAcolyteLevel(ctx, instance_id)
-            
+        await ctx.reply(f"You trained with `{acolyte['Name']}`, consuming `{material_cost}` {acolyte['Mat']} and `{gold_cost}` gold in the process. As a result, `{acolyte['Name']}` gained {5000 * iterations} exp!")
+        await AssetCreation.checkAcolyteLevel(self.client.pg_con, ctx, instance_id)
 
+    @commands.command(brief='<name>', description='Learn more about each of your acolytes!')
+    async def acolyte(self, ctx, *, name):
+        with open(Links.acolyte_list, "r") as f:
+            info = json.load(f)
+
+        try:
+            if name.lower() == "prxrdr":
+                name = 'PrxRdr'
+            else:
+                name = name.title()
+            acolyte = info[name]
+        except KeyError:
+            await ctx.reply('No acolyte goes by that name.')
+            return
+
+        embed = discord.Embed(title=f"{acolyte['Name']}", color=0xBEDCF6)
+        if acolyte['Image'] is not None:
+            embed.set_thumbnail(url=acolyte['Image']) 
+        embed.add_field(name="Backstory", value=f"{acolyte['Story']}")
+        embed.add_field(name='Effect', value=f"{acolyte['Effect']}", inline=False)
+        embed.add_field(name="Stats", value=f"Attack: {acolyte['Attack']} + {acolyte['Scale']}/lvl\nCrit: {acolyte['Crit']}\nHP: {acolyte['HP']}")
+        embed.add_field(name="Details", value=f"Rarity: {acolyte['Rarity']}\u2B50\nUpgrade Material: {acolyte['Mat'].title()}")
+
+        await ctx.reply(embed=embed)
+
+    @commands.command(brief='<acolyte ID>', description='Check your acolyte\'s xp and level.')
+    @commands.check(Checks.is_player)
+    async def acolytexp(self, ctx, instance_id : int):
+        if not await AssetCreation.verifyAcolyteOwnership(self.client.pg_con, instance_id, ctx.author.id):
+            await ctx.reply('This acolyte isn\'t in your tavern.')
+            return
+
+        info = await AssetCreation.getAcolyteXP(self.client.pg_con, instance_id)
+        tonext = math.floor(3000000 * math.cos(((info['lvl']+1)/64)+3.14) + 3000000) - info['xp']
+
+        embed = discord.Embed(color=0xBEDCF6)
+        embed.add_field(name='Level', value=f"{info['lvl']}")
+        embed.add_field(name='EXP', value=f"{info['xp']}")
+        if info['lvl'] != 100:
+            embed.add_field(name=f"EXP until Level {info['lvl']+1}", value=f"{tonext}")
+        else:
+            embed.add_field(name=f"EXP until Level {info['lvl']+1}", value="∞")
+        await ctx.reply(embed=embed)
 
 def setup(client):
     client.add_cog(Acolytes(client))
