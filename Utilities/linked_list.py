@@ -9,7 +9,6 @@ class linked_list:
     def __init__(self):
         self.headval=None
         self.tail=None
-        return self.headval
 
     def listprint(self):
         printval = self.headval
