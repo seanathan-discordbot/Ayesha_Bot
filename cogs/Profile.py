@@ -4,9 +4,7 @@ import asyncio
 from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
-from dpymenus import Page, PaginatedMenu
-
-from Utilities import Checks, AssetCreation, Links
+from Utilities import Checks, AssetCreation, Links, PageSourceMaker
 
 import math
 
@@ -195,42 +193,34 @@ class Profile(commands.Cog):
         with open(Links.tutorial, "r") as f:
             tutorial = f.readlines()
 
-        embed1 = Page(title='Ayesha Tutorial', color=0xBEDCF6)
+        embed1 = discord.Embed(title='Ayesha Tutorial', color=0xBEDCF6)
         embed1.add_field(name='Welcome to Ayesha Alpha!', value=f"{tutorial[1]}\n{tutorial[2]}\n{tutorial[3]}")
 
-        embed2 = Page(title='Ayesha Tutorial', color=0xBEDCF6)
+        embed2 = discord.Embed(title='Ayesha Tutorial', color=0xBEDCF6)
         embed2.add_field(name='Intro to PvE', value=f'{tutorial[6]}\n{tutorial[7]}\n{tutorial[8]}\n{tutorial[9]}')
 
-        embed3 = Page(title='Ayesha Tutorial', color=0xBEDCF6)
+        embed3 = discord.Embed(title='Ayesha Tutorial', color=0xBEDCF6)
         embed3.add_field(name='Intro to Gacha', value=f'{tutorial[12]}\n{tutorial[13]}')
 
-        menu = PaginatedMenu(ctx)
-        menu.add_pages([embed1, embed2, embed3])
-        menu.set_timeout(60)
-        menu.show_command_message()
-
-        await menu.open()
+        tutorial_pages = menus.MenuPages(source=PageSourceMaker.PageMaker([embed1, embed2, embed3]), clear_reactions_after=True, delete_message_after=True)
+        await tutorial_pages.start(ctx)
 
     @tutorial.command(aliases=['acolyte'], description='Learn more about Acolytes!')
     async def Acolytes(self, ctx):
         with open(Links.tutorial, "r") as f:
             tutorial = f.readlines()
 
-        embed1 = Page(title='Ayesha Tutorial: Acolytes', color=0xBEDCF6)
+        embed1 = discord.Embed(title='Ayesha Tutorial: Acolytes', color=0xBEDCF6)
         embed1.add_field(name='Welcome to Ayesha Alpha!', value=f"{tutorial[16]}\n{tutorial[17]}\n{tutorial[18]}")
 
-        embed2 = Page(title='Ayesha Tutorial: Acolytes', color=0xBEDCF6)
+        embed2 = discord.Embed(title='Ayesha Tutorial: Acolytes', color=0xBEDCF6)
         embed2.add_field(name='The Tavern and Effects', value=f'{tutorial[21]}\n{tutorial[22]}\n{tutorial[23]}')
 
-        embed3 = Page(title='Ayesha Tutorial: Acolytes', color=0xBEDCF6)
+        embed3 = discord.Embed(title='Ayesha Tutorial: Acolytes', color=0xBEDCF6)
         embed3.add_field(name='Strengthening your Acolytes', value=f'{tutorial[26]}\n{tutorial[27]}\n{tutorial[28]}\n{tutorial[29]}')
 
-        menu = PaginatedMenu(ctx)
-        menu.add_pages([embed1, embed2, embed3])
-        menu.set_timeout(60)
-        menu.show_command_message()
-
-        await menu.open()
+        tutorial_pages = menus.MenuPages(source=PageSourceMaker.PageMaker([embed1, embed2, embed3]), clear_reactions_after=True, delete_message_after=True)
+        await tutorial_pages.start(ctx)
 
     @tutorial.command(aliases=['item', 'weapon', 'weapons'], description='Learn more about Items!')
     async def Items(self, ctx):

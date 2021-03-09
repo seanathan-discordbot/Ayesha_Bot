@@ -1,9 +1,8 @@
 import discord
 import asyncio
 
-from discord.ext import commands
+from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
-from dpymenus import Page, PaginatedMenu
 
 from Utilities import Checks, AssetCreation, PageSourceMaker
 
@@ -149,7 +148,7 @@ class Brotherhoods(commands.Cog):
         member_list = []
 
         async def write(start, members):
-            page = Page(title=f"{guild['Name']}: Members")
+            page = discord.Embed(title=f"{guild['Name']}: Members")
             iteration = 0
 
             while start < len(members) and iteration < 10:
@@ -166,11 +165,8 @@ class Brotherhoods(commands.Cog):
         for i in range(0, len(members), 10):
             member_list.append(await write(i, members))
 
-        menu = PaginatedMenu(ctx)
-        menu.add_pages(member_list)
-        menu.set_timeout(30)
-        menu.show_command_message()
-        await menu.open()
+        member_pages = menus.MenuPages(source=PageSourceMaker.PageMaker(member_list), clear_reactions_after=True, delete_message_after=True)
+        await member_pages.start(ctx)
 
     @brotherhood.command(description='Steal 5% of a random player\'s cash. The probability of stealing is about your brotherhood\'s level * .05 + .2. 30 minute cooldown.')
     @commands.check(Checks.is_player)
@@ -426,7 +422,7 @@ class Brotherhoods(commands.Cog):
     @brotherhood.command(description='Shows this command.')
     async def help(self, ctx):
         def write(ctx, start, entries):
-            helpEmbed = Page(title=f'NguyenBot Help: Brotherhoods', description='Brotherhoods are a pvp-oriented association. Its members gain an ATK and CRIT bonus depending on its level. They also gain access to the `steal` command.', color=0xBEDCF6)
+            helpEmbed = discord.Embed(title=f'NguyenBot Help: Brotherhoods', description='Brotherhoods are a pvp-oriented association. Its members gain an ATK and CRIT bonus depending on its level. They also gain access to the `steal` command.', color=0xBEDCF6)
             helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
             
             iteration = 0
@@ -450,9 +446,8 @@ class Brotherhoods(commands.Cog):
         for i in range(0, len(cmds), 5):
             embeds.append(write(ctx, i, cmds))
 
-        menu = PaginatedMenu(ctx)
-        menu.add_pages(embeds)
-        await menu.open()
+        helper = menus.MenuPages(source=PageSourceMaker.PageMaker(embeds), clear_reactions_after=True, delete_message_after=True)
+        await helper.start(ctx)
 
 def setup(client):
     client.add_cog(Brotherhoods(client))
