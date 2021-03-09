@@ -6,8 +6,7 @@ from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 from Utilities import Checks, AssetCreation, PageSourceMaker, Links
 
-from dpymenus import Page, PaginatedMenu
-
+from datetime import timedelta
 import time
 
 class Reminders(commands.Cog):
@@ -41,7 +40,15 @@ class Reminders(commands.Cog):
         iteration = 0
         while start < len(reminders) and iteration < 5: #Loop til 5 entries or none left
 
-            output += f"**ID: `{reminders[start]['id']}` | In `{time.strftime('%H:%M:%S', time.gmtime(int(reminders[start]['endtime'] - time.time())))}`:** {reminders[start]['content']}\n"
+            time_left = timedelta(seconds=reminders[start]['endtime'] - time.time())
+
+            days_left = ''
+            if time_left.days == 1:
+                days_left += '1 day, '
+            elif time_left.days > 1:
+                days_left += f'{time_left.days} days, '
+
+            output += f"**ID: `{reminders[start]['id']}` | In {days_left}{time.strftime('%H hours, %M minutes, %S seconds', time.gmtime(time_left.seconds))}:**\n{reminders[start]['content']}\n"
             
             iteration += 1
             start += 1
@@ -54,25 +61,65 @@ class Reminders(commands.Cog):
         return embed
 
     #COMMANDS
-    @commands.group(aliases=['r'], brief='<hours> <reminder>', description='Set a reminder for a few hours.', invoke_without_command=True, case_insensitive=True)
-    async def remind(self, ctx, hours : float, *, content : str):
+    @commands.group(aliases=['r'], brief='<length> <reminder>', description='Set a reminder. Reminders follow the format `days:hours:minutes:seconds`.', invoke_without_command=True, case_insensitive=True)
+    async def remind(self, ctx, duration : str, *, content : str = 'None'):
         #Make sure input is valid
-        if len(content) > 100:
-            await ctx.reply('Your reminder can only be up to 100 characters.')
+        length = 0
+
+        if duration.count(':') == 0: #seconds only
+            if duration.isdigit():
+                length = int(duration)
+            else:
+                await ctx.reply('Please follow the format `days:hours:minutes:seconds`.')
+                return
+
+        elif duration.count(':') == 1: #minutes
+            units = duration.split(':')
+            if units[0].isdigit() and units[1].isdigit():
+                length = (int(units[0]) * 60) + int(units[1])
+            else:
+                await ctx.reply('Please follow the format `days:hours:minutes:seconds`.')
+                return
+
+        elif duration.count(':') == 2: #hours
+            units = duration.split(':')
+            if units[0].isdigit() and units[1].isdigit() and units[2].isdigit():
+                length = (int(units[0]) * 3600) + (int(units[1]) * 60) + int(units[2])
+            else:
+                await ctx.reply('Please follow the format `days:hours:minutes:seconds`.')
+                return
+    
+        elif duration.count(':') == 3: #days
+            units = duration.split(':')
+            if units[0].isdigit() and units[1].isdigit() and units[2].isdigit() and units[3].isdigit():
+                length = (int(units[0]) * 86400) + (int(units[1]) * 3600) + (int(units[2]) * 60) + int(units[3])
+            else:
+                await ctx.reply('Please follow the format `days:hours:minutes:seconds`.')
+                return
+
+        else:
+            await ctx.reply('Please put the reminder on a shorter duration.')
             return
-        
-        if hours <= 60/3600:
-            await asyncio.sleep(hours)
+
+        if length > 31536000:
+            await ctx.reply('Reminders can only be up to 1 year.')
+            return
+
+        if length <= 60:
+            await ctx.reply(f'Will remind you in {length} seconds.')
+            await asyncio.sleep(length)
             await ctx.reply(f'Reminder: {content}')
             return
 
         #Otherwise calculate reminder length
         starttime = int(time.time())
-        endtime = starttime + hours * 3600
+        endtime = starttime + length
 
         await AssetCreation.create_reminder(self.client.pg_con, starttime, endtime, ctx.author.id, content)
 
-        await ctx.reply(f'Will remind you in {hours} hours.')
+        delta = timedelta(seconds=length)
+
+        await ctx.reply(f'Will remind you in `{delta.days}:{time.strftime("%H:%M:%S", time.gmtime(delta.seconds))}`.')
 
     @remind.command(name='list', description='See your active reminders.')
     async def _list(self, ctx):
