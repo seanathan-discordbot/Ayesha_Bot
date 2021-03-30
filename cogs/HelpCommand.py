@@ -12,13 +12,14 @@ from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 # **Music:** Ayesha's own music player! (it sucks)
 
 listCogs = """**Acolytes:** Commands involving your party members
-**Associations:** Join a brotherhood or guild for bonuses!
+**Guilds** or **Brotherhoods:** Join a brotherhood or guild for bonuses!
 **Classes:** Customize your character!
 **Gacha:** Roll for weapons and acolytes!
 **Items:** View your inventory and other commands involving items
 **Misc:** Other Ayesha-related commands
 **Profile:** Create a character and view your stats!
 **PvE:** Basic gameplay in AyeshaBot
+**Reminders:** Simple reminders for bot commands (low capacity)
 **Travel:** Explore the land of Rabidus and get items for your party members!"""
 
 class HelpPaginator(menus.ListPageSource):
@@ -81,7 +82,7 @@ class HelpCommand(commands.Cog):
                 name = f'Please enter `{prefix}help <Module>` for more info on that module',
                 value = listCogs, inline=False #LIST THE COGS
             )
-            helpEmbed.set_footer(text='Use the tutorial command to get started!')
+            helpEmbed.set_footer(text=f'Use the {ctx.prefix}tutorial command to get started!')
             
             embed = discord.Embed(color=0xBEDCF6)
             embed.set_thumbnail(url=ctx.author.avatar_url)
@@ -92,7 +93,7 @@ class HelpCommand(commands.Cog):
             embed.add_field(name='ping', #PING
                 value='`ping`\nSee if the bot is online.', 
                 inline=False)
-            embed.add_field(name='ping', #SERVERS
+            embed.add_field(name='servers', #SERVERS
                 value='`servers`\nSee how many servers this bot is in!', 
                 inline=False)
             embed.set_footer(text='Use the tutorial command to get started!')

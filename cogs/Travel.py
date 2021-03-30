@@ -1,16 +1,16 @@
 import discord
 import asyncio
 
-from discord.ext import commands
+from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 from Utilities import Checks, AssetCreation, PageSourceMaker
 
-from dpymenus import Page, PaginatedMenu
-
 import random
 import math
 import time
+
+import aiohttp
 
 location_dict = {
     'Aramithea' : {
@@ -156,7 +156,7 @@ class Travel(commands.Cog):
             await AssetCreation.giveMat(self.client.pg_con, 'wheat', mats, ctx.author.id)
         elif location == 'Sunset Prairie' or location == 'Glakelys':
             resource = 'oats'
-            await AssetCreation.giveMat(self.client.pg_con, 'oats', mats, ctx.author.id)
+            await AssetCreation.giveMat(self.client.pg_con, 'oat', mats, ctx.author.id)
         elif location == 'Thanderlans':
             resource = 'reeds'
             await AssetCreation.giveMat(self.client.pg_con, 'reeds', mats, ctx.author.id)
@@ -188,11 +188,8 @@ class Travel(commands.Cog):
     async def travel(self, ctx, *, destination : str = None):
         if destination is None:
             locations = self.write()
-            menu = PaginatedMenu(ctx)
-            menu.add_pages(locations)
-            menu.set_timeout(30)
-            menu.show_command_message()
-            await menu.open()
+            travel_pages = menus.MenuPages(source=PageSourceMaker.PageMaker(locations), clear_reactions_after=True, delete_message_after=True)
+            await travel_pages.start(ctx)
             return
 
         adv = await AssetCreation.getAdventure(self.client.pg_con, ctx.author.id)

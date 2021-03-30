@@ -1,12 +1,10 @@
 import discord
 import asyncio
 
-from discord.ext import commands
+from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 from Utilities import Checks, AssetCreation, PageSourceMaker, Links
-
-from dpymenus import Page, PaginatedMenu
 
 import json
 import random
@@ -24,7 +22,7 @@ class Acolytes(commands.Cog):
 
     #INVISIBLE
     async def write(self, start, inv, player):
-        embed = Page(title=f'{player}\'s Tavern', color=0xBEDCF6)
+        embed = discord.Embed(title=f'{player}\'s Tavern', color=0xBEDCF6)
 
         iteration = 0
         while start < len(inv) and iteration < 5: #Loop til 5 entries or none left
@@ -57,13 +55,8 @@ class Acolytes(commands.Cog):
         if len(invpages) == 0:
             await ctx.reply('Your tavern is empty!')
         else:
-            # tavern = menus.MenuPages(source=PageSourceMaker.PageMaker(invpages), clear_reactions_after=True, delete_message_after=True)
-            # await tavern.start(ctx)
-            menu = PaginatedMenu(ctx)
-            menu.add_pages(invpages)
-            menu.set_timeout(30)
-            menu.show_command_message()
-            await menu.open()
+            tavern = menus.MenuPages(source=PageSourceMaker.PageMaker(invpages), clear_reactions_after=True, delete_message_after=True)
+            await tavern.start(ctx)
 
     @commands.command(aliases=['hire'], brief='<acolyte_id : int> <slot (1 or 2)>', description='Add an acolyte to your party')
     @commands.check(Checks.is_player)

@@ -230,7 +230,7 @@ async def checkLevel(pool, ctx, user_id, aco1=None, aco2=None):
         if current['lvl'] < calcLevel(current['xp'], current['prestige']):
             #Give some rewards
             gold = (current['lvl'] + 1) * 500
-            rubidic = math.ceil((current['lvl'] + 1) / 10)
+            rubidic = math.ceil((current['lvl'] + 1) / 20)
             await conn.execute('UPDATE Players SET lvl = lvl + 1, gold = gold + $1, rubidic = rubidic + $2 WHERE user_id = $3', gold, rubidic, user_id)
 
             #Send level-up message
@@ -1000,3 +1000,40 @@ async def getPrestige(pool, user_id : int):
         await pool.release(conn)
 
     return prestige
+
+async def create_reminder(pool, starttime : int, endtime : int, user_id : int, content : str):
+    """Creates a reminder with the given information."""
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO reminders (starttime, endtime, user_id, content)
+            VALUES ($1, $2, $3, $4)""",
+            starttime, endtime, user_id, content
+        )
+
+        await pool.release(conn)
+
+async def get_all_reminders(pool, specified_time : int):
+    """Returns a record of all the reminders that have been completed at the specified time."""
+    async with pool.acquire() as conn:
+        completed_reminders = await conn.fetch('SELECT * FROM reminders WHERE endtime <= $1', specified_time)
+
+        for reminder in completed_reminders:
+            await conn.execute('DELETE FROM reminders WHERE id = $1', reminder['id'])
+
+        await pool.release(conn)
+
+    return completed_reminders
+
+async def get_reminders_from_person(pool, user_id : int):
+    """Returns all the reminders of the specified user."""
+    async with pool.acquire() as conn:
+        reminders = await conn.fetch('SELECT id, starttime, endtime, user_id, content FROM reminders WHERE user_id = $1 ORDER BY endtime', user_id)
+        await pool.release(conn)
+
+    return reminders
+
+async def delete_reminder(pool, reminder_id : int):
+    """Delete the specified reminder."""
+    async with pool.acquire() as conn:
+        await conn.execute('DELETE FROM reminders WHERE id = $1', reminder_id)
+        await pool.release(conn)

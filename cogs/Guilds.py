@@ -1,9 +1,8 @@
 import discord
 import asyncio
 
-from discord.ext import commands
+from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
-from dpymenus import Page, PaginatedMenu
 
 from Utilities import Checks, AssetCreation, PageSourceMaker
 
@@ -148,7 +147,7 @@ class Guilds(commands.Cog):
         member_list = []
 
         async def write(start, members):
-            page = Page(title=f"{guild['Name']}: Members")
+            page = discord.Embed(title=f"{guild['Name']}: Members")
             iteration = 0
 
             while start < len(members) and iteration < 10:
@@ -165,9 +164,8 @@ class Guilds(commands.Cog):
         for i in range(0, len(members), 10):
             member_list.append(await write(i, members))
 
-        menu = PaginatedMenu(ctx)
-        menu.add_pages(member_list)
-        await menu.open()
+        member_pages = menus.MenuPages(source=PageSourceMaker.PageMaker(member_list), clear_reactions_after=True, delete_message_after=True)
+        await member_pages.start(ctx)
 
     @guild.command(brief='<gold : int>', description='Invest in a project at a random location and gain/lose some money. 2 hour cooldown.')
     @commands.check(Checks.is_player)
@@ -417,7 +415,7 @@ class Guilds(commands.Cog):
     @guild.command(description='Shows this command.')
     async def help(self, ctx):
         def write(ctx, start, entries):
-            helpEmbed = Page(title=f'NguyenBot Help: Guilds', description='Guilds are a finance-oriented association. Its members gain a bonus when selling items. They also have access to the `invest` command.', color=0xBEDCF6)
+            helpEmbed = discord.Embed(title=f'NguyenBot Help: Brotherhoods', description='Brotherhoods are a pvp-oriented association. Its members gain an ATK and CRIT bonus depending on its level. They also gain access to the `steal` command.', color=0xBEDCF6)
             helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
             
             iteration = 0
@@ -436,14 +434,13 @@ class Guilds(commands.Cog):
             return helpEmbed
 
         cmds, embeds = [], []
-        for command in self.client.get_command('guild').walk_commands():
+        for command in self.client.get_command('brotherhood').walk_commands():
             cmds.append(command)
         for i in range(0, len(cmds), 5):
             embeds.append(write(ctx, i, cmds))
 
-        menu = PaginatedMenu(ctx)
-        menu.add_pages(embeds)
-        await menu.open()
+        helper = menus.MenuPages(source=PageSourceMaker.PageMaker(embeds), clear_reactions_after=True, delete_message_after=True)
+        await helper.start(ctx)
 
 def setup(client):
     client.add_cog(Guilds(client))

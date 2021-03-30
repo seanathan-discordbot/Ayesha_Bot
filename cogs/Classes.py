@@ -60,100 +60,56 @@ class Classes(commands.Cog):
 
     #COMMANDS
     @cooldown(1, 3600, BucketType.user)
-    @commands.command(aliases=['class'], description='Choose your player class. This can be changed.')
-    async def changeclass(self, ctx):
-        entries = []
-        for job in occupations:
-            embed = discord.Embed(title='Class Selection Menu', color=0xBEDCF6)
-            embed.add_field(name=f'{job}: Choose \u2705 to take this class!', value=f'{occupations[job]}')
-            entries.append(embed)
-        message = await ctx.reply(embed=entries[0])
-        await message.add_reaction('\u23EE') #Left
-        await message.add_reaction('\u2705') #Check
-        await message.add_reaction('\u274E') #X
-        await message.add_reaction('\u23ED') #Right
+    @commands.command(name='class', description='Choose your player class. This can be changed.')
+    async def change_class(self, ctx, player_job : str = None):
+        if player_job is None:
+            ctx.command.reset_cooldown(ctx)
 
-        def check(reaction, user):
-            return user == ctx.author
+            entries = []
+            for job in occupations:
+                embed = discord.Embed(title='Class Selection Menu', color=0xBEDCF6)
+                embed.add_field(name=f'{job}: Say `{ctx.prefix}class {job}` to take this class!', value=f'{occupations[job]}')
+                entries.append(embed)
 
-        page = 0
-        reaction = None
-        readReactions = True
+            tavern = menus.MenuPages(source=PageSourceMaker.PageMaker(entries), clear_reactions_after=True, delete_message_after=True)
+            await tavern.start(ctx)
 
-        while readReactions:
-            if str(reaction) == '\u23EE':
-                if page > 0:
-                    page -= 1
-                    await message.edit(embed=entries[page])
-            if str(reaction) == '\u23ED':
-                if page < 9:
-                    page += 1
-                    await message.edit(embed=entries[page])
-            if str(reaction) == '\u274E':
-                await message.delete()
-                await ctx.send('No class chosen.')
-                ctx.command.reset_cooldown(ctx)
-                break
-            if str(reaction) == '\u2705': # Then change class
-                role = occ[page][1]
-                await AssetCreation.setPlayerClass(self.client.pg_con, role, ctx.author.id)
-                await ctx.send(f'{ctx.author.mention}, you are now a {role}!')
-                await message.delete()
-                break
+        else:
+            player_job = player_job.title()
 
-            try:
-                reaction, user = await self.client.wait_for('reaction_add', check=check, timeout=60.0)
-                await message.remove_reaction(reaction, user)
-            except asyncio.TimeoutError:
-                readReactions = not readReactions
-                await message.delete()
+            if player_job not in (occupations):
+                await ctx.reply(f'This is not a valid class. Please do `{ctx.prefix}class` with no arguments to see the list of classes.')
+                return
+
+            else:
+                await AssetCreation.setPlayerClass(self.client.pg_con, player_job, ctx.author.id)
+                await ctx.reply(f'You are now a {player_job}!')
         
+    @cooldown(1, 3600, BucketType.user)
     @commands.command(aliases=['background','birthplace'], description='Choose your birthplace.')
-    async def origin(self, ctx):
-        entries = []
-        for place in origins:
-            embed = discord.Embed(title='Background Selection Menu', color=0xBEDCF6)
-            embed.add_field(name=f'{place}: Choose \u2705 if you like this place!', value=f'{origins[place]}')
-            entries.append(embed)
-        message = await ctx.reply(embed=entries[0])
-        await message.add_reaction('\u23EE') #Left
-        await message.add_reaction('\u2705') #Check
-        await message.add_reaction('\u274E') #X
-        await message.add_reaction('\u23ED') #Right
+    async def origin(self, ctx, *, player_origin : str = None):
+        if player_origin is None:
+            ctx.command.reset_cooldown(ctx)
 
-        def check(reaction, user):
-            return user == ctx.author
+            entries = []
+            for place in origins:
+                embed = discord.Embed(title='Background Selection Menu', color=0xBEDCF6)
+                embed.add_field(name=f'{place}: Say `{ctx.prefix}origin {place}` if you like this place!', value=f'{origins[place]}')
+                entries.append(embed)   
 
-        page = 0
-        reaction = None
-        readReactions = True
+            tavern = menus.MenuPages(source=PageSourceMaker.PageMaker(entries), clear_reactions_after=True, delete_message_after=True)
+            await tavern.start(ctx)
 
-        while readReactions:
-            if str(reaction) == '\u23EE':
-                if page > 0:
-                    page -= 1
-                    await message.edit(embed=entries[page])
-            if str(reaction) == '\u23ED':
-                if page < 8:
-                    page += 1
-                    await message.edit(embed=entries[page])
-            if str(reaction) == '\u274E':
-                await message.delete()
-                await ctx.send('Nothing chosen.')
-                break
-            if str(reaction) == '\u2705': # Then change class
-                place = ori[page][1]
-                await AssetCreation.setPlayerOrigin(self.client.pg_con, place, ctx.author.id)
-                await ctx.send(f'{ctx.author.mention}, you are from {place}!')
-                await message.delete()
-                break
+        else:
+            player_origin = player_origin.title()
 
-            try:
-                reaction, user = await self.client.wait_for('reaction_add', check=check, timeout=60.0)
-                await message.remove_reaction(reaction, user)
-            except asyncio.TimeoutError:
-                readReactions = not readReactions
-                await message.delete()
+            if player_origin not in (origins):
+                await ctx.reply(f'This is not a valid place. Please do `{ctx.prefix}origin` with no arguments to see the list of backgrounds.')
+                return
+
+            else:
+                await AssetCreation.setPlayerOrigin(self.client.pg_con, player_origin, ctx.author.id)
+                await ctx.send(f'{ctx.author.mention}, you are from {player_origin}!')
 
 def setup(client):
     client.add_cog(Classes(client))
