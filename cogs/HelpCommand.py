@@ -19,6 +19,7 @@ listCogs = """`Acolytes:` Commands involving your party members
 `Misc` Other Ayesha-related commands
 `Profile` Create a character and view your stats!
 `PvE` Basic gameplay in AyeshaBot
+`PvP` Challenge your friends to battle!
 `Reminders` Simple reminders for bot commands (low capacity)
 `Travel` Explore the land of Rabidus and get items for your party members!"""
 
@@ -107,6 +108,8 @@ class HelpCommand(commands.Cog):
                 cog = cog.title()
                 if cog == 'Pve':
                     cog = 'PvE'
+                if cog == 'Pvp':
+                    cog = 'PvP'
                 await self.createHelp(ctx, cog)
             except AttributeError:
                 await ctx.send("That is not a valid module.")
