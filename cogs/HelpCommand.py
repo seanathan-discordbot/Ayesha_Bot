@@ -11,16 +11,16 @@ from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 # **Music:** Ayesha's own music player! (it sucks)
 
-listCogs = """**Acolytes:** Commands involving your party members
-**Guilds** or **Brotherhoods:** Join a brotherhood or guild for bonuses!
-**Classes:** Customize your character!
-**Gacha:** Roll for weapons and acolytes!
-**Items:** View your inventory and other commands involving items
-**Misc:** Other Ayesha-related commands
-**Profile:** Create a character and view your stats!
-**PvE:** Basic gameplay in AyeshaBot
-**Reminders:** Simple reminders for bot commands (low capacity)
-**Travel:** Explore the land of Rabidus and get items for your party members!"""
+listCogs = """`Acolytes:` Commands involving your party members
+`Guilds` or `Brotherhoods` Join a brotherhood or guild for bonuses!
+`Classes` Customize your character!
+`Gacha` Roll for weapons and acolytes!
+`Items` View your inventory and other commands involving items
+`Misc` Other Ayesha-related commands
+`Profile` Create a character and view your stats!
+`PvE` Basic gameplay in AyeshaBot
+`Reminders` Simple reminders for bot commands (low capacity)
+`Travel` Explore the land of Rabidus and get items for your party members!"""
 
 class HelpPaginator(menus.ListPageSource):
     def __init__(self, data):
@@ -75,11 +75,11 @@ class HelpCommand(commands.Cog):
     async def help(self, ctx, cog : str = None):
         if not cog:
             prefix = await self.client.get_prefix(ctx.message)
-            helpEmbed = discord.Embed(color=0xBEDCF6)
+            helpEmbed = discord.Embed(title='Ayesha Help', color=0xBEDCF6)
             helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
-            helpEmbed.set_author(name='Ayesha Help')
+            # helpEmbed.set_author(name='Ayesha Help')
             helpEmbed.add_field(
-                name = f'Please enter `{prefix}help <Module>` for more info on that module',
+                name = f'__Please enter `{prefix}help <Module>` for more info on that module__',
                 value = listCogs, inline=False #LIST THE COGS
             )
             helpEmbed.set_footer(text=f'Use the {ctx.prefix}tutorial command to get started!')
