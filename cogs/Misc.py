@@ -36,8 +36,8 @@ class Misc(commands.Cog):
 
     @commands.command(description='Vote for the bot to receive a rubidic!')
     async def vote(self, ctx):
-        embed = discord.Embed(title='Receive 1 rubidic each time you for the bot, up to 2 rubidics a day!',
-            description='Vote on [Discord Bot List!](https://discordbotlist.com/bots/ayesha) (12 hr cooldown)',
+        embed = discord.Embed(title='Receive 1 rubidic each time you for the bot, up to 4 rubidics a day!',
+            description='Vote on [Top.gg!](https://top.gg/bot/767234703161294858) (12 hr cooldown)\nVote on [Discord Bot List!](https://discordbotlist.com/bots/ayesha) (12 hr cooldown)',
             color=0xBEDCF6)
         await ctx.reply(embed=embed)
 

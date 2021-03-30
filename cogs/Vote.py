@@ -112,6 +112,6 @@ class Vote(commands.Cog):
         self.update_stats.cancel()
 
 def setup(client):
-    # client.dbl = dbl.DBLClient(client, 'add top gg token here')
+    client.dbl = dbl.DBLClient(client, Links.TOPGG_Token, autopost=True)
 
     client.add_cog(Vote(client))

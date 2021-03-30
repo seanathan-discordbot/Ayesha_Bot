@@ -931,7 +931,7 @@ async def getTopPvP(pool):
     Record: user_id, user_name, pvpwins"""
     async with pool.acquire() as conn:
         board = await conn.fetch("""SELECT user_id, user_name, pvpwins FROM players
-            ORDER BY bosswins DESC LIMIT 5""")
+            ORDER BY pvpwins DESC LIMIT 5""")
         await pool.release(conn)
 
     return board  
@@ -1036,4 +1036,17 @@ async def delete_reminder(pool, reminder_id : int):
     """Delete the specified reminder."""
     async with pool.acquire() as conn:
         await conn.execute('DELETE FROM reminders WHERE id = $1', reminder_id)
+        await pool.release(conn)
+
+async def declare_pvp_winner(pool, victor_id : int, loser_id : int):
+    """Adds 1 to a specified player's pvpwins."""
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE players SET pvpwins = pvpwins + 1 WHERE user_id = $1', victor_id)
+        await conn.execute('UPDATE players SET pvpfights = pvpfights + 1 WHERE user_id = $1 OR user_id = $2', victor_id, loser_id)
+        await pool.release(conn)
+
+async def declare_pvp_fight(pool, player1_id : int, player2_id : int):
+    """Declares no winner to a pvpfight. Adds 1 to both their pvpfights."""
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE players SET pvpfights = pvpfights + 1 WHERE user_id = $1 OR user_id = $2', victor_id, loser_id)
         await pool.release(conn)
