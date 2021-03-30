@@ -94,7 +94,7 @@ class Travel(commands.Cog):
         embeds = []
         for location in location_dict:
             if i == 0:
-                embed = Page(title='Locations')
+                embed = discord.Embed(title='Locations')
             
             embed.add_field(name=f"{location}", 
                 value=f"**Biome: **`{location_dict[location]['Biome']}`, **Travel Time: **`{self.convertagain(location_dict[location]['CD'])}`\n{location_dict[location]['Drops']}", 
