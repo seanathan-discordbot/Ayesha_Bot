@@ -42,7 +42,7 @@ class Profile(commands.Cog):
         print('Profile is ready.')
 
     #COMMANDS
-    @commands.command(aliases=['begin','create'], brief='<name : str>', description='Start the game of AyeshaBot.')
+    @commands.command(aliases=['begin','create','play'], brief='<name : str>', description='Start the game of AyeshaBot.')
     @commands.check(Checks.not_player)
     async def start(self, ctx, *, name : str = None):
         if not name:

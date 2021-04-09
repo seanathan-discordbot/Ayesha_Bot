@@ -282,7 +282,7 @@ class Travel(commands.Cog):
             await AssetCreation.checkLevel(self.client.pg_con, ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
 
         else: 
-            wait = adv[0] - current
+            wait = adv['adventure'] - current
             await ctx.reply(f"You will arrive at `{adv['destination']}` in `{self.convertagain(wait)}`.")
 
     @commands.command(description='Cancel your current travel-state.')
