@@ -1048,5 +1048,5 @@ async def declare_pvp_winner(pool, victor_id : int, loser_id : int):
 async def declare_pvp_fight(pool, player1_id : int, player2_id : int):
     """Declares no winner to a pvpfight. Adds 1 to both their pvpfights."""
     async with pool.acquire() as conn:
-        await conn.execute('UPDATE players SET pvpfights = pvpfights + 1 WHERE user_id = $1 OR user_id = $2', victor_id, loser_id)
+        await conn.execute('UPDATE players SET pvpfights = pvpfights + 1 WHERE user_id = $1 OR user_id = $2', player1_id, player2_id)
         await pool.release(conn)
