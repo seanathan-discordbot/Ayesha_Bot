@@ -361,15 +361,35 @@ class Travel(commands.Cog):
             bone = int(fur/1.2)
 
         else:
-            gold = 10
-            fur = 6
-            bone = 4
+            gold = random.randint(5,15)
+            fur = random.randint(5,10)
+            bone = int(fur/1.2)
 
+        #Modify the result given player's role and weapontype
         role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
         if role == 'Hunter':
             gold *= 2
             fur *= 2
             bone *= 2
+
+        item_id = await AssetCreation.getEquippedItem(self.client.pg_con, ctx.author.id)
+        item_info = await AssetCreation.getItem(self.client.pg_con, item_id)
+        if item_info['Type'] == 'Bow':
+            gold *= 2
+            fur *= 2
+            bone *= 2
+        elif item_info['Type'] == 'Gauntlets':
+            gold = int(gold / 2)
+            fur = int(fur / 2)
+            bone = int(bone / 2)
+        elif item_info['Type'] ==  'Sling':
+            gold = int(gold * 1.5)
+            fur = int(fur * 1.5)
+            bone = int(bone * 1.5)
+        elif item_info['Type'] ==  'Javelin':
+            gold = int(gold * 1.25)
+            fur = int(fur * 1.25)
+            bone = int(bone * 1.25)
 
         await AssetCreation.giveGold(self.client.pg_con, gold, ctx.author.id)
         await AssetCreation.giveMat(self.client.pg_con, 'fur', fur, ctx.author.id)
@@ -393,17 +413,37 @@ class Travel(commands.Cog):
         if result[0] == 'success':
             gold = random.randint(20,100)
             iron = random.randint(40,80)
-            silver = random.randint(10,15)
+            silver = random.randint(18,25)
 
         elif result[0] == 'critical success':
             gold = random.randint(100, 150)
             iron = random.randint(80,100)
-            silver =  random.randint(20,30)
+            silver = random.randint(30,45)
 
         else:
             gold = random.randint(10,30)
             iron = random.randint(25,35)
-            silver = 0
+            silver = random.randint(2,8)
+
+        #Modify rewards given player's weapontype
+        item_id = await AssetCreation.getEquippedItem(self.client.pg_con, ctx.author.id)
+        item_info = await AssetCreation.getItem(self.client.pg_con, item_id)
+        if item_info['Type'] == 'Dagger':
+            gold = int(gold / 2)
+            iron = int(iron / 2)
+            silver = int(silver / 2)
+        elif item_info['Type'] == 'Bow' or item_info['Type'] == 'Sling':
+            gold = int(gold / 3)
+            iron = int(iron / 3)
+            silver = int(silver / 3)
+        elif item_info['Type'] == 'Trebuchet':
+            gold = int(gold * 2)
+            iron = int(iron * 2)
+            silver = int(silver * 2)
+        elif item_info['Type'] == 'Greatsword' or item_info['Type'] == 'Axe' or item_info['Type'] == 'Mace':
+            gold = int(gold * 1.25)
+            iron = int(iron * 1.25)
+            silver = int(silver * 1.25)
 
         await AssetCreation.giveGold(self.client.pg_con, gold, ctx.author.id)
         await AssetCreation.giveMat(self.client.pg_con, 'iron', iron, ctx.author.id)
@@ -452,9 +492,15 @@ class Travel(commands.Cog):
             mat = 'cacao'
             amount = random.randint(7,12)
 
+        #Modify result given player's role and weapon type
         role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
         if role == 'Traveler':
             amount *= 2
+
+        item_id = await AssetCreation.getEquippedItem(self.client.pg_con, ctx.author.id)
+        item_info = await AssetCreation.getItem(self.client.pg_con, item_id)
+        if item_info['Type'] == 'Dagger':
+            amount = int(amount * 1.1)
 
         await AssetCreation.giveMat(self.client.pg_con, mat, amount, ctx.author.id)
 
