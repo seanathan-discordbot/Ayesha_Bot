@@ -1,6 +1,3 @@
-"""
-A bunch of Misclaneous commands for testing purposes
-"""
 import discord
 from discord.ext import commands
 
@@ -8,12 +5,30 @@ from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 from Utilities import Checks, AssetCreation, PageSourceMaker
 
+import datetime
+from datetime import date
+
+import asyncio
 import time
 import random
+import schedule
 
 class Misc(commands.Cog):
     def __init__(self,client):
         self.client=client
+        self.claimed_dailies = []
+
+        def clearDailies():
+            self.claimed_dailies.clear()
+
+        async def checkTime():
+            schedule.every().day.at("00:00").do(clearDailies)
+            while True:
+                schedule.run_pending()
+                print(f'Checked time for reset: {date.today()}')
+                await asyncio.sleep(schedule.idle_seconds())
+
+        asyncio.ensure_future(checkTime())
 
     #EVENTS
     @commands.Cog.listener() # needed to create event in cog
@@ -43,10 +58,15 @@ class Misc(commands.Cog):
 
     @commands.command(description='Get 2 rubidics daily!')
     @commands.check(Checks.is_player)
-    @cooldown(1, 86400, BucketType.user)
+    # @cooldown(1, 86400, BucketType.user)
     async def daily(self, ctx):
-        await AssetCreation.giveRubidics(self.client.pg_con, 2, ctx.author.id)
-        await ctx.reply('You received 2 rubidics!')
+        if ctx.author.id in self.claimed_dailies:
+            await ctx.reply(f'You already claimed your daily. It will refresh in `{time.strftime("%H:%M:%S", time.gmtime(schedule.idle_seconds()))}`.')
+            return
+        else:
+            await AssetCreation.giveRubidics(self.client.pg_con, 2, ctx.author.id)
+            await ctx.reply('You received 2 rubidics!')
+            self.claimed_dailies.append(ctx.author.id)
         
     @commands.command(description='Link to a place to report bugs in AyeshaBot.')
     async def report(self,ctx):
@@ -78,6 +98,10 @@ class Misc(commands.Cog):
                 time_left = 0   
         else:
             time_left = 0  
+
+        #Also see if daily has been used
+        if ctx.author.id in self.claimed_dailies:
+            output += f'`daily`: {time.strftime("%H:%M:%S", time.gmtime(schedule.idle_seconds()))}\n'
 
         #Create embed to send
         embed = discord.Embed(color=0xBEDCF6)
