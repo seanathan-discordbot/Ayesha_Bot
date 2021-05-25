@@ -114,6 +114,52 @@ class Misc(commands.Cog):
         embed.add_field(name=f'{ctx.author.display_name}\'s Cooldowns', value=output)
         await ctx.reply(embed=embed)
 
+    @commands.group(description='See some interesting metrics about Ayesha!')
+    async def info(self, ctx):
+        """Return the amount of servers, players, gold and rubidics in the database."""
+        servercount = len(ctx.bot.guilds)
+        playercount = await AssetCreation.getPlayerCount(self.client.pg_con)
+        async with self.client.pg_con.acquire() as conn:
+            econinfo = await conn.fetchrow('SELECT SUM(gold) as g, SUM(rubidic) as r, AVG(pitycounter) as p FROM players')
+            acoinfo = await conn.fetch("""SELECT acolyte_name, COUNT(is_equipped) AS eq 
+                                            FROM 
+                                                (
+                                                    SELECT instance_id, acolyte_name, is_equipped 			
+                                                    FROM acolytes 
+                                                    WHERE is_equipped = 1 OR is_equipped = 2
+                                                ) AS equipped_acolytes
+                                            GROUP BY acolyte_name
+                                            ORDER BY eq DESC
+                                            LIMIT 3
+                                            """
+                                        )
+            gameinfo = await conn.fetchrow('SELECT SUM(bosswins) as b, SUM(pvpfights)/2 as p FROM players')
+
+        # fmt = f'Ayesha is in **{servercount}** servers and has **{playercount}** players.\n\n'
+        # fmt += f'There is **{econinfo["g"]}** gold and **{econinfo["r"]}** rubidics in circulation.\n\n'
+        # fmt += f'The top-used acolytes are **{acoinfo[0]["acolyte_name"]}** ({acoinfo[0]["eq"]}), '
+        # fmt += f'**{acoinfo[1]["acolyte_name"]}** ({acoinfo[1]["eq"]}), and '
+        # fmt += f'**{acoinfo[2]["acolyte_name"]}** ({acoinfo[2]["eq"]}).'
+
+        # await ctx.reply(embed=discord.Embed(title='Ayesha Bot Information', description=fmt, color=0xBEDCF6))
+
+        information = discord.Embed(title='Ayesha Bot Information', color=0xBEDCF6)
+        meta = f"**Servers: **{servercount}\n**Players: **{playercount}"
+        information.add_field(name='Meta', value=meta)
+
+        econ = f"**Total Gold: **{econinfo['g']}\n**Total Rubidics: **{econinfo['r']}\n**Average Pity Counter: **{round(econinfo['p']/80 * 100, 2)}%"
+        information.add_field(name='Economy Stats', value=econ)
+
+        gameplay = f"**Bosses Defeated: **{gameinfo['b']}\n**PVP Battles: **{gameinfo['p']}"
+        information.add_field(name='Gameplay Stats', value=gameplay, inline=False)
+
+        aco = f"1. {acoinfo[0]['acolyte_name']}: {acoinfo[0]['eq']} users\n2. {acoinfo[1]['acolyte_name']}: {acoinfo[1]['eq']} users\n3. {acoinfo[2]['acolyte_name']}: {acoinfo[2]['eq']} users"
+        information.add_field(name='Top Used Acolytes', value=aco)
+
+        information.set_thumbnail(url=self.client.user.avatar_url)
+
+        await ctx.reply(embed=information)
+
     @commands.group(aliases=['lb', 'board'], brief='<Sort: XP/PvE/PvP/Gold>', description='See the leaderboards. Do this command without any arguments for more help.', invoke_without_command=True, case_insensitive=True)
     async def leaderboard(self, ctx):
         embed = discord.Embed(title='Ayesha Help: Leaderboards', color=0xBEDCF6)
