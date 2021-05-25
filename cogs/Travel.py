@@ -218,7 +218,7 @@ class Travel(commands.Cog):
         # Tell player when their adventure will be done
         await ctx.reply(f"You will arrive at `{destination}` in `{self.convertagain(loc['CD'])}`.")
 
-    @commands.command(description='Go on an expedition for a time, returning with materials!')
+    @commands.command(aliases=['expo'], description='Go on an expedition for a time, returning with materials!')
     @commands.check(Checks.is_player)
     @cooldown(1, 900, type=BucketType.user)
     async def expedition(self, ctx):
