@@ -1,6 +1,3 @@
-"""
-A bunch of Misclaneous commands for testing purposes
-"""
 import discord
 from discord.ext import commands
 
@@ -8,12 +5,30 @@ from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 from Utilities import Checks, AssetCreation, PageSourceMaker
 
+import datetime
+from datetime import date
+
+import asyncio
 import time
 import random
+import schedule
 
 class Misc(commands.Cog):
     def __init__(self,client):
         self.client=client
+        self.claimed_dailies = []
+
+        def clearDailies():
+            self.claimed_dailies.clear()
+
+        async def checkTime():
+            schedule.every().day.at("00:00").do(clearDailies)
+            while True:
+                schedule.run_pending()
+                print(f'Checked time for reset: {date.today()}')
+                await asyncio.sleep(schedule.idle_seconds())
+
+        asyncio.ensure_future(checkTime())
 
     #EVENTS
     @commands.Cog.listener() # needed to create event in cog
@@ -36,17 +51,22 @@ class Misc(commands.Cog):
 
     @commands.command(description='Vote for the bot to receive a rubidic!')
     async def vote(self, ctx):
-        embed = discord.Embed(title='Receive 1 rubidic each time you for the bot, up to 4 rubidics a day!',
+        embed = discord.Embed(title='Receive 1 rubidic each time you vote for the bot, up to 4 rubidics a day!',
             description='Vote on [Top.gg!](https://top.gg/bot/767234703161294858) (12 hr cooldown)\nVote on [Discord Bot List!](https://discordbotlist.com/bots/ayesha) (12 hr cooldown)',
             color=0xBEDCF6)
         await ctx.reply(embed=embed)
 
     @commands.command(description='Get 2 rubidics daily!')
     @commands.check(Checks.is_player)
-    @cooldown(1, 86400, BucketType.user)
+    # @cooldown(1, 86400, BucketType.user)
     async def daily(self, ctx):
-        await AssetCreation.giveRubidics(self.client.pg_con, 2, ctx.author.id)
-        await ctx.reply('You received 2 rubidics!')
+        if ctx.author.id in self.claimed_dailies:
+            await ctx.reply(f'You already claimed your daily. It will refresh in `{time.strftime("%H:%M:%S", time.gmtime(schedule.idle_seconds()))}`.')
+            return
+        else:
+            await AssetCreation.giveRubidics(self.client.pg_con, 2, ctx.author.id)
+            await ctx.reply('You received 2 rubidics!')
+            self.claimed_dailies.append(ctx.author.id)
         
     @commands.command(description='Link to a place to report bugs in AyeshaBot.')
     async def report(self,ctx):
@@ -79,6 +99,10 @@ class Misc(commands.Cog):
         else:
             time_left = 0  
 
+        #Also see if daily has been used
+        if ctx.author.id in self.claimed_dailies:
+            output += f'`daily`: {time.strftime("%H:%M:%S", time.gmtime(schedule.idle_seconds()))}\n'
+
         #Create embed to send
         embed = discord.Embed(color=0xBEDCF6)
         if not cooldowns:
@@ -89,6 +113,52 @@ class Misc(commands.Cog):
             output += f'`{cmd[0]}`: {cmd[1]}\n'
         embed.add_field(name=f'{ctx.author.display_name}\'s Cooldowns', value=output)
         await ctx.reply(embed=embed)
+
+    @commands.group(description='See some interesting metrics about Ayesha!')
+    async def info(self, ctx):
+        """Return the amount of servers, players, gold and rubidics in the database."""
+        servercount = len(ctx.bot.guilds)
+        playercount = await AssetCreation.getPlayerCount(self.client.pg_con)
+        async with self.client.pg_con.acquire() as conn:
+            econinfo = await conn.fetchrow('SELECT SUM(gold) as g, SUM(rubidic) as r, AVG(pitycounter) as p FROM players')
+            acoinfo = await conn.fetch("""SELECT acolyte_name, COUNT(is_equipped) AS eq 
+                                            FROM 
+                                                (
+                                                    SELECT instance_id, acolyte_name, is_equipped 			
+                                                    FROM acolytes 
+                                                    WHERE is_equipped = 1 OR is_equipped = 2
+                                                ) AS equipped_acolytes
+                                            GROUP BY acolyte_name
+                                            ORDER BY eq DESC
+                                            LIMIT 3
+                                            """
+                                        )
+            gameinfo = await conn.fetchrow('SELECT SUM(bosswins) as b, SUM(pvpfights)/2 as p FROM players')
+
+        # fmt = f'Ayesha is in **{servercount}** servers and has **{playercount}** players.\n\n'
+        # fmt += f'There is **{econinfo["g"]}** gold and **{econinfo["r"]}** rubidics in circulation.\n\n'
+        # fmt += f'The top-used acolytes are **{acoinfo[0]["acolyte_name"]}** ({acoinfo[0]["eq"]}), '
+        # fmt += f'**{acoinfo[1]["acolyte_name"]}** ({acoinfo[1]["eq"]}), and '
+        # fmt += f'**{acoinfo[2]["acolyte_name"]}** ({acoinfo[2]["eq"]}).'
+
+        # await ctx.reply(embed=discord.Embed(title='Ayesha Bot Information', description=fmt, color=0xBEDCF6))
+
+        information = discord.Embed(title='Ayesha Bot Information', color=0xBEDCF6)
+        meta = f"**Servers: **{servercount}\n**Players: **{playercount}"
+        information.add_field(name='Meta', value=meta)
+
+        econ = f"**Total Gold: **{econinfo['g']}\n**Total Rubidics: **{econinfo['r']}\n**Average Pity Counter: **{round(econinfo['p']/80 * 100, 2)}%"
+        information.add_field(name='Economy Stats', value=econ)
+
+        gameplay = f"**Bosses Defeated: **{gameinfo['b']}\n**PVP Battles: **{gameinfo['p']}"
+        information.add_field(name='Gameplay Stats', value=gameplay, inline=False)
+
+        aco = f"1. {acoinfo[0]['acolyte_name']}: {acoinfo[0]['eq']} users\n2. {acoinfo[1]['acolyte_name']}: {acoinfo[1]['eq']} users\n3. {acoinfo[2]['acolyte_name']}: {acoinfo[2]['eq']} users"
+        information.add_field(name='Top Used Acolytes', value=aco)
+
+        information.set_thumbnail(url=self.client.user.avatar_url)
+
+        await ctx.reply(embed=information)
 
     @commands.group(aliases=['lb', 'board'], brief='<Sort: XP/PvE/PvP/Gold>', description='See the leaderboards. Do this command without any arguments for more help.', invoke_without_command=True, case_insensitive=True)
     async def leaderboard(self, ctx):
