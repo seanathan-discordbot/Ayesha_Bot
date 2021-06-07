@@ -43,7 +43,8 @@ class Items(commands.Cog):
 
     #INVISIBLE
     def write(self, start, inv, player):
-        embed = discord.Embed(title=f'{player}\'s Inventory', color=0xBEDCF6)
+        embed = discord.Embed(title=f'{player}\'s Inventory', 
+                              color=self.client.ayesha_blue)
 
         iteration = 0
         while start < len(inv) and iteration < 5: #Loop til 5 entries or none left
@@ -72,10 +73,14 @@ class Items(commands.Cog):
         if len(invpages) == 0:
             await ctx.reply('Your inventory is empty!')
         else:
-            inventory = menus.MenuPages(source=PageSourceMaker.PageMaker(invpages), clear_reactions_after=True, delete_message_after=True)
+            inventory = menus.MenuPages(source=PageSourceMaker.PageMaker(invpages), 
+                                        clear_reactions_after=True, 
+                                        delete_message_after=True)
             await inventory.start(ctx)
 
-    @commands.command(aliases=['use','wield'], brief='<item_id : int>', description='Equip an item from your inventory using its ID')
+    @commands.command(aliases=['use','wield'], 
+                      brief='<item_id : int>', 
+                      description='Equip an item from your inventory using its ID')
     @commands.check(Checks.is_player)
     async def equip(self, ctx, item_id : int):
         # Make sure that 1. item exists 2. they own this item

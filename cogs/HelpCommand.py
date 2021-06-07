@@ -36,19 +36,27 @@ class HelpCommand(commands.Cog):
         self.client = client
         
     def write(self, ctx, start, entries, cog):
-        helpEmbed = discord.Embed(title=f'Ayesha Help: {cog}', color=0xBEDCF6)
+        helpEmbed = discord.Embed(title=f'Ayesha Help: {cog}', color=self.client.ayesha_blue)
         helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
         
         iteration = 0
         while start < len(entries) and iteration < 5: #Will loop until 5 entries are processed or there's nothing left in the queue
             if entries[start].brief and entries[start].aliases:
-                helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', inline=False)
+                helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', 
+                                    value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', 
+                                    inline=False)
             elif entries[start].brief and not entries[start].aliases:
-                helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', value=f'{entries[start].description}', inline=False)
+                helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', 
+                                    value=f'{entries[start].description}', 
+                                    inline=False)
             elif not entries[start].brief and entries[start].aliases:
-                helpEmbed.add_field(name=f'{entries[start].name}', value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', inline=False)
+                helpEmbed.add_field(name=f'{entries[start].name}', 
+                                    value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', 
+                                    inline=False)
             else:
-                helpEmbed.add_field(name=f'{entries[start].name}', value=f'{entries[start].description}', inline=False)
+                helpEmbed.add_field(name=f'{entries[start].name}', 
+                                    value=f'{entries[start].description}', 
+                                    inline=False)
             iteration += 1
             start +=1 
             
@@ -63,7 +71,9 @@ class HelpCommand(commands.Cog):
         for j in range(0, len(listCommands), 5): #For spacing reasons, only 5 entries will be displayed at a time
             entries.append(self.write(ctx, j, listCommands, cog)) #Write will create the embeds for us
             
-        pages = menus.MenuPages(source=HelpPaginator(entries), clear_reactions_after=True, delete_message_after=True)
+        pages = menus.MenuPages(source=HelpPaginator(entries), 
+                                clear_reactions_after=True, 
+                                delete_message_after=True)
         await pages.start(ctx)
         
     #EVENTS
@@ -76,7 +86,8 @@ class HelpCommand(commands.Cog):
     async def help(self, ctx, cog : str = None):
         if not cog:
             prefix = await self.client.get_prefix(ctx.message)
-            helpEmbed = discord.Embed(title='Ayesha Help', color=0xBEDCF6)
+            helpEmbed = discord.Embed(title='Ayesha Help', 
+                                      color=self.client.ayesha_blue)
             helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
             # helpEmbed.set_author(name='Ayesha Help')
             helpEmbed.add_field(
@@ -85,7 +96,7 @@ class HelpCommand(commands.Cog):
             )
             helpEmbed.set_footer(text=f'Use the {ctx.prefix}tutorial command to get started!')
             
-            embed = discord.Embed(color=0xBEDCF6)
+            embed = discord.Embed(color=self.client.ayesha_blue)
             embed.set_thumbnail(url=ctx.author.avatar_url)
             embed.set_author(name='Ayesha Help: Logistics')
             embed.add_field(name='changeprefix', #CHANGEPREFIX
@@ -101,7 +112,9 @@ class HelpCommand(commands.Cog):
             
             entries = [helpEmbed, embed]
                 
-            pages = menus.MenuPages(source=HelpPaginator(entries), clear_reactions_after=True, delete_message_after=True)
+            pages = menus.MenuPages(source=HelpPaginator(entries), 
+                                    clear_reactions_after=True, 
+                                    delete_message_after=True)
             await pages.start(ctx)
         else:
             try:

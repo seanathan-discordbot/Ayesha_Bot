@@ -4,7 +4,7 @@ import asyncio
 from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
-from Utilities import Checks, AssetCreation, PageSourceMaker
+from Utilities import Links, Checks, AssetCreation, PageSourceMaker
 
 import random
 import math
@@ -188,7 +188,9 @@ class Travel(commands.Cog):
     async def travel(self, ctx, *, destination : str = None):
         if destination is None:
             locations = self.write()
-            travel_pages = menus.MenuPages(source=PageSourceMaker.PageMaker(locations), clear_reactions_after=True, delete_message_after=True)
+            travel_pages = menus.MenuPages(source=PageSourceMaker.PageMaker(locations), 
+                                           clear_reactions_after=True, 
+                                           delete_message_after=True)
             await travel_pages.start(ctx)
             return
 
@@ -515,7 +517,7 @@ class Travel(commands.Cog):
         for resource in mats:
             backpack.append(await AssetCreation.getPlayerMat(self.client.pg_con, resource.lower(), ctx.author.id))
 
-        embed = discord.Embed(title='Your Backpack', color=0xBEDCF6)
+        embed = discord.Embed(title='Your Backpack', color=self.client.ayesha_blue)
         for i in range(len(backpack)):
             embed.add_field(name=f'{mats[i]}', value=f'{backpack[i]}')
        
@@ -557,7 +559,7 @@ class Travel(commands.Cog):
     @cooldown(1,90,type=BucketType.user)
     async def upgrade(self, ctx, item_id : int = None):
         if item_id is None:
-            embed = discord.Embed(title='Upgrade', color=0xBEDCF6)
+            embed = discord.Embed(title='Upgrade', color=self.client.ayesha_blue)
             embed.add_field(name='Upgrade an item\'s attack stat by 1.', value='The cost of upgrading scales with the attack of the item. You will have to pay `3*(ATK+1)` iron and `20*(ATK+1)` gold to upgrade an item\'s ATK stat.\nEach rarity also has a maximum ATK:\n**Common:** 50\n**Uncommon:** 75\n**Rare:** 100\n**Epic:** 125\n**Legendary:** 160\n`Upgrade` has a 90 second cooldown.')
             await ctx.reply(embed=embed)
             ctx.command.reset_cooldown(ctx)
@@ -655,7 +657,7 @@ class Travel(commands.Cog):
 
     @commands.command(description='See the map!')
     async def map(self, ctx):
-        map_file = discord.File(r'C:\Users\sebas\OneDrive\Ayesha\Assets\Map.jpg')
+        map_file = discord.File(Links.map_file)
         await ctx.reply(file=map_file)
 
 def setup(client):

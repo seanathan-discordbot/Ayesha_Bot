@@ -40,7 +40,7 @@ class Misc(commands.Cog):
     async def invite(self, ctx):
         embed = discord.Embed(title='Click me to invite Ayesha to your server!',
             url = 'https://discord.com/api/oauth2/authorize?client_id=767234703161294858&permissions=70347841&scope=bot',
-            color = 0xBEDCF6)
+            color = self.client.ayesha_blue)
         # embed.set_image()
 
         await ctx.reply(embed=embed)
@@ -53,7 +53,7 @@ class Misc(commands.Cog):
     async def vote(self, ctx):
         embed = discord.Embed(title='Receive 1 rubidic each time you vote for the bot, up to 4 rubidics a day!',
             description='Vote on [Top.gg!](https://top.gg/bot/767234703161294858) (12 hr cooldown)\nVote on [Discord Bot List!](https://discordbotlist.com/bots/ayesha) (12 hr cooldown)',
-            color=0xBEDCF6)
+            color=self.client.ayesha_blue)
         await ctx.reply(embed=embed)
 
     @commands.command(description='Get 2 rubidics daily!')
@@ -104,7 +104,7 @@ class Misc(commands.Cog):
             output += f'`daily`: {time.strftime("%H:%M:%S", time.gmtime(schedule.idle_seconds()))}\n'
 
         #Create embed to send
-        embed = discord.Embed(color=0xBEDCF6)
+        embed = discord.Embed(color=self.client.ayesha_blue)
         if not cooldowns:
             # await ctx.reply('You have no cooldowns.')
             # return
@@ -121,18 +121,18 @@ class Misc(commands.Cog):
         playercount = await AssetCreation.getPlayerCount(self.client.pg_con)
         async with self.client.pg_con.acquire() as conn:
             econinfo = await conn.fetchrow('SELECT SUM(gold) as g, SUM(rubidic) as r, AVG(pitycounter) as p FROM players')
-            acoinfo = await conn.fetch("""SELECT acolyte_name, COUNT(is_equipped) AS eq 
-                                            FROM 
-                                                (
-                                                    SELECT instance_id, acolyte_name, is_equipped 			
-                                                    FROM acolytes 
-                                                    WHERE is_equipped = 1 OR is_equipped = 2
-                                                ) AS equipped_acolytes
-                                            GROUP BY acolyte_name
-                                            ORDER BY eq DESC
-                                            LIMIT 3
-                                            """
-                                        )
+            psql = """SELECT acolyte_name, COUNT(is_equipped) AS eq 
+                        FROM 
+                            (
+                                SELECT instance_id, acolyte_name, is_equipped 			
+                                FROM acolytes 
+                                WHERE is_equipped = 1 OR is_equipped = 2
+                            ) AS equipped_acolytes
+                        GROUP BY acolyte_name
+                        ORDER BY eq DESC
+                        LIMIT 3
+                    """
+            acoinfo = await conn.fetch(psql)
             gameinfo = await conn.fetchrow('SELECT SUM(bosswins) as b, SUM(pvpfights)/2 as p FROM players')
 
         # fmt = f'Ayesha is in **{servercount}** servers and has **{playercount}** players.\n\n'
@@ -141,9 +141,9 @@ class Misc(commands.Cog):
         # fmt += f'**{acoinfo[1]["acolyte_name"]}** ({acoinfo[1]["eq"]}), and '
         # fmt += f'**{acoinfo[2]["acolyte_name"]}** ({acoinfo[2]["eq"]}).'
 
-        # await ctx.reply(embed=discord.Embed(title='Ayesha Bot Information', description=fmt, color=0xBEDCF6))
+        # await ctx.reply(embed=discord.Embed(title='Ayesha Bot Information', description=fmt, color=self.client.ayesha_blue))
 
-        information = discord.Embed(title='Ayesha Bot Information', color=0xBEDCF6)
+        information = discord.Embed(title='Ayesha Bot Information', color=self.client.ayesha_blue)
         meta = f"**Servers: **{servercount}\n**Players: **{playercount}"
         information.add_field(name='Meta', value=meta)
 
@@ -160,9 +160,13 @@ class Misc(commands.Cog):
 
         await ctx.reply(embed=information)
 
-    @commands.group(aliases=['lb', 'board'], brief='<Sort: XP/PvE/PvP/Gold>', description='See the leaderboards. Do this command without any arguments for more help.', invoke_without_command=True, case_insensitive=True)
+    @commands.group(aliases=['lb', 'board'], 
+                    brief='<Sort: XP/PvE/PvP/Gold>', 
+                    description='See the leaderboards. Do this command without any arguments for more help.', 
+                    invoke_without_command=True, 
+                    case_insensitive=True)
     async def leaderboard(self, ctx):
-        embed = discord.Embed(title='Ayesha Help: Leaderboards', color=0xBEDCF6)
+        embed = discord.Embed(title='Ayesha Help: Leaderboards', color=self.client.ayesha_blue)
         embed.set_thumbnail(url=ctx.author.avatar_url)
         embed.add_field(name = '```leaderboard xp/pve/pvp/gold```', 
             value='Invoke the leaderboard command followed by one of the options to see the top 5 players of those areas.')
@@ -171,7 +175,7 @@ class Misc(commands.Cog):
     @leaderboard.command(aliases=['exp', 'xp'])
     async def experience(self, ctx):
         board = await AssetCreation.getTopXP(self.client.pg_con)
-        embed = discord.Embed(title='AyeshaBot Leaderboards', color=0xBEDCF6)
+        embed = discord.Embed(title='AyeshaBot Leaderboards', color=self.client.ayesha_blue)
         
         output = ''
         for entry in board:
@@ -185,7 +189,7 @@ class Misc(commands.Cog):
     @leaderboard.command(aliases=['bosses', 'bounties'])
     async def pve(self, ctx):
         board = await AssetCreation.getTopBosses(self.client.pg_con)
-        embed = discord.Embed(title='AyeshaBot Leaderboards', color=0xBEDCF6)
+        embed = discord.Embed(title='AyeshaBot Leaderboards', color=self.client.ayesha_blue)
         
         output = ''
         for entry in board:
@@ -199,7 +203,7 @@ class Misc(commands.Cog):
     @leaderboard.command(aliases=['richest', 'money'])
     async def gold(self, ctx):
         board = await AssetCreation.getTopGold(self.client.pg_con)
-        embed = discord.Embed(title='AyeshaBot Leaderboards', color=0xBEDCF6)
+        embed = discord.Embed(title='AyeshaBot Leaderboards', color=self.client.ayesha_blue)
         
         output = ''
         for entry in board:
@@ -213,7 +217,7 @@ class Misc(commands.Cog):
     @leaderboard.command()
     async def pvp(self, ctx):
         board = await AssetCreation.getTopPvP(self.client.pg_con)
-        embed = discord.Embed(title='AyeshaBot Leaderboards', color=0xBEDCF6)
+        embed = discord.Embed(title='AyeshaBot Leaderboards', color=self.client.ayesha_blue)
         
         output = ''
         for entry in board:
@@ -243,7 +247,8 @@ class Misc(commands.Cog):
         await AssetCreation.giveGold(self.client.pg_con, player_gain, ctx.author.id)
 
         #Send results
-        place = ('bank', 'guild', 'blacksmith', 'quarry', 'farmer', 'merchant', 'store', 'passerby', 'prison', 'foreign trader', 'church')
+        place = ('bank', 'guild', 'blacksmith', 'quarry', 'farmer', 'merchant', 
+            'store', 'passerby', 'prison', 'foreign trader', 'church')
 
         if result[0] == 'failure':
             await ctx.reply(f"Your attempt to rob a {random.choice(place)} was a {result[0]}! You were fined for `{player_gain * -1}` gold.")
