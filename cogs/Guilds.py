@@ -33,17 +33,21 @@ class Guilds(commands.Cog):
         members = await AssetCreation.getGuildMemberCount(self.client.pg_con, info['ID'])
         capacity = await AssetCreation.getGuildCapacity(self.client.pg_con, info['ID'])
 
-        embed = discord.Embed(title=f"{info['Name']}", color=0xBEDCF6)
+        embed = discord.Embed(title=f"{info['Name']}", color=self.client.ayesha_blue)
         embed.set_thumbnail(url=f"{info['Icon']}")
         embed.add_field(name='Leader', value=f"{leader.mention}")
         embed.add_field(name='Members', value=f"{members}/{capacity}")
         embed.add_field(name='Level', value=f"{level}")
         embed.add_field(name='EXP Progress', value=f'{progress}')
-        embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.", value=f"{info['Desc']}", inline=False)
+        embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.", 
+                        value=f"{info['Desc']}", 
+                        inline=False)
         embed.set_footer(text=f"Guild ID: {info['ID']}")
         await ctx.reply(embed=embed)
 
-    @guild.command(aliases=['found', 'establish', 'form', 'make'], brief='<name>', description='Found a guild. Costs 15,000 gold.')
+    @guild.command(aliases=['found', 'establish', 'form', 'make'], 
+                   brief='<name>', 
+                   description='Found a guild. Costs 15,000 gold.')
     @commands.check(Checks.is_player)
     @commands.check(Checks.not_in_guild)
     async def create(self, ctx, *, name : str):
@@ -54,7 +58,11 @@ class Guilds(commands.Cog):
         if not await Checks.guild_can_be_created(ctx, name):
             return
         # Otherwise create the guild
-        await AssetCreation.createGuild(self.client.pg_con, name, "Guild", ctx.author.id, 'https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-ios7-contact-512.png')
+        await AssetCreation.createGuild(self.client.pg_con, 
+                                        name, 
+                                        "Guild", 
+                                        ctx.author.id, 
+                                        'https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-ios7-contact-512.png')
         await ctx.reply('Guild founded. Do `guild` to see it or `guild` for more commands!')
 
     @guild.command(description='Leave your guild.')
@@ -81,8 +89,9 @@ class Guilds(commands.Cog):
         #Load the guild
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         #Create and send embed invitation
-        embed = discord.Embed(color=0xBEDCF6)
-        embed.add_field(name=f"Invitation to {guild['Name']}", value=f"{player.mention}, {ctx.author.mention} is inviting you to join their {guild['Type']}.")
+        embed = discord.Embed(color=self.client.ayesha_blue)
+        embed.add_field(name=f"Invitation to {guild['Name']}", 
+                        value=f"{player.mention}, {ctx.author.mention} is inviting you to join their {guild['Type']}.")
 
         message = await ctx.reply(embed=embed)
         await message.add_reaction('\u2705') #Check
@@ -112,7 +121,9 @@ class Guilds(commands.Cog):
                 await message.delete()
                 await ctx.send('They did not respond to your invitation.')
 
-    @guild.command(aliases=['donate'], brief='<money : int>', description='Donate to your association, increasing its xp!')
+    @guild.command(aliases=['donate'], 
+                   brief='<money : int>', 
+                   description='Donate to your association, increasing its xp!')
     @commands.check(Checks.is_player)
     @commands.check(Checks.in_guild)
     async def contribute(self, ctx, donation : int):
@@ -120,12 +131,10 @@ class Guilds(commands.Cog):
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         level = await AssetCreation.getGuildLevel(self.client.pg_con, guild['ID'])
         if level >= 10:
-            await ctx.reply('Your guild is already at its maximum level')
-            return
+            return await ctx.reply('Your guild is already at its maximum level')
 
         if donation > await AssetCreation.getGold(self.client.pg_con, ctx.author.id):
-            await ctx.reply('You don\'t have that much money to donate.')
-            return
+            return await ctx.reply('You don\'t have that much money to donate.')
 
         #Remove money from account and add xp to guild
         await AssetCreation.giveGold(self.client.pg_con, 0 - donation, ctx.author.id)
@@ -164,10 +173,13 @@ class Guilds(commands.Cog):
         for i in range(0, len(members), 10):
             member_list.append(await write(i, members))
 
-        member_pages = menus.MenuPages(source=PageSourceMaker.PageMaker(member_list), clear_reactions_after=True, delete_message_after=True)
+        member_pages = menus.MenuPages(source=PageSourceMaker.PageMaker(member_list), 
+                                       clear_reactions_after=True, 
+                                       delete_message_after=True)
         await member_pages.start(ctx)
 
-    @guild.command(brief='<gold : int>', description='Invest in a project at a random location and gain/lose some money. 2 hour cooldown.')
+    @guild.command(brief='<gold : int>', 
+                   description='Invest in a project at a random location and gain/lose some money. 2 hour cooldown.')
     @commands.check(Checks.is_player)
     @commands.check(Checks.in_guild)
     @cooldown(1, 7200, BucketType.user)
@@ -192,8 +204,12 @@ class Guilds(commands.Cog):
             capital_gain = math.floor(capital_gain * 1.25)
 
         #Choose a random project and location
-        projects = ('a museum', 'a church', 'a residence', 'a fishing company', 'a game company', 'a guild', 'a boat', 'road construction')
-        locations = ('Aramithea', 'Riverburn', 'Thenuille', 'the Mythic Forest', 'Fernheim', 'Thanderlands Marsh', 'Glakelys', 'Croire', 'Crumidia', 'Mooncastle', 'Felescity', 'Mysteria', 'a local village', 'your hometown', 'Oshwega')
+        projects = ('a museum', 'a church', 'a residence', 'a fishing company', 
+            'a game company', 'a guild', 'a boat', 'road construction')
+        locations = ('Aramithea', 'Riverburn', 'Thenuille', 'the Mythic Forest', 
+            'Fernheim', 'Thanderlands Marsh', 'Glakelys', 'Croire', 'Crumidia', 
+            'Mooncastle', 'Felescity', 'Mysteria', 'a local village', 
+            'your hometown', 'Oshwega')
         project = random.choice(projects)
         location = random.choice(locations)
 
@@ -214,13 +230,15 @@ class Guilds(commands.Cog):
         members = await AssetCreation.getGuildMemberCount(self.client.pg_con, info['ID'])
         capacity = await AssetCreation.getGuildCapacity(self.client.pg_con, info['ID'])
 
-        embed = discord.Embed(title=f"{info['Name']}", color=0xBEDCF6)
+        embed = discord.Embed(title=f"{info['Name']}", color=self.client.ayesha_blue)
         embed.set_thumbnail(url=f"{info['Icon']}")
         embed.add_field(name='Leader', value=f"{leader.mention}")
         embed.add_field(name='Members', value=f"{members}/{capacity}")
         embed.add_field(name='Level', value=f"{level}")
         embed.add_field(name='EXP Progress', value=f'{progress}')
-        embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.", value=f"{info['Desc']}", inline=False)
+        embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.", 
+                        value=f"{info['Desc']}", 
+                        inline=False)
         embed.set_footer(text=f"{info['Type']} ID: {info['ID']}")
         await ctx.reply(embed=embed)
 
@@ -258,14 +276,6 @@ class Guilds(commands.Cog):
         except aiohttp.InvalidURL:
             await ctx.reply('This is an invalid URL.')
             return
-
-        # if not url.startswith('http'):
-        #     await ctx.reply('That is not a link!')
-        #     return
-
-        # if not url.endswith('.jpg') and not url.endswith('.png') and not url.endswith('.gif') and not url.endswith('.jpeg'):
-        #     await ctx.reply('Only JPG, PNG, and GIFs are supported.')
-        #     return
         
         #Get guild and change icon
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
@@ -312,7 +322,7 @@ class Guilds(commands.Cog):
     async def promote(self, ctx, player : commands.MemberConverter = None, rank : str = None):
         #Tell players what officers and adepts do if no input is given
         if player is None or rank is None:
-            embed = discord.Embed(title='Brotherhood Role Menu', color=0xBEDCF6)
+            embed = discord.Embed(title='Brotherhood Role Menu', color=self.client.ayesha_blue)
             embed.add_field(name='Guild leaders can promote their members to two other roles: Officer and Adept',
                 value='**Officers** share in the administration of the association. They can invite and kick members, and change the guild\'s description.\n**Adepts** are a mark of seniority for members. They have no powers, but are stronger and more loyal than other members.')
             await ctx.reply(embed=embed, delete_after=30.0)
@@ -415,19 +425,27 @@ class Guilds(commands.Cog):
     @guild.command(description='Shows this command.')
     async def help(self, ctx):
         def write(ctx, start, entries):
-            helpEmbed = discord.Embed(title=f'NguyenBot Help: Brotherhoods', description='Brotherhoods are a pvp-oriented association. Its members gain an ATK and CRIT bonus depending on its level. They also gain access to the `steal` command.', color=0xBEDCF6)
+            helpEmbed = discord.Embed(title=f'NguyenBot Help: Brotherhoods', description='Brotherhoods are a pvp-oriented association. Its members gain an ATK and CRIT bonus depending on its level. They also gain access to the `steal` command.', color=self.client.ayesha_blue)
             helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
             
             iteration = 0
             while start < len(entries) and iteration < 5: #Will loop until 5 entries are processed or there's nothing left in the queue
                 if entries[start].brief and entries[start].aliases:
-                    helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', inline=False)
+                    helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', 
+                                        value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', 
+                                        inline=False)
                 elif entries[start].brief and not entries[start].aliases:
-                    helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', value=f'{entries[start].description}', inline=False)
+                    helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', 
+                                        value=f'{entries[start].description}', 
+                                        inline=False)
                 elif not entries[start].brief and entries[start].aliases:
-                    helpEmbed.add_field(name=f'{entries[start].name}', value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', inline=False)
+                    helpEmbed.add_field(name=f'{entries[start].name}', 
+                                        value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', 
+                                        inline=False)
                 else:
-                    helpEmbed.add_field(name=f'{entries[start].name}', value=f'{entries[start].description}', inline=False)
+                    helpEmbed.add_field(name=f'{entries[start].name}', 
+                                        value=f'{entries[start].description}', 
+                                        inline=False)
                 iteration += 1
                 start +=1 
                 
@@ -439,7 +457,9 @@ class Guilds(commands.Cog):
         for i in range(0, len(cmds), 5):
             embeds.append(write(ctx, i, cmds))
 
-        helper = menus.MenuPages(source=PageSourceMaker.PageMaker(embeds), clear_reactions_after=True, delete_message_after=True)
+        helper = menus.MenuPages(source=PageSourceMaker.PageMaker(embeds), 
+                                 clear_reactions_after=True, 
+                                 delete_message_after=True)
         await helper.start(ctx)
 
 def setup(client):

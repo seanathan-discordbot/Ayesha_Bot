@@ -23,7 +23,10 @@ class Brotherhoods(commands.Cog):
         print('Brotherhoods is ready.')
 
     #COMMANDS
-    @commands.group(aliases=['bh'], invoke_without_command=True, case_insensitive=True, description='See your brotherhood')
+    @commands.group(aliases=['bh'], 
+                    invoke_without_command=True, 
+                    case_insensitive=True, 
+                    description='See your brotherhood')
     @commands.check(Checks.is_player)
     @commands.check(Checks.in_brotherhood)
     async def brotherhood(self, ctx):
@@ -34,48 +37,56 @@ class Brotherhoods(commands.Cog):
         members = await AssetCreation.getGuildMemberCount(self.client.pg_con, info['ID'])
         capacity = await AssetCreation.getGuildCapacity(self.client.pg_con, info['ID'])
 
-        embed = discord.Embed(title=f"{info['Name']}", color=0xBEDCF6)
+        embed = discord.Embed(title=f"{info['Name']}", color=self.client.ayesha_blue)
         embed.set_thumbnail(url=f"{info['Icon']}")
         embed.add_field(name='Leader', value=f"{leader.mention}")
         embed.add_field(name='Members', value=f"{members}/{capacity}")
         embed.add_field(name='Level', value=f"{level}")
         embed.add_field(name='EXP Progress', value=f'{progress}')
-        embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.", value=f"{info['Desc']}", inline=False)
+        embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.", 
+                        value=f"{info['Desc']}", 
+                        inline=False)
         embed.set_footer(text=f"Brotherhood ID: {info['ID']}")
         await ctx.reply(embed=embed)
 
-    @brotherhood.command(aliases=['found', 'establish', 'form', 'make'], brief='<name>', description='Found a brotherhood. Costs 15,000 gold.')
+    @brotherhood.command(aliases=['found', 'establish', 'form', 'make'], 
+                         brief='<name>', 
+                         description='Found a brotherhood. Costs 15,000 gold.')
     @commands.check(Checks.is_player)
     @commands.check(Checks.not_in_guild)
     async def create(self, ctx, *, name : str):
         if len(name) > 32:
-            await ctx.reply('Name max 32 characters')
-            return
+            return await ctx.reply('Name max 32 characters')
         # Make sure they have the money and an open name
         if not await Checks.guild_can_be_created(ctx, name):
             return
         # Otherwise create the guild
-        await AssetCreation.createGuild(self.client.pg_con, name, "Brotherhood", ctx.author.id, 'https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-ios7-contact-512.png')
+        await AssetCreation.createGuild(self.client.pg_con, 
+                                        name, 
+                                        "Brotherhood", 
+                                        ctx.author.id, 
+                                        'https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-ios7-contact-512.png')
         await ctx.reply('Brotherhood founded. Do `brotherhood` to see it or `brotherhood help` for more commands!')
 
-    @brotherhood.command(aliases=['inv'], brief='<url>', description='Invite a player to your guild.')
+    @brotherhood.command(aliases=['inv'], 
+                         brief='<url>', 
+                         description='Invite a player to your guild.')
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_officer)
     @commands.check(Checks.guild_has_vacancy)
     async def invite(self, ctx, player : commands.MemberConverter):
         #Ensure target player has a character and is not in a guild
         if not await Checks.has_char(self.client.pg_con, player):
-            await ctx.reply('This person does not have a character.')
-            return
+            return await ctx.reply('This person does not have a character.')
         if not await Checks.target_not_in_guild(self.client.pg_con, player):
-            await ctx.reply('This player is already in an association.')
-            return
+            return await ctx.reply('This player is already in an association.')
         #Otherwise invite the player
         #Load the guild
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         #Create and send embed invitation
-        embed = discord.Embed(color=0xBEDCF6)
-        embed.add_field(name=f"Invitation to {guild['Name']}", value=f"{player.mention}, {ctx.author.mention} is inviting you to join their {guild['Type']}.")
+        embed = discord.Embed(color=self.client.ayesha_blue)
+        embed.add_field(name=f"Invitation to {guild['Name']}", 
+                        value=f"{player.mention}, {ctx.author.mention} is inviting you to join their {guild['Type']}.")
 
         message = await ctx.reply(embed=embed)
         await message.add_reaction('\u2705') #Check
@@ -113,7 +124,9 @@ class Brotherhoods(commands.Cog):
         await AssetCreation.leaveGuild(self.client.pg_con, ctx.author.id)
         await ctx.reply('You left your brotherhood.')
 
-    @brotherhood.command(aliases=['donate'], brief='<money : int>', description='Donate to your association, increasing its xp!')
+    @brotherhood.command(aliases=['donate'], 
+                         brief='<money : int>', 
+                         description='Donate to your association, increasing its xp!')
     @commands.check(Checks.is_player)
     @commands.check(Checks.in_brotherhood)
     async def contribute(self, ctx, donation : int):
@@ -121,12 +134,10 @@ class Brotherhoods(commands.Cog):
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         level = await AssetCreation.getGuildLevel(self.client.pg_con, guild['ID'])
         if level >= 10:
-            await ctx.reply('Your guild is already at its maximum level')
-            return
+            return await ctx.reply('Your guild is already at its maximum level')
 
         if donation > await AssetCreation.getGold(self.client.pg_con, ctx.author.id):
-            await ctx.reply('You don\'t have that much money to donate.')
-            return
+            return await ctx.reply('You don\'t have that much money to donate.')
 
         #Remove money from account and add xp to guild
         await AssetCreation.giveGold(self.client.pg_con, 0 - donation, ctx.author.id)
@@ -165,7 +176,9 @@ class Brotherhoods(commands.Cog):
         for i in range(0, len(members), 10):
             member_list.append(await write(i, members))
 
-        member_pages = menus.MenuPages(source=PageSourceMaker.PageMaker(member_list), clear_reactions_after=True, delete_message_after=True)
+        member_pages = menus.MenuPages(source=PageSourceMaker.PageMaker(member_list), 
+                                       clear_reactions_after=True, 
+                                       delete_message_after=True)
         await member_pages.start(ctx)
 
     @brotherhood.command(description='Steal 5% of a random player\'s cash. The probability of stealing is about your brotherhood\'s level * .05 + .2. 30 minute cooldown.')
@@ -176,8 +189,7 @@ class Brotherhoods(commands.Cog):
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         level = await AssetCreation.getGuildLevel(self.client.pg_con, guild['ID'])
         if random.randint(0,100) >= 20 + level*5: #Then failure
-            await ctx.reply('You were caught and had to flee.')
-            return
+            return await ctx.reply('You were caught and had to flee.')
 
         # Otherwise get a random player and steal 5% of their money
         records = await AssetCreation.getPlayerCount(self.client.pg_con, )
@@ -187,13 +199,11 @@ class Brotherhoods(commands.Cog):
             victim_gold, victim, victim_name = await AssetCreation.getPlayerByNum(self.client.pg_con, victim_num)
         except TypeError:
             await AssetCreation.giveGold(self.client.pg_con, 100, ctx.author.id)
-            await ctx.reply('You stole `100` gold from a random guy.')
-            return
+            return await ctx.reply('You stole `100` gold from a random guy.')
 
         # Make sure they don't rob themself
         if ctx.author.id == victim:
-            await ctx.reply('You were caught and had to flee.')
-            return
+            return await ctx.reply('You were caught and had to flee.')
 
         # 50 gold minimum steal. If they don't have 1000, just add 50 to the econ.
         if victim_gold < 1000:
@@ -209,48 +219,54 @@ class Brotherhoods(commands.Cog):
         
         await ctx.reply(f'You stole `{stolen_amount}` gold from `{victim_name}`.')
 
-    @brotherhood.command(aliases=['guildinfo', 'bhinfo'], brief='<guild ID>', description='See info on another guild based on their ID')
+    @brotherhood.command(aliases=['guildinfo', 'bhinfo'], brief='<guild ID>', 
+                         description='See info on another guild based on their ID')
     async def info(self, ctx, guild_id : int):
         try:
             info = await AssetCreation.getGuildByID(self.client.pg_con, guild_id)
         except TypeError:
-            await ctx.reply('No association has that ID.')
-            return
+            return await ctx.reply('No association has that ID.')
 
         leader = await self.client.fetch_user(info['Leader'])
-        level, progress = await AssetCreation.getGuildLevel(self.client.pg_con, info['ID'], returnline=True)
-        members = await AssetCreation.getGuildMemberCount(self.client.pg_con, info['ID'])
+        level, progress = await AssetCreation.getGuildLevel(self.client.pg_con, 
+                                                            info['ID'], 
+                                                            returnline=True)
+        members = await AssetCreation.getGuildMemberCount(self.client.pg_con, 
+                                                          info['ID'])
         capacity = await AssetCreation.getGuildCapacity(self.client.pg_con, info['ID'])
 
-        embed = discord.Embed(title=f"{info['Name']}", color=0xBEDCF6)
+        embed = discord.Embed(title=f"{info['Name']}", color=self.client.ayesha_blue)
         embed.set_thumbnail(url=f"{info['Icon']}")
         embed.add_field(name='Leader', value=f"{leader.mention}")
         embed.add_field(name='Members', value=f"{members}/{capacity}")
         embed.add_field(name='Level', value=f"{level}")
         embed.add_field(name='EXP Progress', value=f'{progress}')
-        embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.", value=f"{info['Desc']}", inline=False)
+        embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.", 
+                        value=f"{info['Desc']}", 
+                        inline=False)
         embed.set_footer(text=f"{info['Type']} ID: {info['ID']}")
         await ctx.reply(embed=embed)
 
-    @brotherhood.command(aliases=['desc'], brief='<desc>', description='Change your brotherhood\'s description. [GUILD OFFICER+ ONLY]')
+    @brotherhood.command(aliases=['desc'], 
+                         brief='<desc>', 
+                         description='Change your brotherhood\'s description. [GUILD OFFICER+ ONLY]')
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_officer)
     async def description(self, ctx, *, desc : str):
         if len(desc) > 256:
-            await ctx.reply(f'Description max 256 characters. You gave {len(desc)}')
-            return
+            return await ctx.reply(f'Description max 256 characters. You gave {len(desc)}')
         # Get guild and change description
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         await AssetCreation.setGuildDescription(self.client.pg_con, desc, guild['ID'])
         await ctx.reply('Description updated!')
 
-    @brotherhood.command(brief='<img url>', description='Set the icon for your brotherhood.')
+    @brotherhood.command(brief='<img url>', 
+                         description='Set the icon for your brotherhood.')
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_officer)
     async def icon(self, ctx, *, url : str):
         if len(url) > 256:
-            await ctx.reply('Icon URL max 256 characters. Please upload your image to imgur or tinurl for an appropriate link.')
-            return
+            return await ctx.reply('Icon URL max 256 characters. Please upload your image to imgur or tinurl for an appropriate link.')
 
         #Make sure the URL is valid
         file_types = ('image/jpeg', 'image/png', 'image/webp', 'image/gif')
@@ -266,14 +282,6 @@ class Brotherhoods(commands.Cog):
         except aiohttp.InvalidURL:
             await ctx.reply('This is an invalid URL.')
             return
-
-        # if not url.startswith('http'):
-        #     await ctx.reply('That is not a link!')
-        #     return
-
-        # if not url.endswith('.jpg') and not url.endswith('.png') and not url.endswith('.gif') and not url.endswith('.jpeg'):
-        #     await ctx.reply('Only JPG, PNG, and GIFs are supported.')
-        #     return
         
         #Get guild and change icon
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
@@ -314,13 +322,14 @@ class Brotherhoods(commands.Cog):
         await AssetCreation.joinGuild(self.client.pg_con, guild_id, ctx.author.id)
         await ctx.reply(f"Welcome to {guild['Name']}! Use `brotherhood` or `guild` to see your new association.")
 
-    @brotherhood.command(brief='<player> <Officer/Adept>', description='Promote a member of your guild. Officers have limited administrative powers. Adepts have no powers. [LEADER ONLY]')
+    @brotherhood.command(brief='<player> <Officer/Adept>', 
+                         description='Promote a member of your guild. Officers have limited administrative powers. Adepts have no powers. [LEADER ONLY]')
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)        
     async def promote(self, ctx, player : commands.MemberConverter = None, rank : str = None):
         #Tell players what officers and adepts do if no input is given
         if player is None or rank is None:
-            embed = discord.Embed(title='Brotherhood Role Menu', color=0xBEDCF6)
+            embed = discord.Embed(title='Brotherhood Role Menu', color=self.client.ayesha_blue)
             embed.add_field(name='Guild leaders can promote their members to two other roles: Officer and Adept',
                 value='**Officers** share in the administration of the association. They can invite and kick members, and change the guild\'s description.\n**Adepts** are a mark of seniority for members. They have no powers, but are stronger and more loyal than other members.')
             await ctx.reply(embed=embed, delete_after=30.0)
@@ -422,19 +431,29 @@ class Brotherhoods(commands.Cog):
     @brotherhood.command(description='Shows this command.')
     async def help(self, ctx):
         def write(ctx, start, entries):
-            helpEmbed = discord.Embed(title=f'NguyenBot Help: Brotherhoods', description='Brotherhoods are a pvp-oriented association. Its members gain an ATK and CRIT bonus depending on its level. They also gain access to the `steal` command.', color=0xBEDCF6)
+            helpEmbed = discord.Embed(title=f'NguyenBot Help: Brotherhoods', 
+                                      description='Brotherhoods are a pvp-oriented association. Its members gain an ATK and CRIT bonus depending on its level. They also gain access to the `steal` command.', 
+                                      color=self.client.ayesha_blue)
             helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
             
             iteration = 0
             while start < len(entries) and iteration < 5: #Will loop until 5 entries are processed or there's nothing left in the queue
                 if entries[start].brief and entries[start].aliases:
-                    helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', inline=False)
+                    helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', 
+                                        value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', 
+                                        inline=False)
                 elif entries[start].brief and not entries[start].aliases:
-                    helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', value=f'{entries[start].description}', inline=False)
+                    helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', 
+                                        value=f'{entries[start].description}', 
+                                        inline=False)
                 elif not entries[start].brief and entries[start].aliases:
-                    helpEmbed.add_field(name=f'{entries[start].name}', value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', inline=False)
+                    helpEmbed.add_field(name=f'{entries[start].name}', 
+                                        value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', 
+                                        inline=False)
                 else:
-                    helpEmbed.add_field(name=f'{entries[start].name}', value=f'{entries[start].description}', inline=False)
+                    helpEmbed.add_field(name=f'{entries[start].name}', 
+                                        value=f'{entries[start].description}', 
+                                        inline=False)
                 iteration += 1
                 start +=1 
                 
@@ -446,7 +465,9 @@ class Brotherhoods(commands.Cog):
         for i in range(0, len(cmds), 5):
             embeds.append(write(ctx, i, cmds))
 
-        helper = menus.MenuPages(source=PageSourceMaker.PageMaker(embeds), clear_reactions_after=True, delete_message_after=True)
+        helper = menus.MenuPages(source=PageSourceMaker.PageMaker(embeds), 
+                                 clear_reactions_after=True, 
+                                 delete_message_after=True)
         await helper.start(ctx)
 
 def setup(client):

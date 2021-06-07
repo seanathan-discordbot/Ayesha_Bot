@@ -356,12 +356,14 @@ class PvE(commands.Cog):
         await AssetCreation.giveBountyRewards(self.client.pg_con, player, gold, xp, victory=True)
 
         #Return an embed to send
-        embed = discord.Embed(title=f"You defeated {bounty_levels[level]['Name']}!", color=0xBEDCF6)
+        embed = discord.Embed(title=f"You defeated {bounty_levels[level]['Name']}!", color=self.client.ayesha_blue)
         embed.set_thumbnail(url='https://i.imgur.com/MCAMH45.jpg')
         if getweapon:
-            embed.add_field(name=f'You had {hp} hp remaining', value=f'You received {gold} gold and {xp} xp from the battle.\nYou also gained an item. Check your `inventory` to see it!')
+            embed.add_field(name=f'You had {hp} hp remaining', 
+                            value=f'You received {gold} gold and {xp} xp from the battle.\nYou also gained an item. Check your `inventory` to see it!')
         else:
-            embed.add_field(name=f'You had {hp} hp remaining', value=f'You received {gold} gold and {xp} xp from the battle.')
+            embed.add_field(name=f'You had {hp} hp remaining', 
+                            value=f'You received {gold} gold and {xp} xp from the battle.')
 
         if acolyte1 is not None and acolyte2 is not None:
             return embed, acolyte1, acolyte2
@@ -391,8 +393,10 @@ class PvE(commands.Cog):
         await AssetCreation.giveBountyRewards(self.client.pg_con, player, gold, xp, victory=False)
 
         #Return an embed to send
-        embed = discord.Embed(title=f"The {bounty_levels[level]['Name']} has shown its superiority", color=0xBEDCF6)
-        embed.add_field(name='You fled the battlefield', value=f'Boss HP: `{enemyhp}`\nYou received {xp} xp from the battle.')
+        embed = discord.Embed(title=f"The {bounty_levels[level]['Name']} has shown its superiority", 
+                              color=self.client.ayesha_blue)
+        embed.add_field(name='You fled the battlefield', 
+                        value=f'Boss HP: `{enemyhp}`\nYou received {xp} xp from the battle.')
         # Also returns the acolytes to check their level
         if acolyte1 is not None and acolyte2 is not None:
             return embed, acolyte1, acolyte2
@@ -429,11 +433,14 @@ class PvE(commands.Cog):
     def showBounties(self):
         embeds = []
         for i in range(1,26):
-            embed = discord.Embed(title=f"Level {i}: {bounty_levels[i]['Name']}", color=0xBEDCF6)
-            embed.add_field(name='Attack Range', value=f"{bounty_levels[i]['LowATK']} - {bounty_levels[i]['HighATK']}")
-            embed.add_field(name='HP Range', value=f"{bounty_levels[i]['LowHP']} - {bounty_levels[i]['HighHP']}")
+            embed = discord.Embed(title=f"Level {i}: {bounty_levels[i]['Name']}", color=self.client.ayesha_blue)
+            embed.add_field(name='Attack Range', 
+                            value=f"{bounty_levels[i]['LowATK']} - {bounty_levels[i]['HighATK']}")
+            embed.add_field(name='HP Range', 
+                            value=f"{bounty_levels[i]['LowHP']} - {bounty_levels[i]['HighHP']}")
             if bounty_levels[i]['Effect'] is not None:
-                embed.add_field(name='Special Effect', value=f"{bounty_levels[i]['Effect']}", inline=False)
+                embed.add_field(name='Special Effect', 
+                                value=f"{bounty_levels[i]['Effect']}", inline=False)
             embeds.append(embed)
         return embeds
 
@@ -445,7 +452,9 @@ class PvE(commands.Cog):
     async def bounty(self, ctx, level : int = 0):
         if level == 0:
             levels = self.showBounties()
-            pages = menus.MenuPages(source=PageSourceMaker.PageMaker(levels), clear_reactions_after=True, delete_message_after=True)
+            pages = menus.MenuPages(source=PageSourceMaker.PageMaker(levels), 
+                                    clear_reactions_after=True, 
+                                    delete_message_after=True)
             await pages.start(ctx)
             #Show the list of enemies
             ctx.command.reset_cooldown(ctx)
@@ -455,7 +464,9 @@ class PvE(commands.Cog):
             ctx.command.reset_cooldown(ctx)
             return
         #Get the player's info and load stats
-        attack, crit, hp, playerjob, acolyte1, acolyte2 = await AssetCreation.getAttack(self.client.pg_con, ctx.author.id, returnothers=True)
+        attack, crit, hp, playerjob, acolyte1, acolyte2 = await AssetCreation.getAttack(self.client.pg_con, 
+                                                                                        ctx.author.id, 
+                                                                                        returnothers=True)
         if acolyte1 is not None:
             acolyte1 = await AssetCreation.getAcolyteByID(self.client.pg_con, acolyte1)
         if acolyte2 is not None:
@@ -470,11 +481,14 @@ class PvE(commands.Cog):
         strategy = await AssetCreation.getStrategy(self.client.pg_con, ctx.author.id)
 
         # Create the embed
-        embed = discord.Embed(title=f"{bounty_levels[level]['Name']} attacks!", color=0xBEDCF6)
+        embed = discord.Embed(title=f"{bounty_levels[level]['Name']} attacks!", 
+                              color=self.client.ayesha_blue)
         embed.add_field(name='Attack', value=f'{attack}') #field 0
         embed.add_field(name='Crit Rate', value=f'{crit}%') #field 1
         embed.add_field(name='HP', value=f'{hp}') #field 2
-        embed.add_field(name=f'Enemy HP: `{enemyhp}`', value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', inline=False) #field 3
+        embed.add_field(name=f'Enemy HP: `{enemyhp}`', 
+                        value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', 
+                        inline=False) #field 3
         embed.add_field(name='You get initiative', value='Turn `0`') #field 4
         if bounty_levels[level]['Image'] is not None:
             embed.set_thumbnail(url=bounty_levels[level]['Image'])
@@ -492,7 +506,13 @@ class PvE(commands.Cog):
                 damage = math.floor(random.randint(attack, attack+10) * bossaction['DamageTaken'])
 
                 #Critical Strike handling - implement bonuses for having certain acolytes
-                crit, is_crit, damage, enemyhp, attack = self.checkCrit(level, crit, damage, enemyhp, attack, acolyte1, acolyte2)
+                crit, is_crit, damage, enemyhp, attack = self.checkCrit(level, 
+                                                                        crit, 
+                                                                        damage, 
+                                                                        enemyhp, 
+                                                                        attack, 
+                                                                        acolyte1, 
+                                                                        acolyte2)
                 if is_crit == 'Crit': #Implement Ayesha
                     try:
                         if acolyte1['Name'] == 'Ayesha' or acolyte2['Name'] == 'Ayesha':
@@ -519,11 +539,17 @@ class PvE(commands.Cog):
                 #Send new embed if game continues
                 embed.set_field_at(0, name='Attack', value=f'{attack}')
                 embed.set_field_at(2, name='HP', value=f'{hp}')
-                embed.set_field_at(3, name=f'Enemy HP: `{enemyhp}`', value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', inline=False)
+                embed.set_field_at(3, name=f'Enemy HP: `{enemyhp}`', 
+                                   value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', 
+                                   inline=False)
                 if is_crit == 'Normal':
-                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You hit for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {bossaction['Damage']} damage.", inline=False)
+                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', 
+                                       value=f"You hit for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {bossaction['Damage']} damage.", 
+                                       inline=False)
                 else:
-                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You critically striked for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {bossaction['Damage']} damage.", inline=False)
+                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', 
+                                       value=f"You critically striked for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {bossaction['Damage']} damage.", 
+                                       inline=False)
                 await message.edit(embed=embed)
 
             elif reaction <= strategy['attack'] + strategy['block']:
@@ -532,7 +558,13 @@ class PvE(commands.Cog):
                 damage = math.floor((random.randint(attack, attack+10)/10) * bossaction['DamageTaken'])
 
                 #Critical Strike handling - implement bonuses for having certain acolytes
-                crit, is_crit, damage, enemyhp, attack = self.checkCrit(level, crit, damage, enemyhp, attack, acolyte1, acolyte2)
+                crit, is_crit, damage, enemyhp, attack = self.checkCrit(level, 
+                                                                        crit, 
+                                                                        damage, 
+                                                                        enemyhp, 
+                                                                        attack, 
+                                                                        acolyte1, 
+                                                                        acolyte2)
 
                 enemyhp = enemyhp - damage
                 if level == 22: #Laidirix
@@ -557,11 +589,17 @@ class PvE(commands.Cog):
                 #Send new embed
                 embed.set_field_at(0, name='Attack', value=f'{attack}')
                 embed.set_field_at(2, name='HP', value=f'{hp}')
-                embed.set_field_at(3, name=f'Enemy HP: `{enemyhp}`', value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', inline=False)
+                embed.set_field_at(3, name=f'Enemy HP: `{enemyhp}`', 
+                                   value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', 
+                                   inline=False)
                 if is_crit == 'Normal':
-                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You blocked and dealt {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", inline=False)
+                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', 
+                                          value=f"You blocked and dealt {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", 
+                                          inline=False)
                 else:
-                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You critically striked for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", inline=False)
+                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', 
+                                       value=f"You critically striked for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", 
+                                       inline=False)
                 await message.edit(embed=embed)
 
             elif reaction <= strategy['attack'] + strategy['block'] + strategy['parry']:
@@ -570,7 +608,13 @@ class PvE(commands.Cog):
                 damage = math.floor((random.randint(attack, attack+10) * bossaction['DamageTaken'])/2)
 
                 #Critical Strike handling - implement bonuses for having certain acolytes
-                crit, is_crit, damage, enemyhp, attack = self.checkCrit(level, crit, damage, enemyhp, attack, acolyte1, acolyte2)
+                crit, is_crit, damage, enemyhp, attack = self.checkCrit(level, 
+                                                                        crit, 
+                                                                        damage, 
+                                                                        enemyhp, 
+                                                                        attack, 
+                                                                        acolyte1, 
+                                                                        acolyte2)
                 if is_crit == 'Crit': #Implement Ayesha
                     try:
                         if acolyte1['Name'] == 'Ayesha' or acolyte2['Name'] == 'Ayesha':
@@ -604,11 +648,17 @@ class PvE(commands.Cog):
                 #Send new embed
                 embed.set_field_at(0, name='Attack', value=f'{attack}')
                 embed.set_field_at(2, name='HP', value=f'{hp}')
-                embed.set_field_at(3, name=f'Enemy HP: `{enemyhp}`', value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', inline=False)
+                embed.set_field_at(3, name=f'Enemy HP: `{enemyhp}`', 
+                                   value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', 
+                                   inline=False)
                 if is_crit == 'Normal':
-                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You parried for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", inline=False)
+                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', 
+                                       value=f"You parried for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", 
+                                       inline=False)
                 else:
-                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You critically striked for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", inline=False)
+                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', 
+                                       value=f"You critically striked for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", 
+                                       inline=False)
                 await message.edit(embed=embed)
 
             elif reaction <= strategy['attack'] + strategy['block'] + strategy['parry'] + strategy['heal']:
@@ -632,8 +682,12 @@ class PvE(commands.Cog):
                 #Send new embed
                 embed.set_field_at(0, name='Attack', value=f'{attack}')
                 embed.set_field_at(2, name='HP', value=f'{hp}')
-                embed.set_field_at(3, name=f'Enemy HP: `{enemyhp}`', value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', inline=False)
-                embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You healed {heal} hp. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {bossaction['Damage']} damage.", inline=False)
+                embed.set_field_at(3, name=f'Enemy HP: `{enemyhp}`', 
+                                   value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', 
+                                   inline=False)
+                embed.set_field_at(4, name=f'Turn `{turnCounter}`', 
+                                   value=f"You healed {heal} hp. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {bossaction['Damage']} damage.", 
+                                   inline=False)
                 await message.edit(embed=embed)
 
             else:
@@ -654,11 +708,15 @@ class PvE(commands.Cog):
                 #Send new embed
                 embed.set_field_at(0, name='Attack', value=f'{attack}')
                 embed.set_field_at(2, name='HP', value=f'{hp}')
-                embed.set_field_at(3, name=f'Enemy HP: `{enemyhp}`', value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', inline=False)
-                embed.set_field_at(4, name=f'Turn `{turnCounter}`', value=f"You bided your time and boosted your attack. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", inline=False)
+                embed.set_field_at(3, name=f'Enemy HP: `{enemyhp}`', 
+                                   value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', 
+                                   inline=False)
+                embed.set_field_at(4, name=f'Turn `{turnCounter}`', 
+                                   value=f"You bided your time and boosted your attack. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", 
+                                   inline=False)
                 await message.edit(embed=embed)
 
-            if turnCounter == 6: #Add Onion's Effect
+            if turnCounter == 4: #Add Onion's Effect
                 try:
                     if acolyte1['Name'] == 'Onion' or acolyte2['Name'] == 'Onion':
                         crit *= 2
@@ -672,7 +730,9 @@ class PvE(commands.Cog):
 
             await asyncio.sleep(2.0)
 
-    @commands.command(aliases=['strat', 'st'], brief='<attack> <block> <parry> <heal> <bide>', description='Set the action weighting when fighting bosses. Do this command without any arguments for more info.')
+    @commands.command(aliases=['strat', 'st'], 
+                      brief='<attack> <block> <parry> <heal> <bide>', 
+                      description='Set the action weighting when fighting bosses. Do this command without any arguments for more info.')
     @commands.check(Checks.is_player)
     async def strategy(self, ctx, attack : int = None, block : int = None, parry : int = None, heal : int = None, bide : int = None):
         #Explain command if nothing input
@@ -680,8 +740,11 @@ class PvE(commands.Cog):
             with open(Links.tutorial, "r") as f:
                 tutorial = f.readlines()
 
-            embed1 = discord.Embed(title='Ayesha Tutorial: Strategy', color=0xBEDCF6, description = '```strategy <attack> <block> <parry> <heal> <bide>```')
-            embed1.add_field(name='You can customize how you fight bosses with the Strategy Command!', value=f"{tutorial[52]}\n{tutorial[53]}\n{tutorial[54]}\n{tutorial[55]}")
+            embed1 = discord.Embed(title='Ayesha Tutorial: Strategy', 
+                                   color=self.client.ayesha_blue, 
+                                   description = '```strategy <attack> <block> <parry> <heal> <bide>```')
+            embed1.add_field(name='You can customize how you fight bosses with the Strategy Command!', 
+                             value=f"{tutorial[52]}\n{tutorial[53]}\n{tutorial[54]}\n{tutorial[55]}")
 
             await ctx.reply(embed=embed1)
             return
@@ -717,7 +780,7 @@ class PvE(commands.Cog):
         await AssetCreation.setStrategy(self.client.pg_con, ctx.author.id, attack, block, parry, heal, bide)
 
         #Output their new settings
-        embed = discord.Embed(title='Set New Action Weights', color=0xBEDCF6)
+        embed = discord.Embed(title='Set New Action Weights', color=self.client.ayesha_blue)
         embed.add_field(name='Here are the chances of you doing each action when fighting a boss:',
             value=f'**Attack:** {attack}%\n**Block:** {block}%\n**Parry:** {parry}%\n**Heal:** {heal}%\n**Bide:** {bide}%')
         await ctx.reply(embed=embed)

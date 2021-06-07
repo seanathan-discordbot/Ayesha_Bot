@@ -42,7 +42,9 @@ class Profile(commands.Cog):
         print('Profile is ready.')
 
     #COMMANDS
-    @commands.command(aliases=['begin','create','play'], brief='<name : str>', description='Start the game of AyeshaBot.')
+    @commands.command(aliases=['begin','create','play'], 
+                      brief='<name : str>', 
+                      description='Start the game of AyeshaBot.')
     @commands.check(Checks.not_player)
     async def start(self, ctx, *, name : str = None):
         if not name:
@@ -51,8 +53,9 @@ class Profile(commands.Cog):
                 await ctx.send("Name can only be up to 32 characters")
         else:
             prefix = await self.client.get_prefix(ctx.message)
-            embed = discord.Embed(title='Start the game of AyeshaBot?', color=0xBEDCF6)
-            embed.add_field(name=f'Your Name: {name}', value=f'You can customize your name by doing `{prefix}start <name>`')
+            embed = discord.Embed(title='Start the game of AyeshaBot?', color=self.client.ayesha_blue)
+            embed.add_field(name=f'Your Name: {name}', 
+                            value=f'You can customize your name by doing `{prefix}start <name>`')
             start = await YesNo(ctx, embed).prompt(ctx)
             if start:
                 await ctx.send(f'Your Name: {name}')
@@ -111,7 +114,8 @@ class Profile(commands.Cog):
             acolyte2 = None
 
         #Create Embed
-        embed = discord.Embed(title=f"{player.display_name}\'s Profile: {character['Name']} ({character['prestige']} \u2604)", color=0xBEDCF6)
+        embed = discord.Embed(title=f"{player.display_name}\'s Profile: {character['Name']} ({character['prestige']} \u2604)", 
+                              color=self.client.ayesha_blue)
         embed.set_thumbnail(url=f'{player.avatar_url}')
         embed.add_field(
             name='Character Info',
@@ -148,7 +152,7 @@ class Profile(commands.Cog):
         w = 6000000 + (250000 * prestige)
         tonext = math.floor(w * math.cos(((level+1)/64)+3.14) + w) - xp
 
-        embed = discord.Embed(color=0xBEDCF6)
+        embed = discord.Embed(color=self.client.ayesha_blue)
         embed.add_field(name='Level', value=f'{level}')
         embed.add_field(name='EXP', value=f'{xp}')
         if level != 100:
@@ -193,16 +197,21 @@ class Profile(commands.Cog):
         with open(Links.tutorial, "r") as f:
             tutorial = f.readlines()
 
-        embed1 = discord.Embed(title='Ayesha Tutorial', color=0xBEDCF6)
-        embed1.add_field(name='Welcome to Ayesha Alpha!', value=f"{tutorial[1]}\n{tutorial[2]}\n{tutorial[3]}")
+        embed1 = discord.Embed(title='Ayesha Tutorial', color=self.client.ayesha_blue)
+        embed1.add_field(name='Welcome to Ayesha Alpha!', 
+                         value=f"{tutorial[1]}\n{tutorial[2]}\n{tutorial[3]}")
 
-        embed2 = discord.Embed(title='Ayesha Tutorial', color=0xBEDCF6)
-        embed2.add_field(name='Intro to PvE', value=f'{tutorial[6]}\n{tutorial[7]}\n{tutorial[8]}\n{tutorial[9]}')
+        embed2 = discord.Embed(title='Ayesha Tutorial', color=self.client.ayesha_blue)
+        embed2.add_field(name='Intro to PvE', 
+                         value=f'{tutorial[6]}\n{tutorial[7]}\n{tutorial[8]}\n{tutorial[9]}')
 
-        embed3 = discord.Embed(title='Ayesha Tutorial', color=0xBEDCF6)
-        embed3.add_field(name='Intro to Gacha', value=f'{tutorial[12]}\n{tutorial[13]}')
+        embed3 = discord.Embed(title='Ayesha Tutorial', color=self.client.ayesha_blue)
+        embed3.add_field(name='Intro to Gacha', 
+                         value=f'{tutorial[12]}\n{tutorial[13]}')
 
-        tutorial_pages = menus.MenuPages(source=PageSourceMaker.PageMaker([embed1, embed2, embed3]), clear_reactions_after=True, delete_message_after=True)
+        tutorial_pages = menus.MenuPages(source=PageSourceMaker.PageMaker([embed1, embed2, embed3]), 
+                                         clear_reactions_after=True, 
+                                         delete_message_after=True)
         await tutorial_pages.start(ctx)
 
     @tutorial.command(aliases=['acolyte'], description='Learn more about Acolytes!')
@@ -210,16 +219,19 @@ class Profile(commands.Cog):
         with open(Links.tutorial, "r") as f:
             tutorial = f.readlines()
 
-        embed1 = discord.Embed(title='Ayesha Tutorial: Acolytes', color=0xBEDCF6)
+        embed1 = discord.Embed(title='Ayesha Tutorial: Acolytes', color=self.client.ayesha_blue)
         embed1.add_field(name='Welcome to Ayesha Alpha!', value=f"{tutorial[16]}\n{tutorial[17]}\n{tutorial[18]}")
 
-        embed2 = discord.Embed(title='Ayesha Tutorial: Acolytes', color=0xBEDCF6)
+        embed2 = discord.Embed(title='Ayesha Tutorial: Acolytes', color=self.client.ayesha_blue)
         embed2.add_field(name='The Tavern and Effects', value=f'{tutorial[21]}\n{tutorial[22]}\n{tutorial[23]}')
 
-        embed3 = discord.Embed(title='Ayesha Tutorial: Acolytes', color=0xBEDCF6)
-        embed3.add_field(name='Strengthening your Acolytes', value=f'{tutorial[26]}\n{tutorial[27]}\n{tutorial[28]}\n{tutorial[29]}')
+        embed3 = discord.Embed(title='Ayesha Tutorial: Acolytes', color=self.client.ayesha_blue)
+        embed3.add_field(name='Strengthening your Acolytes', 
+                         value=f'{tutorial[26]}\n{tutorial[27]}\n{tutorial[28]}\n{tutorial[29]}')
 
-        tutorial_pages = menus.MenuPages(source=PageSourceMaker.PageMaker([embed1, embed2, embed3]), clear_reactions_after=True, delete_message_after=True)
+        tutorial_pages = menus.MenuPages(source=PageSourceMaker.PageMaker([embed1, embed2, embed3]), 
+                                         clear_reactions_after=True, 
+                                         delete_message_after=True)
         await tutorial_pages.start(ctx)
 
     @tutorial.command(aliases=['item', 'weapon', 'weapons'], description='Learn more about Items!')
@@ -227,8 +239,9 @@ class Profile(commands.Cog):
         with open(Links.tutorial, "r") as f:
             tutorial = f.readlines()
 
-        embed1 = discord.Embed(title='Ayesha Tutorial: Items', color=0xBEDCF6)
-        embed1.add_field(name='Everything on Items', value=f"{tutorial[32]}\n{tutorial[33]}\n{tutorial[34]}\n{tutorial[35]}")
+        embed1 = discord.Embed(title='Ayesha Tutorial: Items', color=self.client.ayesha_blue)
+        embed1.add_field(name='Everything on Items', 
+                         value=f"{tutorial[32]}\n{tutorial[33]}\n{tutorial[34]}\n{tutorial[35]}")
 
         await ctx.reply(embed=embed1)
 
@@ -237,8 +250,9 @@ class Profile(commands.Cog):
         with open(Links.tutorial, "r") as f:
             tutorial = f.readlines()
 
-        embed1 = discord.Embed(title='Ayesha Tutorial: PvE', color=0xBEDCF6)
-        embed1.add_field(name='Everything on PvE', value=f"{tutorial[38]}\n{tutorial[39]}\n{tutorial[40]}\n{tutorial[41]}\n{tutorial[42]}\n{tutorial[43]}")
+        embed1 = discord.Embed(title='Ayesha Tutorial: PvE', color=self.client.ayesha_blue)
+        embed1.add_field(name='Everything on PvE', 
+                         value=f"{tutorial[38]}\n{tutorial[39]}\n{tutorial[40]}\n{tutorial[41]}\n{tutorial[42]}\n{tutorial[43]}")
 
         await ctx.reply(embed=embed1)
 
@@ -247,15 +261,16 @@ class Profile(commands.Cog):
         with open(Links.tutorial, "r") as f:
             tutorial = f.readlines()
 
-        embed1 = discord.Embed(title='Ayesha Tutorial: Travel', color=0xBEDCF6)
-        embed1.add_field(name='Everything on Travel', value=f"{tutorial[46]}\n{tutorial[47]}\n{tutorial[48]}\n{tutorial[49]}")
+        embed1 = discord.Embed(title='Ayesha Tutorial: Travel', color=self.client.ayesha_blue)
+        embed1.add_field(name='Everything on Travel', 
+                         value=f"{tutorial[46]}\n{tutorial[47]}\n{tutorial[48]}\n{tutorial[49]}")
 
         await ctx.reply(embed=embed1)
 
     @start.error
     async def on_start_error(self, ctx, error):
         if isinstance(error, commands.CheckFailure):
-            await ctx.reply('You already have a character.')
+            await ctx.reply(f'You already have a character.\nFor help, read the `{ctx.prefix}tutorial` or go to the `{ctx.prefix}support` server.')
 
 def setup(client):
     client.add_cog(Profile(client))

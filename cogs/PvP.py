@@ -154,8 +154,16 @@ class PvP(commands.Cog):
             player1_dealt, player1_taken = self.calcDamage(player1_action, player1['Attack'])
             player2_dealt, player2_taken = self.calcDamage(player2_action, player2['Attack'])              
 
-            player1_crit, player1_dealt, player1['Attack'] = self.checkCrit(player1['Crit'], player1_dealt, player1['Attack'], player1['Acolyte1'], player1['Acolyte2'])
-            player2_crit, player2_dealt, player2['Attack'] = self.checkCrit(player2['Crit'], player2_dealt, player2['Attack'], player2['Acolyte1'], player2['Acolyte2'])
+            player1_crit, player1_dealt, player1['Attack'] = self.checkCrit(player1['Crit'], 
+                                                                            player1_dealt, 
+                                                                            player1['Attack'], 
+                                                                            player1['Acolyte1'], 
+                                                                            player1['Acolyte2'])
+            player2_crit, player2_dealt, player2['Attack'] = self.checkCrit(player2['Crit'], 
+                                                                            player2_dealt, 
+                                                                            player2['Attack'], 
+                                                                            player2['Acolyte1'], 
+                                                                            player2['Acolyte2'])
 
             if player1_crit == 'Crit':
                 try:
@@ -210,9 +218,12 @@ class PvP(commands.Cog):
         else:
             await AssetCreation.declare_pvp_winner(self.client.pg_con, victor, loser)
 
-        embed = discord.Embed(title=f'Battle: {ctx.author.display_name} vs. {opponent.display_name}', color=0xBEDCF6)
-        embed.add_field(name=f'{ctx.author.display_name}', value=f"ATK: `{player1['Attack']}` | HP: `{player1['HP']}`")
-        embed.add_field(name=f'{opponent.display_name}', value=f"ATK: `{player2['Attack']}` | HP: `{player2['HP']}`")
+        embed = discord.Embed(title=f'Battle: {ctx.author.display_name} vs. {opponent.display_name}', 
+                              color=self.client.ayesha_blue)
+        embed.add_field(name=f'{ctx.author.display_name}', 
+                        value=f"ATK: `{player1['Attack']}` | HP: `{player1['HP']}`")
+        embed.add_field(name=f'{opponent.display_name}', 
+                        value=f"ATK: `{player2['Attack']}` | HP: `{player2['HP']}`")
         for turn in battle_turns[-5:]:
             embed.add_field(name=f'Turn {turn[0]}', value=f'{turn[1]}', inline=False)
 

@@ -55,13 +55,17 @@ class Reminders(commands.Cog):
 
         embed = discord.Embed(title=f'{player}\'s Reminders',
             description = output,
-            color = 0xBEDCF6
+            color = self.client.ayesha_blue
             )
         
         return embed
 
     #COMMANDS
-    @commands.group(aliases=['r'], brief='<length> <reminder>', description='Set a reminder. Reminders follow the format `days:hours:minutes:seconds`.', invoke_without_command=True, case_insensitive=True)
+    @commands.group(aliases=['r'], 
+                    brief='<length> <reminder>', 
+                    description='Set a reminder. Reminders follow the format `days:hours:minutes:seconds`.', 
+                    invoke_without_command=True, 
+                    case_insensitive=True)
     async def remind(self, ctx, duration : str, *, content : str = 'None'):
         #Make sure input is valid
         length = 0
@@ -133,7 +137,9 @@ class Reminders(commands.Cog):
         for i in range(0, len(reminders), 5): #list 5 entries at a time
             remind_pages.append(self.write(i, reminders, ctx.author.display_name)) # Write will create the embeds
 
-        remind_list = menus.MenuPages(source=PageSourceMaker.PageMaker(remind_pages), clear_reactions_after=True, delete_message_after=True)
+        remind_list = menus.MenuPages(source=PageSourceMaker.PageMaker(remind_pages), 
+                                      clear_reactions_after=True, 
+                                      delete_message_after=True)
         await remind_list.start(ctx)
 
     @remind.command(aliases=['cancel', 'remove', 'stop'], brief='<id of reminder>', description='Cancel one of your reminders')
@@ -151,7 +157,9 @@ class Reminders(commands.Cog):
     @remind.command(description='Show this command.')
     async def help(self, ctx):
         def write(ctx, entries):
-            helpEmbed = discord.Embed(title=f'NguyenBot Help: Reminders', description='We created a simple reminder module to help you plan your expeditions, travels, voting, etc. We recommend using it only for these purposes, as this module is not perfect and other bots (and applications) probably have better systems for doing this. This cog however will fulfill any of your bot-related timer needs.', color=0xBEDCF6)
+            helpEmbed = discord.Embed(title=f'NguyenBot Help: Reminders', 
+                                      description='We created a simple reminder module to help you plan your expeditions, travels, voting, etc. We recommend using it only for these purposes, as this module is not perfect and other bots (and applications) probably have better systems for doing this. This cog however will fulfill any of your bot-related timer needs.', 
+                                      color=self.client.ayesha_blue)
             helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
 
             for cmd in entries:
@@ -174,9 +182,6 @@ class Reminders(commands.Cog):
         helpEmbed = write(ctx, cmds)
 
         await ctx.reply(embed=helpEmbed)
-
-
-
 
 def setup(client):
     client.add_cog(Reminders(client))

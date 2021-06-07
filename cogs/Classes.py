@@ -60,26 +60,30 @@ class Classes(commands.Cog):
 
     #COMMANDS
     @cooldown(1, 3600, BucketType.user)
-    @commands.command(name='class', description='Choose your player class. This can be changed.')
+    @commands.command(name='class', 
+                      description='Choose your player class. This can be changed.')
     async def change_class(self, ctx, player_job : str = None):
         if player_job is None:
             ctx.command.reset_cooldown(ctx)
 
             entries = []
             for job in occupations:
-                embed = discord.Embed(title='Class Selection Menu', color=0xBEDCF6)
-                embed.add_field(name=f'{job}: Say `{ctx.prefix}class {job}` to take this class!', value=f'{occupations[job]}')
+                embed = discord.Embed(title='Class Selection Menu', 
+                                      color=self.client.ayesha_blue)
+                embed.add_field(name=f'{job}: Say `{ctx.prefix}class {job}` to take this class!', 
+                                value=f'{occupations[job]}')
                 entries.append(embed)
 
-            tavern = menus.MenuPages(source=PageSourceMaker.PageMaker(entries), clear_reactions_after=True, delete_message_after=True)
+            tavern = menus.MenuPages(source=PageSourceMaker.PageMaker(entries), 
+                                     clear_reactions_after=True, 
+                                     delete_message_after=True)
             await tavern.start(ctx)
 
         else:
             player_job = player_job.title()
 
             if player_job not in (occupations):
-                await ctx.reply(f'This is not a valid class. Please do `{ctx.prefix}class` with no arguments to see the list of classes.')
-                return
+                return await ctx.reply(f'This is not a valid class. Please do `{ctx.prefix}class` with no arguments to see the list of classes.')
 
             else:
                 await AssetCreation.setPlayerClass(self.client.pg_con, player_job, ctx.author.id)
@@ -93,11 +97,14 @@ class Classes(commands.Cog):
 
             entries = []
             for place in origins:
-                embed = discord.Embed(title='Background Selection Menu', color=0xBEDCF6)
-                embed.add_field(name=f'{place}: Say `{ctx.prefix}origin {place}` if you like this place!', value=f'{origins[place]}')
+                embed = discord.Embed(title='Background Selection Menu', color=self.client.ayesha_blue)
+                embed.add_field(name=f'{place}: Say `{ctx.prefix}origin {place}` if you like this place!', 
+                                value=f'{origins[place]}')
                 entries.append(embed)   
 
-            tavern = menus.MenuPages(source=PageSourceMaker.PageMaker(entries), clear_reactions_after=True, delete_message_after=True)
+            tavern = menus.MenuPages(source=PageSourceMaker.PageMaker(entries), 
+                                     clear_reactions_after=True, 
+                                     delete_message_after=True)
             await tavern.start(ctx)
 
         else:

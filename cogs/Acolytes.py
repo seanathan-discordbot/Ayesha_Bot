@@ -1,13 +1,10 @@
 import discord
-import asyncio
 
 from discord.ext import commands, menus
-from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 from Utilities import Checks, AssetCreation, PageSourceMaker, Links
 
 import json
-import random
 import math
 
 class Acolytes(commands.Cog):
@@ -22,7 +19,8 @@ class Acolytes(commands.Cog):
 
     #INVISIBLE
     async def write(self, start, inv, player):
-        embed = discord.Embed(title=f'{player}\'s Tavern', color=0xBEDCF6)
+        embed = discord.Embed(title=f'{player}\'s Tavern', 
+                              color=self.client.ayesha_blue)
 
         iteration = 0
         while start < len(inv) and iteration < 5: #Loop til 5 entries or none left
@@ -55,19 +53,21 @@ class Acolytes(commands.Cog):
         if len(invpages) == 0:
             await ctx.reply('Your tavern is empty!')
         else:
-            tavern = menus.MenuPages(source=PageSourceMaker.PageMaker(invpages), clear_reactions_after=True, delete_message_after=True)
+            tavern = menus.MenuPages(source=PageSourceMaker.PageMaker(invpages), 
+                                     clear_reactions_after=True, 
+                                     delete_message_after=True)
             await tavern.start(ctx)
 
-    @commands.command(aliases=['hire'], brief='<acolyte_id : int> <slot (1 or 2)>', description='Add an acolyte to your party')
+    @commands.command(aliases=['hire'], 
+                      brief='<acolyte_id : int> <slot (1 or 2)>', 
+                      description='Add an acolyte to your party')
     @commands.check(Checks.is_player)
     async def recruit(self, ctx, instance_id : int, slot : int):
         if slot < 1 or slot > 2:
-            await ctx.reply('You can only place an acolyte in slots 1 or 2 of your party.')
-            return
+            return await ctx.reply('You can only place an acolyte in slots 1 or 2 of your party.')
 
         if not await AssetCreation.verifyAcolyteOwnership(self.client.pg_con, instance_id, ctx.author.id):
-            await ctx.reply('This acolyte isn\'t in your tavern.')
-            return
+            return await ctx.reply('This acolyte isn\'t in your tavern.')
 
         #Equip new acolyte, update new acolyte, update old acolyte
         acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(self.client.pg_con, ctx.author.id)
@@ -132,7 +132,8 @@ class Acolytes(commands.Cog):
 
         await ctx.reply(f"Dismissed acolyte `{removed['ID']}: {removed['Name']}`")
 
-    @commands.command(brief='<acolyte id> <amount = 1>', description='Train your acolyte, giving it xp and potentially levelling it up! Each training session with your acolyte costs 50 of its upgrade material and 250 gold.')
+    @commands.command(brief='<acolyte id> <amount = 1>', 
+                      description='Train your acolyte, giving it xp and potentially levelling it up! Each training session with your acolyte costs 50 of its upgrade material and 250 gold.')
     @commands.check(Checks.is_player)
     async def train(self, ctx, instance_id : int, iterations : int = 1):
         if not await AssetCreation.verifyAcolyteOwnership(self.client.pg_con, instance_id, ctx.author.id):
@@ -181,13 +182,15 @@ class Acolytes(commands.Cog):
             await ctx.reply('No acolyte goes by that name.')
             return
 
-        embed = discord.Embed(title=f"{acolyte['Name']}", color=0xBEDCF6)
+        embed = discord.Embed(title=f"{acolyte['Name']}", color=self.client.ayesha_blue)
         if acolyte['Image'] is not None:
             embed.set_thumbnail(url=acolyte['Image']) 
         embed.add_field(name="Backstory", value=f"{acolyte['Story']}")
         embed.add_field(name='Effect', value=f"{acolyte['Effect']}", inline=False)
-        embed.add_field(name="Stats", value=f"Attack: {acolyte['Attack']} + {acolyte['Scale']}/lvl\nCrit: {acolyte['Crit']}\nHP: {acolyte['HP']}")
-        embed.add_field(name="Details", value=f"Rarity: {acolyte['Rarity']}\u2B50\nUpgrade Material: {acolyte['Mat'].title()}")
+        embed.add_field(name="Stats", 
+                        value=f"Attack: {acolyte['Attack']} + {acolyte['Scale']}/lvl\nCrit: {acolyte['Crit']}\nHP: {acolyte['HP']}")
+        embed.add_field(name="Details", 
+                        value=f"Rarity: {acolyte['Rarity']}\u2B50\nUpgrade Material: {acolyte['Mat'].title()}")
 
         await ctx.reply(embed=embed)
 
@@ -201,7 +204,7 @@ class Acolytes(commands.Cog):
         info = await AssetCreation.getAcolyteXP(self.client.pg_con, instance_id)
         tonext = math.floor(3000000 * math.cos(((info['lvl']+1)/64)+3.14) + 3000000) - info['xp']
 
-        embed = discord.Embed(color=0xBEDCF6)
+        embed = discord.Embed(color=self.client.ayesha_blue)
         embed.add_field(name='Level', value=f"{info['lvl']}")
         embed.add_field(name='EXP', value=f"{info['xp']}")
         if info['lvl'] != 100:
