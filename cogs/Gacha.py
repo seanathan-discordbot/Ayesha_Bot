@@ -429,5 +429,28 @@ class Gacha(commands.Cog):
         else:
             await ctx.reply(f'Successfully bought `{amount}` rubidics for `{cost}` gold.')
 
+    @shop.command(brief='<material> <amount>', description='Sell your materials for 20 gold each.')
+    @commands.check(Checks.is_player)
+    async def sell(self, ctx, material : str, amount : int):
+        #Make sure they have the mats
+        material = material.lower()
+        mats = ('fur', 'bone', 'iron', 'silver', 'wood', 'wheat', 'oat', 'reeds', 'pine', 'moss', 'cacao')
+        if material not in mats:
+            return await ctx.reply('That is not a valid material. The purchaseable materials are those listed in the `backpack` command.')
+
+        if amount < 1:
+            return await ctx.reply('You cannot sell less than 1 of a material!')
+         
+        mat_amount = await AssetCreation.getPlayerMat(self.client.pg_con, material, ctx.author.id)
+
+        if amount > mat_amount:
+            return await ctx.reply(f'You only have up to {mat_amount} {material} to sell.')
+
+        #Delete mats and give gold
+        await AssetCreation.giveGold(self.client.pg_con, amount * 20, ctx.author.id)
+        await AssetCreation.giveMat(self.client.pg_con, material, -1*amount, ctx.author.id)
+
+        await ctx.reply(f'You sold {amount} {material} for {amount * 20} gold.')
+
 def setup(client):
     client.add_cog(Gacha(client))
