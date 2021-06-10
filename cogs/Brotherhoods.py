@@ -431,7 +431,7 @@ class Brotherhoods(commands.Cog):
     @brotherhood.command(description='Shows this command.')
     async def help(self, ctx):
         def write(ctx, start, entries):
-            helpEmbed = discord.Embed(title=f'NguyenBot Help: Brotherhoods', 
+            helpEmbed = discord.Embed(title=f'Ayesha Help: Brotherhoods', 
                                       description='Brotherhoods are a pvp-oriented association. Its members gain an ATK and CRIT bonus depending on its level. They also gain access to the `steal` command.', 
                                       color=self.client.ayesha_blue)
             helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
