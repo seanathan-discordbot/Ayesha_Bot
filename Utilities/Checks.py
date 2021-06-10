@@ -74,6 +74,17 @@ async def in_guild(ctx):
         else:
             guild_type = await conn.fetchval('SELECT guild_type FROM guilds WHERE guild_id = $1', guild)
             if guild_type == 'Guild':
+                return True    
+
+async def in_college(ctx):
+    async with ctx.bot.pg_con.acquire() as conn:
+        guild = await conn.fetchval('SELECT guild FROM players WHERE user_id = $1', ctx.author.id)
+
+        if guild is None:
+            return
+        else:
+            guild_type = await conn.fetchval('SELECT guild_type FROM guilds WHERE guild_id = $1', guild)
+            if guild_type == 'College':
                 return True     
 
 async def guild_can_be_created(ctx, name): #NOT A CHECK
