@@ -147,13 +147,20 @@ class Items(commands.Cog):
         except TypeError:
             pass   
 
-        gold = int(gold * guild_bonus)
+        subtotal = int(gold * guild_bonus)
+        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal)
+        payout = cost_info['subtotal'] - cost_info['tax_amount']
 
         #Delete item and give gold to player
-        await AssetCreation.giveGold(self.client.pg_con, gold, ctx.author.id)
+        await AssetCreation.giveGold(self.client.pg_con, payout, ctx.author.id)
+        await AssetCreation.log_transaction(self.client.pg_con,
+                                            ctx.author.id,
+                                            cost_info['subtotal'],
+                                            cost_info['tax_amount'],
+                                            cost_info['tax_rate'])
         await AssetCreation.deleteItem(self.client.pg_con, item_id)
 
-        await ctx.reply(f'You received {gold} gold for selling {item_id}.')
+        await ctx.reply(f"You received `{subtotal}` gold for selling `{item_id}`. You paid `{cost_info['tax_amount']}` in income taxes.")
 
     @commands.command(brief='<items>', description='Sell multiple items for random prices.')
     @commands.check(Checks.is_player)
@@ -201,14 +208,16 @@ class Items(commands.Cog):
         playerjob = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
         if playerjob == 'Merchant':
             total = int(total * 1.5)
-        total = int(total * guild_bonus) #Apply guild bonus
+        subtotal = int(total * guild_bonus) #Apply guild bonus
+        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal)
+        payout = subtotal - cost_info['tax_amount']
 
-        await AssetCreation.giveGold(self.client.pg_con, total, ctx.author.id)
+        await AssetCreation.giveGold(self.client.pg_con, payout, ctx.author.id)
 
         if len(errors) == 0:
-            await ctx.reply(f'You received {total} gold for selling these items.')
+            await ctx.reply(f"You received `{subtotal}` gold for selling these items. You paid `{cost_info['tax_amount']}` gold in income taxes.")
         else:
-            await ctx.reply(f'You received {total} gold for selling these items. Did not sell items {errors}.')
+            await ctx.reply(f"You received `{subtotal}` gold for selling these items but paid `{cost_info['tax_amount']}` in income taxes. Did not sell items {errors}.")
 
     @commands.command(brief='<rarity>', description='Sell all the items in your inventory of the stated rarity.')
     @commands.check(Checks.is_player)
@@ -219,8 +228,8 @@ class Items(commands.Cog):
         if rarity not in rarities:
             await ctx.reply('That is not a valid rarity.')
             return
-        items, gold = await AssetCreation.sellAllItems(self.client.pg_con, ctx.author.id, rarity)
-        await ctx.reply(f'You sold all {items} of your {rarity.lower()} items for {gold} gold.')
+        items, gold, tax = await AssetCreation.sellAllItems(self.client.pg_con, ctx.author.id, rarity)
+        await ctx.reply(f'You sold all {items} of your {rarity.lower()} items for `{gold}` gold. You paid `{tax}` gold in income taxes.')
 
     @commands.command(brief='<player> <item_id : int> <price : int>', description='Sell an item to someone')
     @commands.check(Checks.is_player)
