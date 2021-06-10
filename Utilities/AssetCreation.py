@@ -193,7 +193,9 @@ async def increaseItemAttack(pool, item_id : int, increase : int):
         await pool.release(conn)
 
 async def sellAllItems(pool, user_id : int, rarity : str):
-    """Deletes all items of a given player and rarity. Returns two integers: amount of items deleted, corresponding gold value."""
+    """Deletes all items of a given player and rarity. 
+    Returns three integers: amount of items deleted, corresponding gold value, amount paid in taxes.
+    """
     async with pool.acquire() as conn:
         amount = await conn.fetchval('SELECT COUNT(item_id) FROM items WHERE owner_id = $1 AND rarity = $2 AND is_equipped = FALSE', user_id, rarity)
         
@@ -201,11 +203,14 @@ async def sellAllItems(pool, user_id : int, rarity : str):
             await pool.release(conn)
             return 0, 0
         
-        gold = random.randint(Weaponvalues[rarity][0], Weaponvalues[rarity][1]) * amount
-        await conn.execute('UPDATE players SET gold = gold + $1 WHERE user_id = $2', gold, user_id)
+        subtotal = random.randint(Weaponvalues[rarity][0], Weaponvalues[rarity][1]) * amount
+        cost_info = calc_cost_with_tax_rate(pool, subtotal)
+        payout = subtotal - cost_info['tax_amount']
+
+        await conn.execute('UPDATE players SET gold = gold + $1 WHERE user_id = $2', payout, user_id)
         await conn.execute('DELETE FROM items WHERE owner_id = $1 AND rarity = $2 AND is_equipped = FALSE', user_id, rarity)
         await pool.release(conn)
-    return amount, gold
+    return amount, subtotal, cost_info['tax_amount']
 
 async def createAcolyte(pool, owner_id, acolyte_name):
     """Inserts new acolyte of given user and type into database"""
@@ -797,7 +802,7 @@ async def getPlayerByID(pool, user_id: int):
     pvpwins, pvpfights, bosswins, bossfights, prestige"""
     async with pool.acquire() as conn:
         info = await conn.fetchrow("""SELECT num, user_name, lvl, equipped_item, acolyte1, acolyte2, guild, guild_rank, 
-            gold, occupation, origin, loc, pvpwins, pvpfights, bosswins, bossfights, prestige
+            gold, occupation, origin, loc, pvpwins, pvpfights, bosswins, bossfights, prestige, gravitas
             FROM players WHERE user_id = $1""", user_id)
         await pool.release(conn)
 
@@ -818,7 +823,8 @@ async def getPlayerByID(pool, user_id: int):
         'pvpfights' : info[13],
         'bosswins' : info[14],
         'bossfights' : info[15],
-        'prestige' : info[16]
+        'prestige' : info[16],
+        'gravitas' : info[17]
     }
 
     return player
@@ -1049,4 +1055,41 @@ async def declare_pvp_fight(pool, player1_id : int, player2_id : int):
     """Declares no winner to a pvpfight. Adds 1 to both their pvpfights."""
     async with pool.acquire() as conn:
         await conn.execute('UPDATE players SET pvpfights = pvpfights + 1 WHERE user_id = $1 OR user_id = $2', player1_id, player2_id)
+        await pool.release(conn)
+
+async def get_gravitas(pool, user_id : int):
+    """Returns the gravitas of a player."""
+    async with pool.acquire() as conn:
+        return await conn.fetchval('SELECT gravitas FROM players WHERE user_id = $1', user_id)
+
+async def give_gravitas(pool, user_id : int, amount : int):
+    """Gives a player the specified amount of gravitas."""
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE players SET gravitas = gravitas + $1 WHERE user_id = $2', amount, user_id)
+        await pool.release(conn)
+
+async def get_tax_rate(pool):
+    """Returns the current bot-wide tax rate."""
+    async with pool.acquire() as conn:
+        return await conn.fetchval('SELECT tax_rate FROM tax_rates ORDER BY id DESC LIMIT 1')
+
+async def calc_cost_with_tax_rate(pool, subtotal):
+    """Calculate the new price of something with tax rate included.
+    Returns a dict with 'subtotal' (input), 'total', 'tax_rate', 'tax_amount'.
+    """
+    tax_rate = await get_tax_rate(pool)
+    tax_amount = int(subtotal * tax_rate / 100)
+
+    return {
+        'subtotal' : subtotal,
+        'total' : subtotal + tax_amount,
+        'tax_rate' : tax_rate,
+        'tax_amount' : tax_amount
+    }
+
+async def log_transaction(pool, user_id : int, subtotal : int, tax_amount : int, tax_rate : float):
+    """Log a transaction that has been fulfilled."""
+    async with pool.acquire() as conn:
+        await conn.execute("""INSERT INTO tax_transactions (user_id, before_tax, tax_amount, tax_rate)
+                                VALUES ($1, $2, $3, $4)""", user_id, subtotal, tax_amount, tax_rate)
         await pool.release(conn)
