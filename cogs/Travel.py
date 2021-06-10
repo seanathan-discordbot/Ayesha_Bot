@@ -118,21 +118,31 @@ class Travel(commands.Cog):
         hours = elapsed_time / 3600
 
         #Calculate xp, gold, and materials based off elapsed time (in hours)
-        if elapsed_time < 3600: #Less than 1 hour, ~100 gold/hr
+        if elapsed_time < 3600: #Less than 1 hour, ~100 gold/hr, no gravitas
             gold = math.floor(hours * 100)
             mats = random.randint(10,20)
-        elif elapsed_time < 10800: #1-3 hrs, ~175 gold/hr, 30 mats/hr
+            gravitas = 0
+            gravitas_decay = .01
+        elif elapsed_time < 10800: #1-3 hrs, ~175 gold/hr, 30 mats/hr, no gravitas
             gold = math.floor(hours * 175)
             mats = math.floor(hours * 30)
-        elif elapsed_time < 43200: #3-12 hrs, ~200 gold/hr, 45 mats/hr
+            gravitas = 0
+            gravitas_decay = .05
+        elif elapsed_time < 43200: #3-12 hrs, ~200 gold/hr, 45 mats/hr, 1/3 gravitas/hr
             gold = math.floor(hours * 265)
             mats = math.floor(hours * 45)
-        elif elapsed_time < 259200: #12hrs - 3 days, ~300 gold/hr, 70 mats/hr
+            gravitas = math.floor(hours / 3)
+            gravitas_decay = .1
+        elif elapsed_time < 259200: #12hrs - 3 days, ~300 gold/hr, 70 mats/hr, 1/2 gravitas/hr
             gold = math.floor(hours * 375)
             mats = math.floor(hours * 70)
-        else: #Up to 7 days, ~500 gold/hr, 100 mats/hr
+            gravitas = math.floor(hours / 2)
+            gravitas_decay = .15
+        else: #Up to 7 days, ~500 gold/hr, 100 mats/hr, 1 gravitas/hr
             gold = math.floor(hours * 500)
             mats = math.floor(hours * 100)
+            gravitas = math.floor(hours)
+            gravitas_decay = .2
         
         xp = math.floor(gold / 4 + 50)
         acolyte_xp = math.floor(xp / 10)
@@ -147,6 +157,7 @@ class Travel(commands.Cog):
         if acolyte2 is not None:
             await AssetCreation.giveAcolyteXP(self.client.pg_con, acolyte_xp, acolyte2)
 
+        city_expedition = False
         location = await AssetCreation.getLocation(self.client.pg_con, ctx.author.id)
         if location == 'Mythic Forest':
             resource = 'wood'
@@ -169,14 +180,26 @@ class Travel(commands.Cog):
         elif location == 'Kucre':
             resource = 'cacao'
             await AssetCreation.giveMat(self.client.pg_con, 'cacao', mats, ctx.author.id)
-        else: #then theyre in the city
+        else: #then theyre in the city - only time gravitas is gained as a result of expeditions
             resource = random.choice(['fur', 'bone'])
+            mats = math.floor(mats / 2)
             await AssetCreation.giveMat(self.client.pg_con, resource, mats, ctx.author.id)
+            await AssetCreation.give_gravitas(self.client.pg_con, ctx.author.id, gravitas)
+            city_expedition = True
+
+        # Decay gravitas for those who did wild expeditions
+        if not city_expedition:
+            player_gravitas = await AssetCreation.get_gravitas(self.client.pg_con, ctx.author.id)
+            decay_amount = int(player_gravitas * gravitas_decay)
+            await AssetCreation.give_gravitas(self.client.pg_con, ctx.author.id, decay_amount * -1)
 
         await AssetCreation.setAdventure(self.client.pg_con, None, None, ctx.author.id)
 
         #Send results of player
-        await ctx.reply(f'You returned from your expedition and received `{gold}` gold, `{xp}` xp, and `{mats}` {resource}.')
+        if elapsed_time >= 43200 and city_expedition:
+            await ctx.reply(f'You returned from your urban expedition and received `{gold}` gold, `{xp}` xp, and `{mats}` {resource}.\nYou also gained `{gravitas}` while campaigning.')
+        else:
+            await ctx.reply(f'You returned from your expedition and received `{gold}` gold, `{xp}` xp, and `{mats}` {resource}.\nUnfortunately, you lost `{gravitas_decay}` gravitas while in the wild.')
 
         await AssetCreation.checkLevel(self.client.pg_con, ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
 

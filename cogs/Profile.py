@@ -6,7 +6,10 @@ from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 from Utilities import Checks, AssetCreation, Links, PageSourceMaker
 
+import asyncpg
 import math
+import schedule
+from datetime import date
 
 class YesNo(menus.Menu):
     def __init__(self, ctx, embed):
@@ -35,6 +38,59 @@ class Profile(commands.Cog):
 
     def __init__(self, client):
         self.client = client
+
+        def gravitas_func():
+            asyncio.run_coroutine_threadsafe(update_gravitas(), self.client.loop)
+
+        async def update_gravitas():
+            async with self.client.pg_con.acquire() as conn:
+                # Decay current gravitas first. 10% for all, and 10% more for people not in the cities
+                await conn.execute("UPDATE players SET gravitas = gravitas - (gravitas / 10);") 
+                await conn.execute("""
+                                    UPDATE players SET 
+                                        gravitas = gravitas - (gravitas / 10) WHERE loc != 'Aramithea'
+                                            AND loc != 'Riverburn'
+                                            AND loc != 'Thenuille';""")
+                # Class bonuses: 3 Farmer, 1 Soldier or Scribe
+                await conn.execute("UPDATE players SET gravitas = gravitas + 3 WHERE occupation = 'Farmer';")
+                await conn.execute("""
+                                    UPDATE players SET
+                                        gravitas = gravitas + 1 WHERE occupation = 'Soldier' 
+                                            OR occupation = 'Scribe';""")
+                # Origin bonuses: 5 for Aramithea, 3 for cities, 1 for various other areas
+                await conn.execute("UPDATE players SET gravitas = gravitas + 5 WHERE origin = 'Aramithea';")
+                await conn.execute("""
+                                    UPDATE players SET 
+                                        gravitas = gravitas + 3 WHERE origin = 'Riverburn'
+                                            OR origin = 'Thenuille';""")
+                await conn.execute("""
+                                    UPDATE players SET
+                                        gravitas = gravitas + 1 WHERE origin = 'Mythic Forest'
+                                            OR origin = 'Lunaris'
+                                            OR origin = 'Crumidia';""")
+                # 7 for college members
+                await conn.execute("""
+                                    WITH colleges AS (
+                                        SELECT DISTINCT players.guild
+                                        FROM players
+                                        INNER JOIN guilds
+                                            ON players.guild = guilds.guild_id
+                                        WHERE guilds.guild_type = 'College'
+                                    )
+                                    UPDATE players
+                                    SET gravitas = gravitas + 7
+                                    WHERE guild IN (SELECT guild FROM colleges);""")
+
+                await self.client.pg_con.release(conn)
+
+        async def daily_gravitas():
+            schedule.every().day.at("14:02").do(gravitas_func)
+            while True:
+                schedule.run_pending()
+                print(f'{date.today()}: Updating gravitas...')
+                await asyncio.sleep(schedule.idle_seconds())
+
+        asyncio.ensure_future(daily_gravitas())
 
     #EVENTS
     @commands.Cog.listener() # needed to create event in cog
@@ -123,7 +179,7 @@ class Profile(commands.Cog):
             inline=True)
         embed.add_field(
             name='Character Stats',
-            value=f"Level: `{character['Level']}`\nAttack: `{attack}`\nCrit: `{crit}%`\nPvP Winrate: `{pvpwinrate:.0f}%`\nBoss Winrate: `{bosswinrate:.0f}%`",
+            value=f"Level: `{character['Level']}`\nGravitas: `{character['gravitas']}`\nAttack: `{attack}`\nCrit: `{crit}%`\nPvP Winrate: `{pvpwinrate:.0f}%`\nBoss Winrate: `{bosswinrate:.0f}%`",
             inline=True)
         if item is not None:
             embed.add_field(
