@@ -221,7 +221,7 @@ class Items(commands.Cog):
 
     @commands.command(brief='<rarity>', description='Sell all the items in your inventory of the stated rarity.')
     @commands.check(Checks.is_player)
-    async def sellall(self, ctx, rarity : str = 'Common'):
+    async def sellall(self, ctx, rarity : str):
         #Ensure that a valid rarity is input
         rarities = ('Common', 'Uncommon', 'Rare', 'Epic', 'Legendary')
         rarity = rarity.title()
