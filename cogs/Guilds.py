@@ -39,6 +39,7 @@ class Guilds(commands.Cog):
         embed.add_field(name='Members', value=f"{members}/{capacity}")
         embed.add_field(name='Level', value=f"{level}")
         embed.add_field(name='EXP Progress', value=f'{progress}')
+        embed.add_field(name='Base', value=f"{info['Base']}")
         embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.", 
                         value=f"{info['Desc']}", 
                         inline=False)
@@ -217,6 +218,59 @@ class Guilds(commands.Cog):
         await AssetCreation.giveGold(self.client.pg_con, capital_gain, ctx.author.id)
         await ctx.reply(f'You invested `{capital}` gold in {project} in {location} and earned a return of `{capital_gain}` gold.')
 
+    @guild.command(brief='<area>', description='Select an area to base your association in. The valid locations are:\n`Aramithea`, `Riverburn`, `Thenuille`')
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.is_guild_leader)
+    async def base(self, ctx, *, area : str):
+        #Make sure input is valid.
+        area = area.title()
+        areas = ('Aramithea', 'Riverburn', 'Thenuille')
+        if area not in areas:
+            return await ctx.reply('Please select a valid area on the map:\n`Aramithea`, `Riverburn`, `Thenuille`')
+
+        #Load guild info
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+
+        #Check to see if this is first change and apply charge if necessary
+        base_info = await AssetCreation.get_association_base(self.client.pg_con, guild['ID'])
+        if base_info['base_set']:
+            player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
+            if player_gold < 1000000:
+                return await ctx.reply(f'Changing your association\'s base costs `1,000,000` gold but you only have `{player_gold}` gold.')
+
+            message = await ctx.reply('This operation will cost `1,000,000` gold. Continue?')
+            await message.add_reaction('\u2705') #Check
+            await message.add_reaction('\u274E') #X
+
+            def check(reaction, user):
+                return user == ctx.author
+
+            reaction = None
+            readReactions = True
+            while readReactions: 
+                if str(reaction) == '\u2705': #Then change base
+                    await message.delete()
+                    await AssetCreation.giveGold(self.client.pg_con, -1000000, ctx.author.id)
+                    await AssetCreation.set_association_base(self.client.pg_con, guild['ID'], area)
+                    await ctx.reply(f"{guild['Name']} is now based in {area}!")
+                    break
+                if str(reaction) == '\u274E':
+                    await message.delete()
+                    await ctx.reply('Cancelled base movement.')
+                    break
+
+                try:
+                    reaction, user = await self.client.wait_for('reaction_add', check=check, timeout=15.0)
+                    await message.remove_reaction(reaction, user)
+                except asyncio.TimeoutError:
+                    readReactions = not readReactions
+                    await message.delete()
+                    await ctx.send('Cancelled base movement.')
+
+        else: #Change base for free
+            await AssetCreation.set_association_base(self.client.pg_con, guild['ID'], area)
+            await ctx.reply(f"{guild['Name']} is now based in {area}!\n`WARNING:` Changing your base again will cost `1,000,000` gold.")
+
     @guild.command(brief='<guild ID>', description='See info on another guild based on their ID')
     async def info(self, ctx, guild_id : int):
         try:
@@ -236,6 +290,7 @@ class Guilds(commands.Cog):
         embed.add_field(name='Members', value=f"{members}/{capacity}")
         embed.add_field(name='Level', value=f"{level}")
         embed.add_field(name='EXP Progress', value=f'{progress}')
+        embed.add_field(name='Base', value=f"{info['Base']}")
         embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.", 
                         value=f"{info['Desc']}", 
                         inline=False)
