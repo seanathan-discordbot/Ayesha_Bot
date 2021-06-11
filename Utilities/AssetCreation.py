@@ -204,13 +204,13 @@ async def sellAllItems(pool, user_id : int, rarity : str):
             return 0, 0
         
         subtotal = random.randint(Weaponvalues[rarity][0], Weaponvalues[rarity][1]) * amount
-        cost_info = calc_cost_with_tax_rate(pool, subtotal)
+        cost_info = await calc_cost_with_tax_rate(pool, subtotal)
+        tax = cost_info['tax_amount']
         payout = subtotal - cost_info['tax_amount']
 
         await conn.execute('UPDATE players SET gold = gold + $1 WHERE user_id = $2', payout, user_id)
         await conn.execute('DELETE FROM items WHERE owner_id = $1 AND rarity = $2 AND is_equipped = FALSE', user_id, rarity)
-        await pool.release(conn)
-    return amount, subtotal, cost_info['tax_amount']
+        return amount, subtotal, cost_info['tax_amount']
 
 async def createAcolyte(pool, owner_id, acolyte_name):
     """Inserts new acolyte of given user and type into database"""
@@ -1074,6 +1074,40 @@ async def get_tax_rate(pool):
     async with pool.acquire() as conn:
         return await conn.fetchval('SELECT tax_rate FROM tax_rates ORDER BY id DESC LIMIT 1')
 
+async def get_tax_info(pool):
+    """Return info related to the curent tax rate."""
+    async with pool.acquire() as conn:
+        tax_info = await conn.fetchrow("""
+                                    SELECT tax_rates.tax_rate, players.user_name, tax_rates.setdate
+                                    FROM tax_rates
+                                    INNER JOIN players
+                                        ON players.user_id = tax_rates.setby
+                                    ORDER BY id DESC
+                                    LIMIT 1""")
+        collected = await conn.fetchval("""
+                                    WITH start_date AS (
+                                        SELECT setdate
+                                        FROM officeholders
+                                        WHERE office = 'Mayor'
+                                        ORDER BY setdate DESC
+                                        LIMIT 1
+                                    )
+                                    SELECT SUM(tax_amount)
+                                    FROM tax_transactions
+                                    WHERE time > (SELECT * FROM start_date);""")
+
+        tax_output = dict(tax_info)
+        tax_output['Total_Collection'] = collected
+
+        return tax_output
+
+
+async def set_tax_rate(pool, tax_rate : float, setby : int):
+    """Set the tax-rate."""
+    async with pool.acquire() as conn:
+        await conn.execute('INSERT INTO tax_rates (tax_rate, setby) VALUES ($1, $2)', tax_rate, setby)
+        await pool.release(conn)
+
 async def calc_cost_with_tax_rate(pool, subtotal):
     """Calculate the new price of something with tax rate included.
     Returns a dict with 'subtotal' (input), 'total', 'tax_rate', 'tax_amount'.
@@ -1105,3 +1139,34 @@ async def set_association_base(pool, guild_id : int, base : str):
     async with pool.acquire() as conn:
         await conn.execute('UPDATE guilds SET base = $1, base_set = TRUE WHERE guild_id = $2', base, guild_id)
         await pool.release(conn)
+
+async def get_officeholders(pool):
+    """Returns a dict containing the ID's of the current 'Mayor' and 'Comptroller' of the bot.
+    Those entries return their names, whereas `[Role]_ID` will return their IDs. `[Role]_Term` will return the date of term start.
+    """
+    async with pool.acquire() as conn:
+        mayor = await conn.fetchrow("""
+                                    SELECT officeholder, setdate, players.user_name 
+                                    FROM officeholders 
+                                    INNER JOIN players
+                                        ON officeholders.officeholder = players.user_id
+                                    WHERE office = 'Mayor'
+                                    ORDER BY id DESC LIMIT 1;""")
+        
+        comptroller = await conn.fetchrow("""
+                                            SELECT officeholder, setdate, players.user_name
+                                            FROM officeholders 
+                                            INNER JOIN players
+                                                ON officeholders.officeholder = players.user_id
+                                            WHERE office = 'Comptroller'
+                                            ORDER BY id DESC LIMIT 1""")
+
+        return {
+            'Mayor' : mayor['user_name'],
+            'Mayor_ID' : mayor['officeholder'],
+            'Mayor_Term' : mayor['setdate'],
+            'Comptroller' : comptroller['user_name'],
+            'Comptroller_ID' : comptroller['officeholder'],
+            'Comptroller_Term' : comptroller['setdate']
+        }
+                

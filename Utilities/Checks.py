@@ -151,3 +151,8 @@ admins = [196465885148479489, 325080171591761921, 530760994289483790, 4653881037
 async def is_admin(ctx):
     if ctx.author.id in admins:
         return True
+
+async def is_mayor(ctx):
+    offices = await AssetCreation.get_officeholders(ctx.bot.pg_con)
+    if ctx.author.id == offices['Mayor']:
+        return True
