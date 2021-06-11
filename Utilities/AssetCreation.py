@@ -512,7 +512,7 @@ async def getGuildByID(pool, guild_id : int):
     """Returns a dict containing the info of the specified guild.
     Dict: ID, Name, Type, XP, Leader, Desc, Icon, Join"""
     async with pool.acquire() as conn:
-        info = await conn.fetchrow('SELECT guild_id, guild_name, guild_type, guild_xp, leader_id, guild_desc, guild_icon, join_status FROM guilds WHERE guild_id = $1', guild_id)
+        info = await conn.fetchrow('SELECT guild_id, guild_name, guild_type, guild_xp, leader_id, guild_desc, guild_icon, join_status, base FROM guilds WHERE guild_id = $1', guild_id)
         await pool.release(conn)
 
     guild = {
@@ -523,7 +523,8 @@ async def getGuildByID(pool, guild_id : int):
         'Leader' : info['leader_id'],
         'Desc' : info['guild_desc'],
         'Icon' : info['guild_icon'],
-        'Join' : info['join_status']
+        'Join' : info['join_status'],
+        'Base' : info['base']
     }
 
     return guild
@@ -1092,4 +1093,15 @@ async def log_transaction(pool, user_id : int, subtotal : int, tax_amount : int,
     async with pool.acquire() as conn:
         await conn.execute("""INSERT INTO tax_transactions (user_id, before_tax, tax_amount, tax_rate)
                                 VALUES ($1, $2, $3, $4)""", user_id, subtotal, tax_amount, tax_rate)
+        await pool.release(conn)
+
+async def get_association_base(pool, guild_id : int):
+    """Return the current base of an association and whether it has been changed before."""
+    async with pool.acquire() as conn:
+        return await conn.fetchrow('SELECT base, base_set FROM guilds WHERE guild_id = $1', guild_id)
+
+async def set_association_base(pool, guild_id : int, base : str):
+    """Sets the given association's base to the given string. Will not check for valid base names."""
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE guilds SET base = $1, base_set = TRUE WHERE guild_id = $2', base, guild_id)
         await pool.release(conn)
