@@ -16,6 +16,7 @@ listCogs = """`Acolytes:` Commands involving your party members
 `Classes` Customize your character!
 `Gacha` Roll for weapons and acolytes!
 `Items` View your inventory and other commands involving items
+`Map` Special commands for the Mayor and Comptroller
 `Misc` Other Ayesha-related commands
 `Profile` Create a character and view your stats!
 `PvE` Basic gameplay in AyeshaBot
