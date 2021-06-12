@@ -1169,4 +1169,42 @@ async def get_officeholders(pool):
             'Comptroller_ID' : comptroller['officeholder'],
             'Comptroller_Term' : comptroller['setdate']
         }
+
+async def get_comptroller_bonus(pool):
+    """Return the ID and type of the current comptroller bonus."""
+    async with pool.acquire() as conn:
+        info = await conn.fetchrow("""SELECT id, bonus, bonus_xp, is_set FROM comptroller_bonuses
+                                        ORDER BY id DESC LIMIT 1""")
+        output = dict(info)
+        output['Level'] = int(info['bonus_xp'] / 100000)
+
+        return output
+
+async def set_comptroller_bonus(pool, bonus : str):
+    """Sets the current comptroller bonus to the specified term."""
+    async with pool.acquire() as conn:
+        await conn.execute("""
+                            WITH current_bonus AS (
+                                SELECT id
+                                FROM comptroller_bonuses
+                                ORDER BY id DESC LIMIT 1
+                            )
+                            UPDATE comptroller_bonuses
+                            SET bonus = $1, is_set = TRUE
+                            WHERE id = (SELECT * FROM current_bonus);""", bonus)
+        await pool.release(conn)
+
+async def set_comptroller_bonus_xp(pool, xp : int):
+    """Add the specified amount to the current bonus."""
+    async with pool.acquire() as conn:
+        await conn.execute("""
+                            WITH current_bonus AS (
+                                SELECT id
+                                FROM comptroller_bonuses
+                                ORDER BY id DESC LIMIT 1
+                            )
+                            UPDATE comptroller_bonuses
+                            SET bonus = bonus + $1
+                            WHERE id = (SELECT * FROM current_bonus);""", xp)
+        await pool.release(conn)
                 

@@ -154,5 +154,10 @@ async def is_admin(ctx):
 
 async def is_mayor(ctx):
     offices = await AssetCreation.get_officeholders(ctx.bot.pg_con)
-    if ctx.author.id == offices['Mayor']:
+    if ctx.author.id == offices['Mayor_ID']:
+        return True
+
+async def is_comptroller(ctx):
+    offices = await AssetCreation.get_officeholders(ctx.bot.pg_con)
+    if ctx.author.id == offices['Comptroller_ID']:
         return True
