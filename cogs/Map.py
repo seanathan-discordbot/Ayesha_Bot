@@ -1,8 +1,8 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
-from Utilities import Checks, AssetCreation, Links
+from Utilities import Checks, AssetCreation, Links, PageSourceMaker
 
 import asyncio
 import asyncpg
@@ -18,6 +18,16 @@ class Map(commands.Cog):
 
         async def select_offices():
             async with self.client.pg_con.acquire() as conn:
+                #Give payout to the mayor and comptroller
+                current = await AssetCreation.get_officeholders(self.client.pg_con)
+                tax_revenue = await AssetCreation.get_tax_info(self.client.pg_con)
+
+                payout = int(tax_revenue['Total_Collection'] / 100)
+
+                await AssetCreation.giveGold(self.client.pg_con, payout, current['Mayor_ID'])
+                await AssetCreation.giveGold(self.client.pg_con, payout, current['Comptroller_ID'])
+
+                #Select new mayor and gravitas
                 await conn.execute("""
                                     WITH gravitas_leader AS (
                                         SELECT user_id 
@@ -40,10 +50,21 @@ class Map(commands.Cog):
                                     INSERT INTO officeholders (officeholder, office)
                                     VALUES ((SELECT user_id FROM guild_gold_leader), 'Comptroller');""")
 
+                #The comptroller bonus is NULL at the beginning of the term
+                #The bonus is edited in the db when they change it. No new records are added.
+                comptroller = await conn.fetchval("""
+                                    SELECT id 
+                                    FROM officeholders
+                                    WHERE office = 'Comptroller'
+                                    ORDER BY id DESC
+                                    LIMIT 1""")
+
+                await conn.execute('INSERT INTO comptroller_bonuses (comptroller_id) VALUES ($1)', comptroller)
+
                 await self.client.pg_con.release(conn)
 
         async def weekly_offices():
-            schedule.every().sunday.at("12:00").do(offices_func)
+            schedule.every().friday.at("22:59").do(offices_func)
             while True:
                 schedule.run_pending()
                 print(f'{date.today()}: Selecting new officeholders...')
@@ -57,7 +78,7 @@ class Map(commands.Cog):
         print('Map is ready.')
 
     #COMMANDS
-    @commands.command()
+    @commands.command(description='Display whomever holds the offices of Mayor and Comptroller this week.')
     @commands.check(Checks.is_player)
     async def offices(self, ctx):
         officeholders = await AssetCreation.get_officeholders(self.client.pg_con)
@@ -95,6 +116,59 @@ class Map(commands.Cog):
     async def tax(self, ctx):
         tax_info = await AssetCreation.get_tax_info(self.client.pg_con)
         await ctx.reply(f"The current tax rate is `{tax_info['tax_rate']}%`, set by Mayor `{tax_info['user_name']}` on `{tax_info['setdate'].date()}`\nThe mayor has collected `{tax_info['Total_Collection']}` gold so far this term.")
+
+    @commands.group(invoke_without_command=True, 
+                    case_insensitive=True, 
+                    description='See your college.')
+    @commands.check(Checks.is_comptroller)
+    async def invest(self, ctx):
+        with open(Links.tutorial, "r") as f:
+            tutorial = f.readlines()
+
+            embed1 = discord.Embed(title='Ayesha Tutorial: Invest', 
+                                   color=self.client.ayesha_blue,
+                                   description = '```invest <type : combat/sales/travel>```')
+            embed1.add_field(name='The Invest Command', value=f"{tutorial[58]}\n{tutorial[59]}\n{tutorial[60]}\n{tutorial[61]}\n{tutorial[62]}\n{tutorial[63]}")
+
+            embed2 = discord.Embed(title='Ayesha Tutorial: Invest', color=self.client.ayesha_blue)
+            embed2.add_field(name='Invest Enhance', value=f'{tutorial[66]}\n{tutorial[67]}\n{tutorial[68]}\n{tutorial[69]}')
+
+            tutorial_pages = menus.MenuPages(source=PageSourceMaker.PageMaker([embed1, embed2]), 
+                                            clear_reactions_after=True, 
+                                            delete_message_after=True)
+            await tutorial_pages.start(ctx)
+
+    @invest.command(name='set', brief = 'type: combat/sales/travel', description='Select a bonus for your guild. Effect lasts until the end of your term and cannot be changed.')
+    @commands.check(Checks.is_comptroller)
+    async def _set(self, ctx, bonus : str):
+        if bonus.lower() not in ('combat', 'sales', 'travel'):
+            return await ctx.reply('The valid bonuses are `combat`, `sales`, and `travel`.')
+
+        current_bonus = await AssetCreation.get_comptroller_bonus(self.client.pg_con)
+        if current_bonus['is_set']: #Then its already set and cannot be changed
+            return await ctx.reply('You cannot change your bonus once set.')
+
+        await AssetCreation.set_comptroller_bonus(self.client.pg_con, bonus.lower())
+        await ctx.reply(f'You gave you and your guildmates a {bonus.lower()} bonus for the rest of the week.\n`WARNING`: This cannot be changed.')
+
+    @invest.command(brief='<money : int>', description='Enhance your bonus, 100,000 a level, up to 10 levels.')
+    @commands.check(Checks.is_comptroller)
+    async def enhance(self, ctx, money : int):
+        #Check for valid input
+        if money < 0:
+            return await ctx.reply('Bruh.')
+
+        bonus_info = await AssetCreation.get_comptroller_bonus(self.client.pg_con)
+        if money > 1000000 - bonus_info['bonus_xp']:
+            return await ctx.reply(f"You only need to contribute `{1000000 - bonus_info['bonus_xp']}` more gold to max out the bonus.")
+
+        #Enhance the bonus
+        await AssetCreation.giveGold(self.client.pg_con, money*-1, ctx.author.id)
+        await AssetCreation.set_comptroller_bonus_xp(self.client.pg_con, money)
+        current_xp = bonus_info['bonus_xp'] + money
+
+        await ctx.reply(f'You enhanced your bonus. You have contributed a total of `{current_xp}` gold, which makes the bonus level {int(current_xp / 100000)}.')
+
 
 def setup(client):
     client.add_cog(Map(client))
