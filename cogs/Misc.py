@@ -255,6 +255,98 @@ class Misc(commands.Cog):
         else:
             await ctx.reply(f"Your attempt to rob a {random.choice(place)} was a {result[0]}! You ran off with `{player_gain}` gold.")
 
+    @commands.command(brief='<gravitas> <target : player>', description='Spend your gravitas to support another person. Spending gravitas will affect your target\'s gravitas by up to a similar amount.')
+    @commands.check(Checks.is_player)
+    @cooldown(1, 21600, type=BucketType.user)
+    async def influence(self, ctx, gravitas : int, target : commands.MemberConverter):
+        # Make sure targeted person is a player
+        if target.id == ctx.author.id:
+            return await ctx.reply('Patting yourself on the back might injure you more than help.')
+        if not await Checks.has_char(self.client.pg_con, target):
+            return await ctx.reply('This person does not have a character.')
+
+        if gravitas <= 0:
+            return await ctx.reply('Please use a positive amount of gravitas.')
+
+        author_gravitas = await AssetCreation.get_gravitas(self.client.pg_con, ctx.author.id)
+        if gravitas > author_gravitas:
+            return await ctx.reply(f'You only have {author_gravitas} gravitas.')
+
+        #Choose for success amount. 10% crit success, 30% success, 55% failure 5% crit failure
+        success_chance = random.randint(0,99)
+
+        if success_chance < 10: #Then crit success. .9-1.2 gravitas gained
+            gain = gravitas * random.randint(90, 120) / 100
+
+        elif success_chance < 40: #Then regular success. .5-.9 gravitas gained
+            gain = gravitas * random.randint(50, 90) / 100
+
+        elif success_chance < 95: #Then failure. 0-.5 gravitas gained
+            gain = gravitas * random.randint(0, 50) / 100
+
+        else: #Crit failure. Target loses .5-.1 of the gravitas spent.
+            gain = gravitas * random.randint(5, 10) / 100
+            target_gravitas = await AssetCreation.get_gravitas(self.client.pg_con, target.id)
+            if gain > target_gravitas:
+                gain = target_gravitas
+            gain *= -1
+
+        gain = int(gain)
+        await AssetCreation.give_gravitas(self.client.pg_con, ctx.author.id, gravitas*-1)
+        await AssetCreation.give_gravitas(self.client.pg_con, target.id, gain)
+
+        #Print output
+        if success_chance < 40:
+            await ctx.reply(f'Your attempts to assist {target.display_name} proved fruitful! They gained `{gain}` gravitas.')
+        elif success_chance < 95:
+            await ctx.reply(f'Few people listened to your support. {target.display_name} gained `{gravitas}` gravitas.')
+        else:
+            await ctx.reply(f'Your influence fell flat on its face and {target.display_name} lost `{gain*-1}` gravitas.')
+
+    @commands.command(brief='<gravitas> <target : player>', description='Spend your gravitas to defame another person. Spending gravitas will affect your target\'s gravitas by up to a similar amount.')
+    @commands.check(Checks.is_player)
+    @cooldown(1, 21600, type=BucketType.user)
+    async def insult(self, ctx, gravitas : int, target : commands.MemberConverter):
+        # Make sure targeted person is a player
+        if target.id == ctx.author.id:
+            return await ctx.reply('Self-hate is not the solution.')
+        if not await Checks.has_char(self.client.pg_con, target):
+            return await ctx.reply('This person does not have a character.')
+
+        if gravitas <= 0:
+            return await ctx.reply('Please use a positive amount of gravitas.')
+
+        author_gravitas = await AssetCreation.get_gravitas(self.client.pg_con, ctx.author.id)
+        if gravitas > author_gravitas:
+            return await ctx.reply(f'You only have {author_gravitas} gravitas.')
+
+        #Choose for success amount. 10% crit success, 30% success, 55% failure 5% crit failure
+        success_chance = random.randint(0,99)
+
+        if success_chance < 10: #Then crit success. .9-1.2 gravitas gained
+            gain = gravitas * random.randint(90, 120) / 100 * -1
+
+        elif success_chance < 40: #Then regular success. .5-.9 gravitas gained
+            gain = gravitas * random.randint(50, 90) / 100 * -1
+
+        elif success_chance < 95: #Then failure. 0-.5 gravitas gained
+            gain = gravitas * random.randint(0, 50) / 100 * -1
+
+        else: #Crit failure. Target loses .5-.1 of the gravitas spent.
+            gain = gravitas * random.randint(5, 10) / 100
+            target_gravitas = await AssetCreation.get_gravitas(self.client.pg_con, target.id)
+            if gain > target_gravitas:
+                gain = target_gravitas
+
+        gain = int(gain)
+        await AssetCreation.give_gravitas(self.client.pg_con, ctx.author.id, gravitas*-1)
+        await AssetCreation.give_gravitas(self.client.pg_con, target.id, gain)
+
+        #Print output
+        if success_chance < 95:
+            await ctx.reply(f'You shared your hate of {target.display_name} and everybody agreed. They lost `{gain*-1}` gravitas.')
+        else:
+            await ctx.reply(f'No one wants to hear your complaints. {target.display_name} gained `{gain}` gravitas as a result.')
 
 def setup(client):
     client.add_cog(Misc(client))
