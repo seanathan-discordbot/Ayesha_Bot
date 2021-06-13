@@ -192,6 +192,29 @@ async def increaseItemAttack(pool, item_id : int, increase : int):
         await conn.execute('UPDATE items SET attack = attack + $1 WHERE item_id = $2', increase, item_id)
         await pool.release(conn)
 
+async def applySaleBonuses(pool, user_id : int):
+    """Return the total bonuses a player receives from selling an item.
+    Calculates bonuses based off class, guild, and comptroller.
+    """
+    sale_bonus = 1
+    playerjob = await AssetCreation.getClass(pool, user_id)
+    if playerjob == 'Merchant':
+        sale_bonus += .5
+
+    try:
+        guild = await AssetCreation.getGuildFromPlayer(pool, user_id)
+        if guild['Type'] == 'Guild':
+            guild_level = await AssetCreation.getGuildLevel(pool, guild['ID'])
+            sale_bonus += .5 + (guild_level * .1)
+    except TypeError:
+        pass
+
+    if await AssetCreation.check_for_comptroller_bonus(pool, user_id, 'sales'):
+        comp_bonus = await AssetCreation.get_comptroller_bonus(pool)
+        sale_bonus += .04 + (.04 * comp_bonus['Level'])
+
+    return sale_bonus
+
 async def sellAllItems(pool, user_id : int, rarity : str):
     """Deletes all items of a given player and rarity. 
     Returns three integers: amount of items deleted, corresponding gold value, amount paid in taxes.
@@ -202,8 +225,13 @@ async def sellAllItems(pool, user_id : int, rarity : str):
         if amount == 0:
             await pool.release(conn)
             return 0, 0
+
+        #Consider class, guild, comptroller bonus
+        sale_bonus = await AssetCreation.applySaleBonuses(self.client.pg_con, user_id)
         
+        #Calculate taxes and perform the transaction
         subtotal = random.randint(Weaponvalues[rarity][0], Weaponvalues[rarity][1]) * amount
+        subtotal = (subtotal * sale_bonus)
         cost_info = await calc_cost_with_tax_rate(pool, subtotal)
         tax = cost_info['tax_amount']
         payout = subtotal - cost_info['tax_amount']
@@ -631,7 +659,6 @@ async def getAdventure(pool, user_id : int):
     async with pool.acquire() as conn:
         adventure = await conn.fetchrow('SELECT adventure, destination FROM players WHERE user_id = $1', user_id)
         
-
         adv = {
             'adventure' : adventure['adventure'],
             'destination' : adventure['destination']
@@ -650,13 +677,21 @@ async def getAdventure(pool, user_id : int):
             else:
                 a2 = {'Name' : None}
 
+            time_bonus = 0
             try:
                 if a1['Name'] == 'Radishes' or a2['Name'] == 'Radishes':
-                    time_diff = int(time.time() - adventure['adventure'])
-                    ten_percent_bonus = int(time_diff / 10)
-                    adv['adventure'] -= ten_percent_bonus
+                    time_diff = int(time.time() - adventure['adventure']) #The vanilla total time of expedition
+                    #Subtract the correct proportion of the time_diff from the vanilla total time, effectively lengthening it
+                    time_bonus = int(time_diff / 10) 
             except KeyError:
                 pass
+
+            #Implement the comptroller travel bonus, which is similar to Radishes
+            if await check_for_comptroller_bonus(pool, user_id, 'travel'):
+                comp_bonus = await AssetCreation.get_comptroller_bonus(self.client.pg_con)
+                time_bonus += int(time_diff * (.02 + (.02 * comp_bonus['Level'])))
+
+            adv['adventure'] -= time_bonus
 
         await pool.release(conn)
     
@@ -870,6 +905,11 @@ async def resetPlayerLevel(pool, user_id : int): #DONT USE THIS
     async with pool.acquire() as conn:
         await conn.execute('UPDATE players SET lvl = 0, xp = 0 WHERE user_id = $1', user_id)
         await pool.release(conn)
+
+async def getPlayerName(pool, user_id : int):
+    """Return the player's user name."""
+    async with pool.acquire() as conn:
+        return await conn.fetchval('SELECT user_name FROM players WHERE user_id = $1', user_id)
 
 async def setPlayerName(pool, user_id : int, name : str):
     """Sets the payer's user_name."""
@@ -1207,4 +1247,37 @@ async def set_comptroller_bonus_xp(pool, xp : int):
                             SET bonus = bonus + $1
                             WHERE id = (SELECT * FROM current_bonus);""", xp)
         await pool.release(conn)
+
+class IncorrectBonus(Exception):
+    pass
+
+async def check_for_comptroller_bonus(pool, user_id : int, bonus_type : str):
+    """Return true if this player currently benefits from a comptroller bonus.
+
+    Parameters
+    ----------
+    user_id: int
+        The ID of the player in question.
+    bonus_type: str
+        Either combat/sales/travel, depending on the context of the invocation.
+
+    Returns
+    -------
+    eligibility: bool
+        True if the user_id and bonus_type match the comptroller's requirements.
+    """
+    if bonus_type not in ['combat', 'sales', 'travel']:
+        raise IncorrectBonus
+        return
+    
+    async with pool.acquire() as conn:
+        requirements = await conn.fetchval("""SELECT bonus, guild_id FROM comptroller_bonuses 
+                                                ORDER BY id DESC LIMIT 1;""")
+
+        guild = await conn.fetchval('SELECT guild FROM players WHERE user_id = $1', user_id)
+        
+        if guild = requirements['guild_id'] and bonus_type = requirements['bonus']:
+            return True
+        else:
+            return False
                 
