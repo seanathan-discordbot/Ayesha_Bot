@@ -133,21 +133,26 @@ class Items(commands.Cog):
                 gold = random.randint(WeaponValues[i][1], WeaponValues[i][2])
                 break
 
-        #Consider class and guild bonus
-        playerjob = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
-        if playerjob == 'Merchant':
-            gold = int(gold * 1.5)
-        
-        guild_bonus = 1
-        try:
-            guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
-            if guild['Type'] == 'Guild':
-                guild_level = await AssetCreation.getGuildLevel(self.client.pg_con, guild['ID'])
-                guild_bonus = 1.5 + (guild_level * .1)
-        except TypeError:
-            pass   
+        #Consider class, guild, comptroller bonus
+        # sale_bonus = 1
+        # playerjob = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
+        # if playerjob == 'Merchant':
+        #     sale_bonus += .5
 
-        subtotal = int(gold * guild_bonus)
+        # try:
+        #     guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        #     if guild['Type'] == 'Guild':
+        #         guild_level = await AssetCreation.getGuildLevel(self.client.pg_con, guild['ID'])
+        #         sale_bonus += .5 + (guild_level * .1)
+        # except TypeError:
+        #     pass
+
+        # if await AssetCreation.check_for_comptroller_bonus(self.client.pg_con, ctx.author.id, 'sales'):
+        #     comp_bonus = await AssetCreation.get_comptroller_bonus(self.client.pg_con)
+        #     sale_bonus += .04 + (.04 * comp_bonus['Level'])
+        sale_bonus = await AssetCreation.applySaleBonuses(self.client.pg_con, ctx.author.id)
+
+        subtotal = int(gold * sale_bonus)
         cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal)
         payout = cost_info['subtotal'] - cost_info['tax_amount']
 
@@ -169,15 +174,24 @@ class Items(commands.Cog):
         errors = ''
         total = 0
 
-        #Bonuses for members of guilds
-        guild_bonus = 1
-        try:
-            guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
-            if guild['Type'] == 'Guild':
-                guild_level = await AssetCreation.getGuildLevel(self.client.pg_con, guild['ID'])
-                guild_bonus = 1.5 + (guild_level * .25)
-        except TypeError:
-            pass 
+        #Consider class, guild, comptroller bonus
+        # sale_bonus = 1
+        # playerjob = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
+        # if playerjob == 'Merchant':
+        #     sale_bonus += .5
+
+        # try:
+        #     guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        #     if guild['Type'] == 'Guild':
+        #         guild_level = await AssetCreation.getGuildLevel(self.client.pg_con, guild['ID'])
+        #         sale_bonus += .5 + (guild_level * .1)
+        # except TypeError:
+        #     pass
+
+        # if await AssetCreation.check_for_comptroller_bonus(self.client.pg_con, ctx.author.id, 'sales'):
+        #     comp_bonus = await AssetCreation.get_comptroller_bonus(self.client.pg_con)
+        #     sale_bonus += .04 + (.04 * comp_bonus['Level'])
+        sale_bonus = await AssetCreation.applySaleBonuses(self.client.pg_con, ctx.author.id)
 
         #Calculate and delete items one-by-one
         for item_id in itemlist:
@@ -205,10 +219,7 @@ class Items(commands.Cog):
             except TypeError:
                 errors = errors + f'`{item_id}` '
 
-        playerjob = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
-        if playerjob == 'Merchant':
-            total = int(total * 1.5)
-        subtotal = int(total * guild_bonus) #Apply guild bonus
+        subtotal = int(total * sale_bonus) #Apply all bonuses
         cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal)
         payout = subtotal - cost_info['tax_amount']
 

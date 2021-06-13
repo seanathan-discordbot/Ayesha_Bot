@@ -52,14 +52,16 @@ class Map(commands.Cog):
 
                 #The comptroller bonus is NULL at the beginning of the term
                 #The bonus is edited in the db when they change it. No new records are added.
-                comptroller = await conn.fetchval("""
-                                    SELECT id 
-                                    FROM officeholders
-                                    WHERE office = 'Comptroller'
-                                    ORDER BY id DESC
-                                    LIMIT 1""")
+                comptroller = await conn.fetchrow("""
+                                                    SELECT officeholders.id, players.guild
+                                                    FROM officeholders
+                                                    LEFT JOIN players
+                                                        ON officeholders.officeholder = players.user_id
+                                                    WHERE office = 'Comptroller'
+                                                    ORDER BY id DESC
+                                                    LIMIT 1""")
 
-                await conn.execute('INSERT INTO comptroller_bonuses (comptroller_id) VALUES ($1)', comptroller)
+                await conn.execute('INSERT INTO comptroller_bonuses (comptroller_id, guild_id) VALUES ($1, $2)', comptroller['id'], comptroller['guild'])
 
                 await self.client.pg_con.release(conn)
 

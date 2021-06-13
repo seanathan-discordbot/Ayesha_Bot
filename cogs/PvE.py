@@ -471,6 +471,12 @@ class PvE(commands.Cog):
             acolyte1 = await AssetCreation.getAcolyteByID(self.client.pg_con, acolyte1)
         if acolyte2 is not None:
             acolyte2 = await AssetCreation.getAcolyteByID(self.client.pg_con, acolyte2)
+
+        if await AssetCreation.check_for_comptroller_bonus(self.client.pg_con, ctx.author.id, 'combat'):
+            #See if this player is eligible for comptroller's bonus
+            comp_bonus = await AssetCreation.get_comptroller_bonus(self.client.pg_con)
+            attack += 5 + (5 * comp_bonus['Level'])
+            crit += 1 + comp_bonus['Level']
         
         if level == 5: #Sean
             attack = math.floor(attack * 1.5)
