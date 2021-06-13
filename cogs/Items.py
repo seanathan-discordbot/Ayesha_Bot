@@ -113,6 +113,46 @@ class Items(commands.Cog):
         await AssetCreation.unequipItem(self.client.pg_con, ctx.author.id)
         await ctx.reply('Unequipped your item.')
 
+    @commands.command(brief='<buffed item id> <fodder item id>',
+                      description='Merge an item into another to boost its ATK by 1. The fodder item must be of the same weapontype and have at least 15 less ATK than the buffed item. Merging items costs `10,000` gold.')
+    @commands.check(Checks.is_player)
+    async def merge(self, ctx, buff_item : int, fodder : int):
+        #Make sure player owns both items and that the fodder is NOT equipped
+        if not await AssetCreation.verifyItemOwnership(self.client.pg_con, buff_item, ctx.author.id):
+            return await ctx.reply(f'You do not own an item with ID `{buff_item}`.')
+        if not await AssetCreation.verifyItemOwnership(self.client.pg_con, fodder, ctx.author.id):
+            return await ctx.reply(f'You do not own an item with ID `{fodder}`.')
+
+        if fodder == await AssetCreation.getEquippedItem(self.client.pg_con, ctx.author.id):
+            return await ctx.reply('You cannot use your currently equipped item as fodder material.')
+
+        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, 10000)
+        if await AssetCreation.getGold(self.client.pg_con, ctx.author.id) < cost_info['total']:
+            return await ctx.reply(f"You need at least `{cost_info['total']}` gold to perform this operation.")
+
+        buff_item_info = await AssetCreation.getItem(self.client.pg_con, buff_item)
+        fodder_info = await AssetCreation.getItem(self.client.pg_con, fodder)
+
+        if fodder_info['Type'] != buff_item_info['Type']:
+            return await ctx.reply('These items must be the same weapontype to be merged.')
+
+        if fodder_info['Attack'] < buff_item_info['Attack'] - 15:
+            return await ctx.reply('The fodder item must have at least 15 less ATK than the item being upgraded.')
+
+        #Increase items stats and delete the fodder item
+        await AssetCreation.increaseItemAttack(self.client.pg_con, buff_item, 1)
+        await AssetCreation.deleteItem(self.client.pg_con, fodder)
+
+        #Perform the transaction
+        await AssetCreation.giveGold(self.client.pg_con, cost_info['total']*-1, ctx.author.id)
+        await AssetCreation.log_transaction(self.client.pg_con, 
+                                            ctx.author.id, 
+                                            cost_info['subtotal'],
+                                            cost_info['tax_amount'],
+                                            cost_info['tax_rate'])
+
+        await ctx.reply(f"You merged your `{fodder_info['Name']} ({fodder})` into `{buff_item_info['Name']} ({buff_item})`, raising its ATK to `{buff_item_info['Attack']+1}`.\nThis cost you `10,000` gold, with an additional `{cost_info['tax_amount']}` in taxes.")
+
     @commands.command(brief='<item_id : int>', description='Sell an item for a random price.')
     @commands.check(Checks.is_player)
     async def sell(self, ctx, item_id : int):
