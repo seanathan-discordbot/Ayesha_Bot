@@ -5,6 +5,7 @@ from discord.ext import commands, menus
 
 import asyncpg
 
+from datetime import datetime
 import json
 import random
 import math
@@ -515,10 +516,17 @@ async def createGuild(pool, name, guild_type, leader, icon):
         await conn.execute("UPDATE players SET guild = $1, gold = gold - 15000, guild_rank = 'Leader' WHERE user_id = $2", guild_id['guild_id'], leader)
         await pool.release(conn)
 
+async def check_last_guild_join(pool, user_id):
+    """Return time in seconds since specified player has joined any association."""
+    async with pool.acquire() as conn:
+        last_join = await conn.fetchval("SELECT join_date FROM guild_joins WHERE user_id = $1 ORDER BY id DESC LIMIT 1", user_id)
+        return datetime.now() - last_join
+
 async def joinGuild(pool, guild_id, user_id): #DOES NOT VERIFY IF THEY'RE ALREADY IN A GUILD
     """Adds a specific player to a guild."""
     async with pool.acquire() as conn:
         await conn.execute("UPDATE players SET guild = $1, guild_rank = 'Member' WHERE user_id = $2", guild_id, user_id)
+        await conn.execute("INSERT INTO guild_joins (user_id, guild_id) VALUES ($1, $2)", user_id, guild_id)
         await pool.release(conn)
 
 async def leaveGuild(pool, user_id : int): #DOES NOT VERIFY IF MEMBER LEAVING IS LEADER USE ON MEMBERS ONLYYY
