@@ -514,6 +514,10 @@ async def createGuild(pool, name, guild_type, leader, icon):
         await conn.execute('INSERT INTO guilds (guild_name, guild_type, leader_id, guild_icon) VALUES ($1, $2, $3, $4)', name, guild_type, leader, icon)
         guild_id = await conn.fetchrow('SELECT guild_id FROM guilds WHERE leader_id = $1', leader)
         await conn.execute("UPDATE players SET guild = $1, gold = gold - 15000, guild_rank = 'Leader' WHERE user_id = $2", guild_id['guild_id'], leader)
+
+        #If brotherhood, also add empty record to the champions table
+        await conn.execute('INSERT INTO brotherhood_champions(guild_id) VALUES ($1)', guild_id)
+
         await pool.release(conn)
 
 async def check_last_guild_join(pool, user_id):
@@ -533,11 +537,58 @@ async def leaveGuild(pool, user_id : int): #DOES NOT VERIFY IF MEMBER LEAVING IS
     """Removes a player from a guild."""
     async with pool.acquire() as conn:
         await conn.execute('UPDATE Players SET guild = NULL, guild_rank = NULL WHERE user_id = $1', user_id)
+
+        #If in brotherhood, remove them if they are a champion
+        await conn.execute('UPDATE brotherhood_champions SET champ1 = NULL WHERE champ1 = $1', user_id)
+        await conn.execute('UPDATE brotherhood_champions SET champ2 = NULL WHERE champ2 = $1', user_id)
+        await conn.execute('UPDATE brotherhood_champions SET champ3 = NULL WHERE champ3 = $1', user_id)
+
+        await pool.release(conn)
+
+async def insert_brotherhood_champions(pool, guild_id : int):
+    """Insert empty record for champions in a brotherhood. Use only when a record does not yet exist for a brotherhood."""
+    async with pool.acquire() as conn:
+        await conn.execute("""INSERT INTO brotherhood_champions (guild_id) VALUES ($1)""", guild_id)
+        await pool.release(conn)
+
+async def get_brotherhood_champions(pool, guild_id : int):
+    """Returns the IDs of the champions of the specified brotherhood in list form."""
+    async with pool.acquire() as conn:
+        champs = await conn.fetchrow('SELECT champ1, champ2, champ3 FROM brotherhood_champions WHERE guild_id = $1', guild_id)
+
+        if not champs:
+            await insert_brotherhood_champions(pool, guild_id)
+            return [None, None, None]
+
+        return [champs['champ1'], champs['champ2'], champs['champ3']]
+
+async def update_brotherhood_champion(pool, guild_id : int, champion_id : int, slot : int):
+    """Update the ID of a brotherhood champion. Slot must be in [1,3]."""
+    async with pool.acquire() as conn:
+        if slot == 1:
+            await conn.execute('UPDATE brotherhood_champions SET champ1 = $1 WHERE guild_id = $2', champion_id, guild_id)
+        elif slot == 2:
+            await conn.execute('UPDATE brotherhood_champions SET champ2 = $1 WHERE guild_id = $2', champion_id, guild_id)
+        elif slot == 3:
+            await conn.execute('UPDATE brotherhood_champions SET champ3 = $1 WHERE guild_id = $2', champion_id, guild_id)
+
+        await pool.release(conn)
+
+async def remove_brotherhood_champion(pool, guild_id, slot : int):
+    """Remove the champion of a specific guild's slot."""
+    async with pool.acquire() as conn:
+        if slot == 1:
+            await conn.execute('UPDATE brotherhood_champions SET champ1 = NULL WHERE guild_id = $1', guild_id)
+        elif slot == 2:
+            await conn.execute('UPDATE brotherhood_champions SET champ2 = NULL WHERE guild_id = $1', guild_id)
+        elif slot == 3:
+            await conn.execute('UPDATE brotherhood_champions SET champ3 = NULL WHERE guild_id = $1', guild_id)
+
         await pool.release(conn)
 
 async def getGuildFromPlayer(pool, user_id : int):
     """Returns a dict containing the info of the guild the specified player is in.
-    Dict: ID, Name, Type, XP, Leader, Desc, Icon, Join"""
+    Dict: ID, Name, Type, XP, Leader, Desc, Icon, Join, Base"""
     async with pool.acquire() as conn:
         guild_id = await conn.fetchval('SELECT guild FROM players WHERE user_id = $1', user_id)
         await pool.release(conn) 
@@ -546,7 +597,7 @@ async def getGuildFromPlayer(pool, user_id : int):
 
 async def getGuildByID(pool, guild_id : int):
     """Returns a dict containing the info of the specified guild.
-    Dict: ID, Name, Type, XP, Leader, Desc, Icon, Join"""
+    Dict: ID, Name, Type, XP, Leader, Desc, Icon, Join, Base"""
     async with pool.acquire() as conn:
         info = await conn.fetchrow('SELECT guild_id, guild_name, guild_type, guild_xp, leader_id, guild_desc, guild_icon, join_status, base FROM guilds WHERE guild_id = $1', guild_id)
         await pool.release(conn)
@@ -1284,8 +1335,52 @@ async def check_for_comptroller_bonus(pool, user_id : int, bonus_type : str):
 
         guild = await conn.fetchval('SELECT guild FROM players WHERE user_id = $1', user_id)
         
-        if guild = requirements['guild_id'] and bonus_type = requirements['bonus']:
+        if guild == requirements['guild_id'] and bonus_type == requirements['bonus']:
             return True
         else:
             return False
-                
+            
+class InvalidPlace(Exception):
+    pass
+
+bh_areas = ('Mythic Forest', 'Fernheim', 'Sunset Prairie', 'Thanderlans', 'Glakelys', 'Russe', 'Croire', 'Crumidia', 'Kucre')
+async def get_most_recent_area_attack(pool, area : str):
+    """Return the time of the last attack on the given area. May be None if no attacks exist.
+    Areas: Mythic Forest, Fernheim, Sunset Prairie, Thanderlans, Glakelys, Russe, Croire, Crumidia, Kucre
+    """
+    if area not in bh_areas:
+        raise InvalidPlace
+        return
+
+    async with pool.acquire() as conn:
+        return await conn.fetchval('SELECT battle_date FROM area_attacks WHERE area = $1 ORDER BY id DESC LIMIT 1', area)
+
+async def log_area_attack(pool, area : str, attacker : int, defender : int, winner : int):
+    """Log an area attack."""
+    if area not in bh_areas:
+        raise InvalidPlace
+        return
+
+    async with pool.acquire() as conn:
+        await conn.execute("""INSERT INTO area_attacks (area, attacker, defender, winner) 
+                                VALUES ($1, $2, $3, $4)""", area, attacker, defender, winner)
+        await pool.release(conn)
+
+async def get_area_controller(pool, area : str): 
+    """Return the ID of the brotherhood currently controlling an area of the map."""
+    if area not in bh_areas:
+        raise InvalidPlace
+        return 
+
+    async with pool.acquire() as conn:
+        return await conn.fetchval('SELECT owner FROM area_control WHERE area = $1 ORDER BY id DESC LIMIT 1', area)
+
+async def set_area_controller(pool, area : str, owner : int):
+    """Change the controller of an area."""
+    if area not in bh_areas:
+        raise InvalidPlace
+        return
+
+    async with pool.acquire() as conn:
+        await conn.execute('INSERT INTO area_control (area, owner) VALUES ($1, $2)', area, owner)
+        await pool.release(conn)
