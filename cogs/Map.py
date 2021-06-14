@@ -9,6 +9,8 @@ import asyncpg
 from datetime import date, datetime
 import schedule
 
+bh_areas = ('Mythic Forest', 'Fernheim', 'Sunset Prairie', 'Thanderlans', 'Glakelys', 'Russe', 'Croire', 'Crumidia', 'Kucre')
+
 class Map(commands.Cog):
     def __init__(self,client):
         self.client=client
@@ -80,6 +82,40 @@ class Map(commands.Cog):
         print('Map is ready.')
 
     #COMMANDS
+    @commands.command(description='See the map!')
+    async def map(self, ctx):
+        map_file = discord.File(Links.map_file)
+        await ctx.reply(file=map_file)
+
+    @commands.command(aliases=['te','territory'], description='See who controls the outlying areas of the `map`.')
+    async def territories(self, ctx):
+        control = []
+        for area in bh_areas:
+            guild_id = await AssetCreation.get_area_controller(self.client.pg_con, area)
+            try:
+                guild = await AssetCreation.getGuildByID(self.client.pg_con, guild_id)
+            except TypeError: #No owner
+                guild = {
+                    'Name' : None
+                }
+            
+            info = (area, guild['Name'], guild_id)
+
+            control.append(info)
+
+        embed = discord.Embed(title='Territories Controlled by a Brotherhood', 
+                              description='Brotherhoods in control of a territory get a 50% bonus to rewards from `mine`, `forage`, and `hunt` in that territory.',
+                              color=self.client.ayesha_blue)
+        embed.set_footer(text="Try 'bh info <id>' to get a closer look at these brotherhoods!")
+
+        for territory in control:
+            if territory[1] is not None:
+                embed.add_field(name=territory[0], value=f"{territory[1]} (ID: `{territory[2]}`)")
+            else:
+                embed.add_field(name=territory[0], value=f"{territory[1]}")
+
+        await ctx.reply(embed=embed)
+
     @commands.command(description='Display whomever holds the offices of Mayor and Comptroller this week.')
     @commands.check(Checks.is_player)
     async def offices(self, ctx):

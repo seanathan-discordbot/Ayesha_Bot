@@ -260,9 +260,14 @@ class Brotherhoods(commands.Cog):
             reaction = None
             readReactions = True
             while readReactions: 
-                if str(reaction) == '\u2705': #Then change base
+                if str(reaction) == '\u2705': #Then change base; also relinquish territory control if applicable
                     await message.delete()
                     await AssetCreation.giveGold(self.client.pg_con, -1000000, ctx.author.id)
+                    
+                    #Relinquish territory control if applicable
+                    if guild['ID'] == await AssetCreation.get_area_controller(self.client.pg_con, guild['Base']):
+                        await AssetCreation.set_area_controller(self.client.pg_con, guild['Base'])
+
                     await AssetCreation.set_association_base(self.client.pg_con, guild['ID'], area)
                     await ctx.reply(f"{guild['Name']} is now based in {area}!")
                     break
@@ -612,9 +617,14 @@ class Brotherhoods(commands.Cog):
         #If defender has no champions, attacker automatically wins
         attacker = await AssetCreation.get_brotherhood_champions(self.client.pg_con, guild['ID'])
         defending_guild_id = await AssetCreation.get_area_controller(self.client.pg_con, guild['Base'])
-        defending_guild = await AssetCreation.getGuildByID(self.client.pg_con, defending_guild_id)
 
         if defending_guild_id is None: #No one currently holds the area, so attacker assumes control
+            await AssetCreation.set_area_controller(self.client.pg_con, guild['Base'], guild['ID'])
+            return await ctx.reply(f"{guild['Name']} has seized control over {guild['Base']}.")
+
+        defending_guild = await AssetCreation.getGuildByID(self.client.pg_con, defending_guild_id)
+
+        if defending_guild['Base'] != guild['Base']: #then the defending guild has since moved. Give freely
             await AssetCreation.set_area_controller(self.client.pg_con, guild['Base'], guild['ID'])
             return await ctx.reply(f"{guild['Name']} has seized control over {guild['Base']}.")
 
@@ -624,7 +634,7 @@ class Brotherhoods(commands.Cog):
         defender = await AssetCreation.get_brotherhood_champions(self.client.pg_con, defending_guild_id)
 
         if attacker[0] is None and attacker[1] is None and attacker[2] is None:
-            return await ctx.reply(f'Your brotherhood has no champions. Set some with `{ctx.prefix}champion`!')
+            return await ctx.reply(f'Your brotherhood has no champions. Set some with `{ctx.prefix}bh champion`!')
         
         if defender[0] is None and defender[1] is None and defender[2] is None: #If defender has no champs, give it up
             await AssetCreation.set_area_controller(self.client.pg_con, guild['Base'], guild['ID'])

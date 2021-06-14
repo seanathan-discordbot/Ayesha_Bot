@@ -691,10 +691,5 @@ class Travel(commands.Cog):
         #Send output
         await ctx.reply(f'You worked at the local {workplace} and made `{gold}` gold.')
 
-    @commands.command(description='See the map!')
-    async def map(self, ctx):
-        map_file = discord.File(Links.map_file)
-        await ctx.reply(file=map_file)
-
 def setup(client):
     client.add_cog(Travel(client))
