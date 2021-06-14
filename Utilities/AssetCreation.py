@@ -1375,7 +1375,7 @@ async def get_area_controller(pool, area : str):
     async with pool.acquire() as conn:
         return await conn.fetchval('SELECT owner FROM area_control WHERE area = $1 ORDER BY id DESC LIMIT 1', area)
 
-async def set_area_controller(pool, area : str, owner : int):
+async def set_area_controller(pool, area : str, owner : int = None):
     """Change the controller of an area."""
     if area not in bh_areas:
         raise InvalidPlace
