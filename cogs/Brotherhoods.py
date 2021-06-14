@@ -10,6 +10,7 @@ import random
 import math
 import aiohttp
 import time
+from datetime import datetime
 
 # There will be brotherhoods, guilds, and later colleges for combat, economic, and political gain
 
@@ -27,7 +28,7 @@ class Brotherhoods(commands.Cog):
     @commands.group(aliases=['bh'], 
                     invoke_without_command=True, 
                     case_insensitive=True, 
-                    description='See your brotherhood')
+                    description=f'See your brotherhood.\nDo `brotherhood help` for more brotherhood commands.')
     @commands.check(Checks.is_player)
     @commands.check(Checks.in_brotherhood)
     async def brotherhood(self, ctx):
@@ -84,7 +85,7 @@ class Brotherhoods(commands.Cog):
             return await ctx.reply('This player is already in an association.')
 
         #See how recently they joined an association
-        last_join = await AssetCreation.check_last_guild_join(self.client.pg_con, player.id):
+        last_join = await AssetCreation.check_last_guild_join(self.client.pg_con, player.id)
         if last_join < 86400:
             cd = 86400 - last_join
             return await ctx.reply(f'Joining associations has a 24 hour cooldown. This player can join another association in `{time.strftime("%H:%M:%S", time.gmtime(cd))}`.')
@@ -230,6 +231,7 @@ class Brotherhoods(commands.Cog):
 
     @brotherhood.command(brief='<area>', description='Select an area to base your association in. The valid locations are:\n`Mythic Forest`, `Fernheim`, `Sunset Prairie`, `Thanderlans`, `Glakelys`, `Russe`, `Croire`, `Crumidia`, `Kucre`')
     @commands.check(Checks.is_player)
+    @commands.check(Checks.in_brotherhood)
     @commands.check(Checks.is_guild_leader)
     async def base(self, ctx, *, area : str):
         #Make sure input is valid.
@@ -368,7 +370,7 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.not_in_guild)
     async def join(self, ctx, guild_id : int):
         #See how recently they joined an association
-        last_join = await AssetCreation.check_last_guild_join(self.client.pg_con, ctx.author.id):
+        last_join = await AssetCreation.check_last_guild_join(self.client.pg_con, ctx.author.id)
         if last_join < 86400:
             cd = 86400 - last_join
             return await ctx.reply(f'Joining associations has a 24 hour cooldown. You can join another association in `{time.strftime("%H:%M:%S", time.gmtime(cd))}`.')
@@ -496,6 +498,219 @@ class Brotherhoods(commands.Cog):
         #Otherwise remove the targeted person from the association
         await AssetCreation.leaveGuild(self.client.pg_con, player.id)
         await ctx.reply(f'You kicked {player.display_name} from your association.')
+
+    @brotherhood.command(aliases=['champs', 'c'],
+                         description='View your brotherhood\'s champions!')
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.in_brotherhood)
+    async def champions(self, ctx):
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        champions = await AssetCreation.get_brotherhood_champions(self.client.pg_con, guild['ID'])
+
+        for i in range(0,3):
+            if champions[i] is not None:
+                name = await AssetCreation.getPlayerName(self.client.pg_con, champions[i])
+                attack, crit = await AssetCreation.getAttack(self.client.pg_con, champions[i])
+                
+                champions[i] = {
+                    'Name' : name,
+                    'ATK' : attack,
+                    'Crit' : crit
+                }
+
+        embed = discord.Embed(title=f"{guild['Name']}'s Champions",
+                              color=self.client.ayesha_blue)
+        for i, champion in enumerate(champions):
+            try:
+                embed.add_field(name=f'Champion {i+1}',
+                                value=f"Name: {champion['Name']}\nATK: {champion['ATK']}\nCrit: {champion['Crit']}")
+            except TypeError:
+                embed.add_field(name=f'Champion {i+1}',
+                                value='None')
+
+            embed.set_footer(text="If a champion is 'None', ask your officer to add one with the 'champion' command!")
+
+        await ctx.reply(embed=embed)
+
+    @brotherhood.command(brief = '<champion> <slot : 1-3>',
+                         description='Elevate one of your brotherhood members to the role of champion. Champions fight for and defend the area you control or want to take over. [OFFICER+ ONLY]')
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.in_brotherhood)
+    @commands.check(Checks.is_guild_officer)
+    async def champion(self, ctx, player : commands.MemberConverter, slot : int):
+        #Make sure this person has a char, is in the guild, and isn't already a champion
+        if slot < 1 or slot > 3:
+            return await ctx.reply('Please insert your champion into slots 1, 2, or 3.')
+
+        if not await Checks.has_char(self.client.pg_con, player):
+            return await ctx.reply('This person does not have a character.')
+        if await Checks.target_not_in_guild(self.client.pg_con, player):
+            return await ctx.reply('This person is not in your association.')
+
+        leader_guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        target_guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, player.id)
+        if leader_guild['ID'] != target_guild['ID']:
+            return await ctx.reply('This person is not in your association.')
+        
+        if player.id in await AssetCreation.get_brotherhood_champions(self.client.pg_con, leader_guild['ID']):
+            #Technically since this is here I don't have to do an UPSERT for existing brotherhoods
+            return await ctx.reply('This person is already one of your brotherhood\'s champions.')
+
+        #Otherwise update their champions to include them
+        await AssetCreation.update_brotherhood_champion(self.client.pg_con, leader_guild['ID'], player.id, slot)
+        await ctx.reply(f'`{player.display_name}` is now one of your champions. Do `{ctx.prefix}bh champions` to view your brotherhood\'s champions.')
+
+    @brotherhood.command(brief='<slot 1-3>', description='Unassign a champion from a specific slot. [OFFICER+ ONLY]')
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.in_brotherhood)
+    @commands.check(Checks.is_guild_officer)
+    async def unchampion(self, ctx, slot : int):
+        if slot < 1 or slot > 3:
+            return await ctx.reply('Slots are limited to 1, 2, and 3.')
+        
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        await AssetCreation.remove_brotherhood_champion(self.client.pg_con, guild['ID'], slot)
+
+        await ctx.reply(f'Removed the champion in slot {slot}. Use `{ctx.prefix}bh champion` to add another!')
+
+    @brotherhood.command(description='Attempt to seize control over the area your brotherhood is located in. A small tournament will begin between the champions of your brotherhood and the current rulers. The winner will take control over the area.')
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.in_brotherhood)
+    @commands.check(Checks.is_guild_officer)
+    async def attack(self, ctx):
+        def simulate_battle(player1, player2):
+            """Simulate a battle between two players based solely off ATK and Crit.
+            Each side has a small chance to land a "crit" (based off crit) and win.
+            Otherwise it will base the victor off the proportions of the attack.
+            Return the winner and loser in that order."""
+            #See if one side lands a critical hit - Highest crit possible is theoretically ~70%.
+            p1vict = player1['Crit']
+            p2vict = p1vict + player2['Crit'] #This should theoretically be <=140
+            random_crit = random.randint(0,500)
+            if random_crit < p1vict:
+                return player1, player2 #player1 wins; Winner is returned first
+            elif random_crit < p2vict:
+                return player2, player1
+            
+            #If no victory occurs, then base it off proportion of ATK
+            victory_number = random.randint(0, player1['ATK'] + player2['ATK'])
+            if victory_number < player1['ATK']:
+                return player1, player2
+            else:
+                return player2, player1
+
+        #Only one attack per area every 3 hours. Check to see if attacking is available
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        last_attack = await AssetCreation.get_most_recent_area_attack(self.client.pg_con, guild['Base'])
+
+        if last_attack is not None:
+            if (datetime.now() - last_attack).total_seconds() < 10800:
+                return await ctx.reply(f'This area has already suffered a recent attack. Please try again in `{time.strftime("%H:%M:%S", time.gmtime(10800 - (datetime.now() - last_attack).total_seconds()))}`.')
+
+        #If available, load the champions for both brotherhoods
+        #If <3 champions, recycle the first with nerfed stats
+        #If defender has no champions, attacker automatically wins
+        attacker = await AssetCreation.get_brotherhood_champions(self.client.pg_con, guild['ID'])
+        defending_guild_id = await AssetCreation.get_area_controller(self.client.pg_con, guild['Base'])
+        defending_guild = await AssetCreation.getGuildByID(self.client.pg_con, defending_guild_id)
+
+        if defending_guild_id is None: #No one currently holds the area, so attacker assumes control
+            await AssetCreation.set_area_controller(self.client.pg_con, guild['Base'], guild['ID'])
+            return await ctx.reply(f"{guild['Name']} has seized control over {guild['Base']}.")
+
+        if guild['ID'] == defending_guild_id:
+            return await ctx.reply(f"Your brotherhood is already in control of {guild['Base']}")
+
+        defender = await AssetCreation.get_brotherhood_champions(self.client.pg_con, defending_guild_id)
+
+        if attacker[0] is None and attacker[1] is None and attacker[2] is None:
+            return await ctx.reply(f'Your brotherhood has no champions. Set some with `{ctx.prefix}champion`!')
+        
+        if defender[0] is None and defender[1] is None and defender[2] is None: #If defender has no champs, give it up
+            await AssetCreation.set_area_controller(self.client.pg_con, guild['Base'], guild['ID'])
+            return await ctx.reply(f"{guild['Name']} has seized control over {guild['Base']}.")
+
+        for i in range(0,3): #Replace their IDs with a dict containing battle info
+            if attacker[i] is not None:
+                name = await AssetCreation.getPlayerName(self.client.pg_con, attacker[i])
+                attack, crit = await AssetCreation.getAttack(self.client.pg_con, attacker[i])
+                
+                attacker[i] = {
+                    'ID' : attacker[i],
+                    'Name' : name,
+                    'ATK' : attack,
+                    'Crit' : crit
+                }
+            if defender[i] is not None:
+                name = await AssetCreation.getPlayerName(self.client.pg_con, defender[i])
+                attack, crit = await AssetCreation.getAttack(self.client.pg_con, defender[i])
+                
+                defender[i] = {
+                    'ID' : defender[i],
+                    'Name' : name,
+                    'ATK' : attack,
+                    'Crit' : crit
+                }
+
+        for i in range(1,3): #Sort the teams so that the first slot is always a person (and not empty)
+            if attacker[0] is None and attacker[i] is not None:
+                attacker[0] = attacker[i]
+            if defender[0] is None and defender[i] is not None:
+                defender[0] = defender[i]
+
+        for i in range(1,3): #Now fill "None"s with the first champion. The above operation made sure the first is always a person
+            if attacker[i] is None:
+                attacker[i] = attacker[0]
+            if defender[i] is None:
+                defender[i] = defender[0]
+
+        #Now check for repeats, nerfing stats for the second or third appearance. This can probably be optimized.
+        if attacker[0]['ID'] == attacker[1]['ID']:
+            attacker[1]['ATK'] = int(attacker[1]['ATK'] * .9)
+            attacker[1]['Crit'] = int(attacker[1]['Crit'] * .9)
+
+        if attacker[0]['ID'] == attacker[2]['ID']:
+            attacker[2]['ATK'] = int(attacker[2]['ATK'] * .9)
+            attacker[2]['Crit'] = int(attacker[2]['Crit'] * .9)
+
+        if attacker[1]['ID'] == attacker[2]['ID']:
+            attacker[2]['ATK'] = int(attacker[2]['ATK'] * .9)
+            attacker[2]['Crit'] = int(attacker[2]['Crit'] * .9)
+
+        if defender[0]['ID'] == defender[1]['ID']:
+            defender[1]['ATK'] = int(defender[1]['ATK'] * .9)
+            defender[1]['Crit'] = int(defender[1]['Crit'] * .9)
+
+        if defender[0]['ID'] == defender[2]['ID']:
+            defender[2]['ATK'] = int(defender[2]['ATK'] * .9)
+            defender[2]['Crit'] = int(defender[2]['Crit'] * .9)
+
+        if defender[1]['ID'] == defender[2]['ID']:
+            defender[2]['ATK'] = int(defender[2]['ATK'] * .9)
+            defender[2]['Crit'] = int(defender[2]['Crit'] * .9)
+
+        #Conduct PvP operations between the brotherhoods to determine the winner
+        attacker_wins = 0
+        defender_wins = 0
+        battle_info = ''
+
+        for i in range(0,3):
+            winner, loser = simulate_battle(attacker[i], defender[i]) #Same from PvP.tournament
+            if attacker[i]['ID'] == winner['ID']:
+                attacker_wins += 1
+                battle_info += f"{guild['Name']}'s {attacker[i]['Name']} defeated {defending_guild['Name']}'s {defender[i]['Name']}.\n"
+            else:
+                defender_wins += 1
+                battle_info += f"{defending_guild['Name']}'s {defender[i]['Name']} defeated {guild['Name']}'s {attacker[i]['Name']}.\n"
+
+        #Log battle, change controller if applicable, return output
+        if attacker_wins > defender_wins:
+            await AssetCreation.set_area_controller(self.client.pg_con, guild['Base'], guild['ID'])
+            await AssetCreation.log_area_attack(self.client.pg_con, guild['Base'], guild['ID'], defending_guild['ID'], guild['ID'])
+            await ctx.reply(f"{battle_info}{guild['Name']} has seized control over {guild['Base']}!")
+        else:
+            await AssetCreation.log_area_attack(self.client.pg_con, guild['Base'], defending_guild['ID'], guild['ID'], defending_guild['ID'])
+            await ctx.reply(f"{battle_info}Your attack on {guild['Base']} was put down by the champions of {defending_guild['Name']}.")
 
     @brotherhood.command(description='Shows this command.')
     async def help(self, ctx):
