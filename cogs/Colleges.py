@@ -42,8 +42,8 @@ class Colleges(commands.Cog):
         embed.add_field(name='Leader', value=f"{leader.mention}")
         embed.add_field(name='Members', value=f"{members}/{capacity}")
         embed.add_field(name='Level', value=f"{level}")
-        embed.add_field(name='Base', value=f"{info['Base']}")
         embed.add_field(name='EXP Progress', value=f'{progress}')
+        embed.add_field(name='Base', value=f"{info['Base']}")
         embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.", 
                         value=f"{info['Desc']}", 
                         inline=False)
@@ -92,7 +92,7 @@ class Colleges(commands.Cog):
             return
 
         #See how recently they joined an association
-        last_join = await AssetCreation.check_last_guild_join(self.client.pg_con, player.id):
+        last_join = await AssetCreation.check_last_guild_join(self.client.pg_con, player.id)
         if last_join < 86400:
             cd = 86400 - last_join
             return await ctx.reply(f'Joining associations has a 24 hour cooldown. This player can join another association in `{time.strftime("%H:%M:%S", time.gmtime(cd))}`.')
@@ -361,7 +361,7 @@ class Colleges(commands.Cog):
     @commands.check(Checks.not_in_guild)
     async def join(self, ctx, guild_id : int):
         #See how recently they joined an association
-        last_join = await AssetCreation.check_last_guild_join(self.client.pg_con, ctx.author.id):
+        last_join = await AssetCreation.check_last_guild_join(self.client.pg_con, ctx.author.id)
         if last_join < 86400:
             cd = 86400 - last_join
             return await ctx.reply(f'Joining associations has a 24 hour cooldown. You can join another association in `{time.strftime("%H:%M:%S", time.gmtime(cd))}`.')
