@@ -73,7 +73,7 @@ class Misc(commands.Cog):
         embed=discord.Embed(title="bug reporter", url="https://github.com/seanathan-discordbot/seanathan/issues", description="If you encounter what you believe to be a bug while using our bot please report it here", color=discord.Color.red())
         await ctx.send(embed=embed)
 
-    @commands.command(pass_context=True, aliases=['cd'], description='View any cooldowns your character has.')
+    @commands.command(pass_context=True, aliases=['cd', 'cooldown'], description='View any cooldowns your character has.')
     async def cooldowns(self, ctx):
         cooldowns = []
         output = ""
@@ -168,7 +168,7 @@ class Misc(commands.Cog):
     async def leaderboard(self, ctx):
         embed = discord.Embed(title='Ayesha Help: Leaderboards', color=self.client.ayesha_blue)
         embed.set_thumbnail(url=ctx.author.avatar_url)
-        embed.add_field(name = '```leaderboard xp/pve/pvp/gold```', 
+        embed.add_field(name = '```leaderboard xp/pve/pvp/gold/gravitas```', 
             value='Invoke the leaderboard command followed by one of the options to see the top 5 players of those areas.')
         await ctx.reply(embed=embed)
 
@@ -225,6 +225,20 @@ class Misc(commands.Cog):
             output = output + f'**{player.name}#{player.discriminator}\'s** `{entry[1]}`: `{entry[2]}` battle wins.\n'
 
         embed.add_field(name='Greatest Combatants', value=output)
+
+        await ctx.reply(embed=embed)
+
+    @leaderboard.command()
+    async def gravitas(self, ctx):
+        board = await AssetCreation.getTopGravitas(self.client.pg_con)
+        embed = discord.Embed(title='AyeshaBot Leaderboards', color=self.client.ayesha_blue)
+
+        output = ''
+        for entry in board:
+            player = await self.client.fetch_user(entry[0])
+            output = output + f'**{player.name}#{player.discriminator}\'s** `{entry[1]}`: `{entry[2]}` gravitas.\n'
+
+        embed.add_field(name='Most Influential People', value=output)
 
         await ctx.reply(embed=embed)
 
