@@ -1042,6 +1042,11 @@ async def getTopPvP(pool):
 
     return board  
 
+async def getTopGravitas(pool):
+    """Returns a list of records/dicts giving the top 5 players in gravitas."""
+    async with pool.acquire() as conn:
+        return await conn.fetch("SELECT user_id, user_name, gravitas FROM players ORDER BY gravitas DESC LIMIT 5")
+
 async def getRubidics(pool, user_id : int):
     """Returns a record/dict giving the rubidics and pity info of the given player.
     Record: rubidic, pitycounter (integers)"""
@@ -1330,7 +1335,7 @@ async def check_for_comptroller_bonus(pool, user_id : int, bonus_type : str):
         return
     
     async with pool.acquire() as conn:
-        requirements = await conn.fetchval("""SELECT bonus, guild_id FROM comptroller_bonuses 
+        requirements = await conn.fetchrow("""SELECT bonus, guild_id FROM comptroller_bonuses 
                                                 ORDER BY id DESC LIMIT 1;""")
 
         guild = await conn.fetchval('SELECT guild FROM players WHERE user_id = $1', user_id)
