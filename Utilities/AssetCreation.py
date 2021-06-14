@@ -1384,3 +1384,11 @@ async def set_area_controller(pool, area : str, owner : int):
     async with pool.acquire() as conn:
         await conn.execute('INSERT INTO area_control (area, owner) VALUES ($1, $2)', area, owner)
         await pool.release(conn)
+
+async def check_for_map_control_bonus(pool, user_id : int):
+    """Return true if this player currently benefits from their brotherhood controlling a territory."""
+    async with pool.acquire() as conn:
+        player_info = await conn.fetchrow('SELECT guild, loc FROM players WHERE user_id = $1', user_id)
+        requirements = await conn.fetchval('SELECT owner FROM area_control WHERE area = $1 ORDER BY id DESC LIMIT 1', player_info['loc'])
+
+        return player_info['guild'] == requirements
