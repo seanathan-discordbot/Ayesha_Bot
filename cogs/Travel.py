@@ -390,12 +390,17 @@ class Travel(commands.Cog):
             fur = random.randint(5,10)
             bone = int(fur/1.2)
 
-        #Modify the result given player's role and weapontype
+        #Modify the result given player's role, weapontype, and brotherhood
         role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
         if role == 'Hunter':
             gold *= 2
             fur *= 2
             bone *= 2
+
+        if await AssetCreation.check_for_map_control_bonus(self.client.pg_con, ctx.author.id):
+            gold = int(gold * 1.5)
+            fur = int(fur * 1.5)
+            bone = int(bone * 1.5)
 
         item_id = await AssetCreation.getEquippedItem(self.client.pg_con, ctx.author.id)
         item_info = await AssetCreation.getItem(self.client.pg_con, item_id)
@@ -451,6 +456,11 @@ class Travel(commands.Cog):
             silver = random.randint(2,8)
 
         #Modify rewards given player's weapontype
+        if await AssetCreation.check_for_map_control_bonus(self.client.pg_con, ctx.author.id):
+            gold = int(gold * 1.5)
+            iron = int(iron * 1.5)
+            silver = int(silver * 1.5)
+
         item_id = await AssetCreation.getEquippedItem(self.client.pg_con, ctx.author.id)
         item_info = await AssetCreation.getItem(self.client.pg_con, item_id)
         if item_info['Type'] == 'Dagger':
@@ -521,6 +531,9 @@ class Travel(commands.Cog):
         role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
         if role == 'Traveler':
             amount *= 2
+
+        if await AssetCreation.check_for_map_control_bonus(self.client.pg_con, ctx.author.id):
+            amount = int(amount * 1.5)
 
         item_id = await AssetCreation.getEquippedItem(self.client.pg_con, ctx.author.id)
         item_info = await AssetCreation.getItem(self.client.pg_con, item_id)
