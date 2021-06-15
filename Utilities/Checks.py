@@ -161,3 +161,15 @@ async def is_comptroller(ctx):
     offices = await AssetCreation.get_officeholders(ctx.bot.pg_con)
     if ctx.author.id == offices['Comptroller_ID']:
         return True
+
+async def has_bank_account(ctx):
+    async with ctx.bot.pg_con.acquire() as conn:
+        account = await conn.fetchval('SELECT id FROM guild_bank_account WHERE user_id = $1', ctx.author.id)
+        if account:
+            return True
+
+async def not_has_bank_account(ctx):
+    async with ctx.bot.pg_con.acquire() as conn:
+        account = await conn.fetchval('SELECT id FROM guild_bank_account WHERE user_id = $1', ctx.author.id)
+        if not account:
+            return True

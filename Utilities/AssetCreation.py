@@ -1397,3 +1397,55 @@ async def check_for_map_control_bonus(pool, user_id : int):
         requirements = await conn.fetchval('SELECT owner FROM area_control WHERE area = $1 ORDER BY id DESC LIMIT 1', player_info['loc'])
 
         return player_info['guild'] == requirements
+
+async def get_guild_account(pool, user_id : int):
+    """Returns the account info of a guild member.
+    Optional[Dict]: id, guild_id, guild_name, user_name, account_funds, capacity
+    """
+    async with pool.acquire() as conn:
+        bank_info = await conn.fetchrow("""
+                                        SELECT guild_bank_account.user_id, 
+                                            guild_bank_account.account_funds, 
+                                            players.guild, 
+                                            players.user_name, 
+                                            guilds.guild_name,
+                                            guild_levels.guild_level
+                                        FROM guild_bank_account
+                                        LEFT JOIN players ON guild_bank_account.user_id = players.user_id
+                                        LEFT JOIN guilds ON players.guild = guilds.guild_id
+                                        LEFT JOIN guild_levels ON players.guild = guild_levels.guild_id
+                                        WHERE guild_bank_account.user_id = $1""", user_id)
+    
+        if bank_info['user_id'] is None:
+            return None
+
+        return {
+            'id' : bank_info['user_id'],
+            'guild_id' : bank_info['guild'],
+            'guild_name' : bank_info['guild_name'],
+            'user_name' : bank_info['user_name'],
+            'account_funds' : bank_info['account_funds'],
+            'capacity' : bank_info['guild_level'] * 1000000
+        }
+
+async def open_guild_account(pool, user_id : int, initial_deposit : int = 0):
+    """Opens a guild account for the specified player. Player must be in a guild."""
+    async with pool.acquire() as conn:
+        await conn.execute('INSERT INTO guild_bank_account (user_id, account_funds) VALUES ($1, $2)', user_id, initial_deposit)
+        await pool.release(conn)
+
+async def guild_bank_deposit(pool, user_id : int, deposit : int):
+    """Deposit money into an existing guild bank account."""
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE guild_bank_account SET account_funds = account_funds + $1 WHERE user_id = $2', deposit, user_id)
+        await pool.release(conn)
+
+async def close_guild_account(pool, user_id):
+    """Returns all money in a guild account to the player and deletes the record.
+    Return the amount.    
+    """
+    async with pool.acquire() as conn:
+        gold = await conn.fetchval('SELECT account_funds FROM guild_bank_account WHERE user_id = $1', user_id)
+        await conn.execute('DELETE FROM guild_bank_account WHERE user_id = $1', user_id)
+
+        return gold
