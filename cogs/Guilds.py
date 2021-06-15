@@ -72,6 +72,11 @@ class Guilds(commands.Cog):
     @commands.check(Checks.in_guild)
     @commands.check(Checks.is_not_guild_leader)
     async def leave(self, ctx):
+        bank_info = await AssetCreation.get_guild_account(self.client.pg_con, ctx.author.id)
+        if bank_info is not None:
+            gold_payment = await AssetCreation.close_guild_account(self.client.pg_con)
+            await AssetCreation.giveGold(self.client.pg_con, gold_payment, ctx.author.id)
+
         await AssetCreation.leaveGuild(self.client.pg_con, ctx.author.id)
         await ctx.reply('You left your guild.')
 
@@ -225,6 +230,86 @@ class Guilds(commands.Cog):
         #Update player's money and send output
         await AssetCreation.giveGold(self.client.pg_con, capital_gain, ctx.author.id)
         await ctx.reply(f'You invested `{capital}` gold in {project} in {location} and earned a return of `{capital_gain}` gold.')
+
+    @guild.group(aliases=['a'], invoke_without_command=True, case_insensitive=True, description='See your guild bank funds.')
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.in_guild)
+    async def account(self, ctx):
+        bank_info = await AssetCreation.get_guild_account(self.client.pg_con, ctx.author.id)
+
+        if bank_info is None:
+            return await ctx.reply('You do not have a guild bank account. Do `{ctx.prefix}guild account open` to make one!')
+
+        embed = discord.Embed(title=f"Bank of {bank_info['guild_name']}: {bank_info['user_name']}'s Account",
+                              color=self.client.ayesha_blue)
+        embed.add_field(name='Bank Balance', value=f"{bank_info['account_funds']} / {bank_info['capacity']}")
+        embed.set_footer(text='Increase your bank capacity by levelling it up.')
+
+        await ctx.reply(embed=embed)
+
+    @account.command(brief='<initial deposit = 0', description='Open a bank account with your guild! If you wish, also deposit a certain amount of money once opened.')
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.in_guild)
+    @commands.check(Checks.not_has_bank_account)
+    async def open(self, ctx, initial_deposit : int = 0):
+        #Check for invalid input
+        if initial_deposit < 0:
+            return await ctx.reply('The bank cannot complete this deposit.')
+
+        player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
+        if player_gold < initial_deposit:
+            return await ctx.reply('You cannot deposit more money than you own!')
+
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        if initial_deposit > math.floor(guild['XP'] / 1000000) * 1000000:
+            return await ctx.reply(f"The most you can store in your guild bank account is `{math.floor(guild['XP'] / 1000000) * 1000000}` gold.")
+
+        #Open the account
+        await AssetCreation.open_guild_account(self.client.pg_con, ctx.author.id, initial_deposit)
+        return await ctx.reply(f"You opened a bank account with your guild. Do `{ctx.prefix}guild account` to view it!")
+
+    @account.command(aliases=['d','save'], brief='<deposit>', description='Deposit some of your money into your guild bank account.')
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.in_guild)
+    @commands.check(Checks.has_bank_account)
+    async def deposit(self, ctx, deposit : int):
+        #Check for invalid input
+        if deposit < 0:
+            return await ctx.reply(f'Please use `{ctx.prefix}guild account withdraw` instead.')
+
+        player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
+        if player_gold < deposit:
+            return await ctx.reply('You cannot deposit more money than you own!')
+
+        bank_info = await AssetCreation.get_guild_account(self.client.pg_con, ctx.author.id)
+        if deposit > bank_info['capacity'] - bank_info['account_funds']:
+            return await ctx.reply(f"This transaction will overfill your account. Please deposit `{bank_info['capacity'] - bank_info['account_funds']}` gold at most.")
+
+        #Deposit money and give receipt
+        await AssetCreation.giveGold(self.client.pg_con, deposit*-1, ctx.author.id)
+        await AssetCreation.guild_bank_deposit(self.client.pg_con, ctx.author.id, deposit)
+
+        await ctx.reply(f"You deposited `{deposit}` gold into your guild bank account.\nYou have `{player_gold - deposit}` gold and `{bank_info['account_funds'] + deposit}` gold in your account.")
+
+    @account.command(aliases=['w','pay'], brief='<deposit>', description='Deposit some of your money into your guild bank account.')
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.in_guild)
+    @commands.check(Checks.has_bank_account)
+    async def withdraw(self, ctx, withdrawal : int):
+        #Check for invalid input
+        if withdrawal < 0:
+            return await ctx.reply(f"Please use `{ctx.prefix}guild account deposit` instead.")
+
+        bank_info = await AssetCreation.get_guild_account(self.client.pg_con, ctx.author.id)
+        if withdrawal > bank_info['account_funds']:
+            return await ctx.reply(f"You cannot withdraw that amount as you only have `{bank_info['account_funds']}` saved.")
+
+        #Withdraw money and give receipt
+        await AssetCreation.giveGold(self.client.pg_con, withdrawal, ctx.author.id)
+        await AssetCreation.guild_bank_deposit(self.client.pg_con, ctx.author.id, withdrawal*-1)
+        player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
+
+        await ctx.reply(f"You withdrew `{withdrawal}` gold from your guild bank account.\nYou have `{player_gold}` gold and `{bank_info['account_funds'] - withdrawal}` gold in your account.")
 
     @guild.command(brief='<area>', description='Select an area to base your association in. The valid locations are:\n`Aramithea`, `Riverburn`, `Thenuille`')
     @commands.check(Checks.is_player)
@@ -494,11 +579,14 @@ class Guilds(commands.Cog):
     @guild.command(description='Shows this command.')
     async def help(self, ctx):
         def write(ctx, start, entries):
-            helpEmbed = discord.Embed(title=f'Ayesha Help: Brotherhoods', description='Guilds are a financially-oriented association. Its members gain more money from selling items. They also gain access to the `invest` command.', color=self.client.ayesha_blue)
+            helpEmbed = discord.Embed(title=f'Ayesha Help: Guilds', description='Guilds are a financially-oriented association. Its members gain more money from selling items. They also gain access to the `invest` command.', color=self.client.ayesha_blue)
             helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
             
             iteration = 0
             while start < len(entries) and iteration < 5: #Will loop until 5 entries are processed or there's nothing left in the queue
+                if entries[start].parent.name == 'account': #Account subcommand needs to list 'account' parent as well
+                    entries[start].name = f'account {entries[start].name}'
+                
                 if entries[start].brief and entries[start].aliases:
                     helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', 
                                         value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', 
@@ -521,7 +609,7 @@ class Guilds(commands.Cog):
             return helpEmbed
 
         cmds, embeds = [], []
-        for command in self.client.get_command('brotherhood').walk_commands():
+        for command in self.client.get_command('guild').walk_commands():
             cmds.append(command)
         for i in range(0, len(cmds), 5):
             embeds.append(write(ctx, i, cmds))
