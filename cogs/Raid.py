@@ -39,7 +39,7 @@ class Raid(commands.Cog):
     #COMMANDS
     @commands.group(invoke_without_command=True, 
                     case_insensitive=True, 
-                    description='See the current raid info. Do `raid help` to see more raid commands.')
+                    description='See the current raid info. Do `raid attack` to join any active raid.')
     @commands.check(Checks.is_player)
     async def raid(self, ctx):
         if self.raid_info['Active']:
