@@ -1440,7 +1440,7 @@ async def guild_bank_deposit(pool, user_id : int, deposit : int):
         await conn.execute('UPDATE guild_bank_account SET account_funds = account_funds + $1 WHERE user_id = $2', deposit, user_id)
         await pool.release(conn)
 
-async def close_guild_account(pool, user_id):
+async def close_guild_account(pool, user_id : int):
     """Returns all money in a guild account to the player and deletes the record.
     Return the amount.    
     """
@@ -1449,3 +1449,19 @@ async def close_guild_account(pool, user_id):
         await conn.execute('DELETE FROM guild_bank_account WHERE user_id = $1', user_id)
 
         return gold
+
+async def log_raid_attack(pool, user_id : int, attack : int):
+    """Log a player's raid attack in the database."""
+    async with pool.acquire() as conn:
+        await conn.execute('INSERT INTO raid_logs (user_id, attack_damage) VALUES ($1, $2)', user_id, attack)
+        await pool.release(conn)
+
+async def clear_raid_attacks(pool):
+    """Clears all records from raid_logs. For use at beginning/end of raid."""
+    async with pool.acquire() as conn:
+        raid_info = await conn.fetch('SELECT user_id, SUM(attack_damage) FROM raid_logs GROUP BY user_id')
+
+        for player in raid_info:
+            await conn.execute('UPDATE players SET gold = gold + $1 WHERE user_id = $2', player['sum'], player['user_id'])
+
+        await conn.execute('DELETE FROM raid_logs')
