@@ -168,18 +168,38 @@ class PvP(commands.Cog):
             if player1_crit == 'Crit':
                 try:
                     if player1['Acolyte1']['Name'] == 'Ayesha' or player1['Acolyte2']['Name'] == 'Ayesha':
-                        player1['HP'] += 35 + int(player1['Attack'] * .3)
+                        player1['HP'] += int(player1['Attack'] * .2)
                 except TypeError:
                     pass
             if player2_crit == 'Crit':
                 try:
                     if player2['Acolyte1']['Name'] == 'Ayesha' or player2['Acolyte2']['Name'] == 'Ayesha':
-                        player2['HP'] += 35 + int(player2['HP'] * .3)
+                        player2['HP'] += int(player2['Attack'] * .2)
                 except TypeError:
                     pass
 
             player1['HP'] -= int(player2_dealt * player1_taken)
             player2['HP'] -= int(player1_dealt * player2_taken)
+
+            #Add Ajar's Effect
+            try:
+                if player1['Acolyte1']['Name'] == 'Ajar' or player1['Acolyte2']['Name'] == 'Ajar':
+                    player1['Attack'] += 20
+                    player1['HP'] -= 50
+                if player2['Acolyte1']['Name'] == 'Ajar' or player2['Acolyte2']['Name'] == 'Ajar':
+                    player2['Attack'] += 20
+                    player2['HP'] -= 50
+            except TypeError:
+                pass
+
+            if len(battle_turns) == 4: #Add Onion's Effect
+                try:
+                    if player1['Acolyte1']['Name'] == 'Onion' or player1['Acolyte2']['Name'] == 'Onion':
+                        player1['Crit'] *= 2
+                    if player2['Acolyte1']['Name'] == 'Onion' or player2['Acolyte2']['Name'] == 'Onion':
+                        player2['Crit'] *= 2
+                except TypeError:
+                    pass    
 
             #Output information
             if player1_crit == 'Crit' and player2_crit =='Crit':

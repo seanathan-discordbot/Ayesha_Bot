@@ -68,6 +68,50 @@ class Profile(commands.Cog):
                                         gravitas = gravitas + 1 WHERE origin = 'Mythic Forest'
                                             OR origin = 'Lunaris'
                                             OR origin = 'Crumidia';""")
+                # 2 for Ajar + Duchess users
+                await conn.execute("""
+                                    WITH ajar_users AS(
+                                        WITH acolyte_1 AS (
+                                            SELECT players.user_id, players.user_name, acolytes.acolyte_name
+                                            FROM players
+                                            INNER JOIN acolytes ON players.acolyte1 = acolytes.instance_id
+                                            WHERE acolytes.acolyte_name = 'Ajar'
+                                        ),
+                                        acolyte_2 AS (
+                                            SELECT players.user_id, players.user_name, acolytes.acolyte_name
+                                            FROM players
+                                            INNER JOIN acolytes ON players.acolyte2 = acolytes.instance_id
+                                            WHERE acolytes.acolyte_name = 'Ajar'
+                                        )
+                                        SELECT * FROM acolyte_1
+                                        UNION
+                                        SELECT * FROM acolyte_2
+                                    )
+                                    UPDATE players
+                                    SET gravitas = gravitas + 2
+                                    WHERE user_id IN (SELECT user_id FROM ajar_users)""")
+                await conn.execute("""
+                                    WITH duchess_users AS(
+                                        WITH acolyte_1 AS (
+                                            SELECT players.user_id, players.user_name, acolytes.acolyte_name
+                                            FROM players
+                                            INNER JOIN acolytes ON players.acolyte1 = acolytes.instance_id
+                                            WHERE acolytes.acolyte_name = 'Duchess'
+                                        ),
+                                        acolyte_2 AS (
+                                            SELECT players.user_id, players.user_name, acolytes.acolyte_name
+                                            FROM players
+                                            INNER JOIN acolytes ON players.acolyte2 = acolytes.instance_id
+                                            WHERE acolytes.acolyte_name = 'Duchess'
+                                        )
+                                        SELECT * FROM acolyte_1
+                                        UNION
+                                        SELECT * FROM acolyte_2
+                                    )
+                                    UPDATE players
+                                    SET gravitas = gravitas + 2
+                                    WHERE user_id IN (SELECT user_id FROM duchess_users)""")
+
                 # 7 for college members
                 await conn.execute("""
                                     WITH colleges AS (

@@ -66,7 +66,7 @@ location_dict = {
     'Crumidia' : {
         'Biome' : 'Hills', 
         'CD' : 10800,
-        'Drops' : 'You can `mine` and `forage` here for `iron`.'
+        'Drops' : 'You can `mine` and `forage` here for `iron` and `silver`.'
         },
     'Kucre' : {
         'Biome' : 'Jungle', 

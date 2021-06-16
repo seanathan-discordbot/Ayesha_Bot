@@ -344,6 +344,8 @@ class PvE(commands.Cog):
         try:
             if acolyte1['Name'] == 'Sean' or acolyte2['Name'] == 'Sean':
                 xp = math.floor(xp * 1.1)
+            if acolyte1['Name'] == 'Spartacus' or acolyte2['Name'] == 'Spartacus':
+                gold += 200
         except TypeError:
             pass
         acolyte_xp = math.ceil(xp / 10)
@@ -522,7 +524,7 @@ class PvE(commands.Cog):
                 if is_crit == 'Crit': #Implement Ayesha
                     try:
                         if acolyte1['Name'] == 'Ayesha' or acolyte2['Name'] == 'Ayesha':
-                            hp += 35 + int(attack * .3)
+                            hp += int(attack * .2)
                     except TypeError:
                         pass
 
@@ -624,7 +626,7 @@ class PvE(commands.Cog):
                 if is_crit == 'Crit': #Implement Ayesha
                     try:
                         if acolyte1['Name'] == 'Ayesha' or acolyte2['Name'] == 'Ayesha':
-                            hp += 35 + int(attack * .2)
+                            hp += int(attack * .2)
                     except TypeError:
                         pass
 
@@ -721,6 +723,14 @@ class PvE(commands.Cog):
                                    value=f"You bided your time and boosted your attack. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", 
                                    inline=False)
                 await message.edit(embed=embed)
+
+            #Add Ajar's Effect
+            try:
+                if acolyte1['Name'] == 'Ajar' or acolyte2['Name'] == 'Ajar':
+                    attack += 20
+                    hp -= 50
+                except TypeError:
+                    pass
 
             if turnCounter == 4: #Add Onion's Effect
                 try:
