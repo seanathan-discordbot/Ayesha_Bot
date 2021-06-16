@@ -26,7 +26,7 @@ class Colleges(commands.Cog):
     @commands.group(aliases=['cl'], 
                     invoke_without_command=True, 
                     case_insensitive=True, 
-                    description='See your college.')
+                    description='See your college. Do `college help` to see more college commands.')
     @commands.check(Checks.is_player)
     @commands.check(Checks.in_college)
     async def college(self, ctx):

@@ -620,12 +620,14 @@ class Brotherhoods(commands.Cog):
 
         if defending_guild_id is None: #No one currently holds the area, so attacker assumes control
             await AssetCreation.set_area_controller(self.client.pg_con, guild['Base'], guild['ID'])
+            await self.client.announcement_channel.send(f"**{guild['Name']} (ID: `{guild['ID']}`)** has seized control over {guild['Base']}.")
             return await ctx.reply(f"{guild['Name']} has seized control over {guild['Base']}.")
 
         defending_guild = await AssetCreation.getGuildByID(self.client.pg_con, defending_guild_id)
 
         if defending_guild['Base'] != guild['Base']: #then the defending guild has since moved. Give freely
             await AssetCreation.set_area_controller(self.client.pg_con, guild['Base'], guild['ID'])
+            await self.client.announcement_channel.send(f"**{guild['Name']} (ID: `{guild['ID']}`)** has seized control over {guild['Base']}.")
             return await ctx.reply(f"{guild['Name']} has seized control over {guild['Base']}.")
 
         if guild['ID'] == defending_guild_id:
@@ -638,6 +640,7 @@ class Brotherhoods(commands.Cog):
         
         if defender[0] is None and defender[1] is None and defender[2] is None: #If defender has no champs, give it up
             await AssetCreation.set_area_controller(self.client.pg_con, guild['Base'], guild['ID'])
+            await self.client.announcement_channel.send(f"**{guild['Name']} (ID: `{guild['ID']}`)** has seized control over {guild['Base']}.")
             return await ctx.reply(f"{guild['Name']} has seized control over {guild['Base']}.")
 
         for i in range(0,3): #Replace their IDs with a dict containing battle info
@@ -717,6 +720,7 @@ class Brotherhoods(commands.Cog):
         if attacker_wins > defender_wins:
             await AssetCreation.set_area_controller(self.client.pg_con, guild['Base'], guild['ID'])
             await AssetCreation.log_area_attack(self.client.pg_con, guild['Base'], guild['ID'], defending_guild['ID'], guild['ID'])
+            await self.client.announcement_channel.send(f"**{guild['Name']} (ID: `{guild['ID']}`)** has defeated **{defending_guild['Name']}**, seizing control over {guild['Base']}.")
             await ctx.reply(f"{battle_info}{guild['Name']} has seized control over {guild['Base']}!")
         else:
             await AssetCreation.log_area_attack(self.client.pg_con, guild['Base'], defending_guild['ID'], guild['ID'], defending_guild['ID'])
