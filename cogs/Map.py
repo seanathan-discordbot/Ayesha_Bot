@@ -65,6 +65,13 @@ class Map(commands.Cog):
 
                 await conn.execute('INSERT INTO comptroller_bonuses (comptroller_id, guild_id) VALUES ($1, $2)', comptroller['id'], comptroller['guild'])
 
+                #Announce the new leaders
+                new = await AssetCreation.get_officeholders(self.client.pg_con)
+                new_mayor = await self.client.fetch_user(new['Mayor_ID'])
+                new_comp = await self.client.fetch_user(new['Comptroller_ID'])
+
+                await self.client.announcement_channel.send(f'Congratulations to {new_mayor.mention} and {new_comp.mention} for being elected this week\'s mayor and comptroller!')
+                
                 await self.client.pg_con.release(conn)
 
         async def weekly_offices():

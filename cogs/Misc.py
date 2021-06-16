@@ -362,5 +362,9 @@ class Misc(commands.Cog):
         else:
             await ctx.reply(f'No one wants to hear your complaints. {target.display_name} gained `{gain}` gravitas as a result.')
 
+    @commands.command(description='Oof.')
+    async def pain(self, ctx):
+        await ctx.reply('Pain.')
+
 def setup(client):
     client.add_cog(Misc(client))

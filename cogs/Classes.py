@@ -9,7 +9,7 @@ from Utilities import Checks, AssetCreation, PageSourceMaker
 occupations = {
     'Soldier' : 'You are a retainer of a local lord, trained in the discipline of swordsmanship.\nYour base character ATK is boosted by 20% and you get a bonus 10 ATK.',
     'Blacksmith' : 'You\'ve spent years as the apprentice of a hardy blacksmith, and now a master in the art of forging.\nYour weapon ATK is boosted by 10% and you get a bonus 10 ATK.',
-    'Farmer' : 'You are a lowly farmer, but farming is no easy job.\nYou gain increased resources from labor commands.',
+    'Farmer' : 'You are a lowly farmer, but farming is no easy job.\nYou gain extra gravitas every day.',
     'Hunter' : 'The wild is your domain; no game unconquerable.\nYou gain double rewards from hunting.',
     'Merchant' : 'Screw you, exploiter of others\' labor.\nYou gain 50% increased income from selling items.',
     'Traveler' : 'The wild forests up north await, as do the raging seas to the south. What will you discover?\nYou gain triple gold from travel and double rewards from foraging.',
