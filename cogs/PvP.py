@@ -55,7 +55,7 @@ class PvP(commands.Cog):
     def checkCrit(self, crit, damage, attack, acolyte1, acolyte2):
         is_crit = random.choices(['Normal', 'Crit'], [100-crit, crit])
         if is_crit[0] == 'Crit':
-            damage *= 2
+            damage = int(damage * 1.5)
 
             try:
                 if acolyte1['Name'] == 'Aulus' or acolyte2['Name'] == 'Aulus': #Aulus gives crit bonuses

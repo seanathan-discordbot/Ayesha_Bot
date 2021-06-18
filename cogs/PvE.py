@@ -151,7 +151,7 @@ bounty_levels = {
         'LowATK' : 450,
         'HighATK' : 700,
         'LowHP' : 1300,
-        'HighHP' : 1350,
+        'HighHP' : 1450,
         'Effect' : 'Players take 80% reduced damage instead of 50% when parrying this boss\' attacks.',
         'Image' : None
     },
@@ -159,8 +159,8 @@ bounty_levels = {
         'Name' : 'John', 
         'LowATK' : 295,
         'HighATK' : 310,
-        'LowHP' : 1200,
-        'HighHP' : 1400,
+        'LowHP' : 1300,
+        'HighHP' : 1450,
         'Effect' : None,
         'Image' : 'https://i.imgur.com/XFIlLi0.png'
     },
@@ -168,8 +168,8 @@ bounty_levels = {
         'Name' : 'Osprey Imperial Assassin', 
         'LowATK' : 305,
         'HighATK' : 325,
-        'LowHP' : 1300,
-        'HighHP' : 1450,
+        'LowHP' : 1400,
+        'HighHP' : 1600,
         'Effect' : None,
         'Image' : None
     },
@@ -178,7 +178,7 @@ bounty_levels = {
         'LowATK' : 325,
         'HighATK' : 350,
         'LowHP' : 1400,
-        'HighHP' : 1450,
+        'HighHP' : 1750,
         'Effect' : 'Aruitenio never misses. He attacks every turn.',
         'Image' : None
     },
@@ -187,7 +187,7 @@ bounty_levels = {
         'LowATK' : 340,
         'HighATK' : 360,
         'LowHP' : 1500,
-        'HighHP' : 1500,
+        'HighHP' : 2000,
         'Effect' : None,
         'Image' : None
     },
@@ -195,8 +195,8 @@ bounty_levels = {
         'Name' : 'Lucius Porcius Magnus Dux', #SPECIAL: ENEMY HEALS 50 HP INSTEAD OF TAKING DAMAGE IF CRIT
         'LowATK' : 360,
         'HighATK' : 375,
-        'LowHP' : 1400,
-        'HighHP' : 1600,
+        'LowHP' : 1750,
+        'HighHP' : 2250,
         'Effect' : 'L. Porcius Magnus heals 50 HP instead of taking damage when struck by a critical strike.',
         'Image' : None
     },
@@ -204,17 +204,17 @@ bounty_levels = {
         'Name' : 'Laidirix', #SPECIAL: REFLECTS 5% OF DAMAGE TAKEN
         'LowATK' : 375,
         'HighATK' : 395,
-        'LowHP' : 1500,
-        'HighHP' : 2000,
+        'LowHP' : 2000,
+        'HighHP' : 2500,
         'Effect' : 'Laidirix reflects 5% of all damage taken.',
         'Image' : None
     },
     23 : {
         'Name' : 'Sanguirix', #SPECIAL: DOUBLE ATTACK AT TURN 0
-        'LowATK' : 400,
-        'HighATK' : 420,
-        'LowHP' : 1750,
-        'HighHP' : 2000,
+        'LowATK' : 420,
+        'HighATK' : 460,
+        'LowHP' : 2000,
+        'HighHP' : 2500,
         'Effect' : 'Sanguirix attacks twice at the beginning of the fight if you damage him.',
         'Image' : None
     },
@@ -222,17 +222,17 @@ bounty_levels = {
         'Name' : 'Supreme Duck', 
         'LowATK' : 480,
         'HighATK' : 550,
-        'LowHP' : 2300,
-        'HighHP' : 2500,
+        'LowHP' : 2700,
+        'HighHP' : 3200,
         'Effect' : None,
         'Image' : 'https://i.imgur.com/hPFZte9.png'
     },
     25 : {
         'Name' : 'Draconicus Rex', #SPECIAL: HEALS 100 HP EVERY TURN
         'LowATK' : 500,
-        'HighATK' : 520,
-        'LowHP' : 3000,
-        'HighHP' : 3000,
+        'HighATK' : 550,
+        'LowHP' : 4000,
+        'HighHP' : 4500,
         'Effect' : 'The Draconicus Rex heals 100 HP every turn.',
         'Image' : None
     },
@@ -416,7 +416,7 @@ class PvE(commands.Cog):
                 damage = 0
                 enemyhp += 50
             else:
-                damage = damage * 2
+                damage = int(damage * 1.5)
 
             try:
                 if acolyte1['Name'] == 'Aulus' or acolyte2['Name'] == 'Aulus': #Aulus gives crit bonuses
@@ -729,8 +729,8 @@ class PvE(commands.Cog):
                 if acolyte1['Name'] == 'Ajar' or acolyte2['Name'] == 'Ajar':
                     attack += 20
                     hp -= 50
-                except TypeError:
-                    pass
+            except TypeError:
+                pass
 
             if turnCounter == 4: #Add Onion's Effect
                 try:
