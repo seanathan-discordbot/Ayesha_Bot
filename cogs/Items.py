@@ -329,6 +329,12 @@ class Items(commands.Cog):
         while readReactions: 
             if str(reaction) == '\u2705': #Then exchange stuff
                 await message.delete()
+
+                #Repeat this just in case they did a simultaneous reaction
+                gold = await AssetCreation.getGold(self.client.pg_con, player.id)
+                if price >= gold:
+                    return await ctx.reply('The buyer has since lost money and is no longer able to afford your offer.')
+
                 await AssetCreation.setItemOwner(self.client.pg_con, item_id, player.id)
                 await AssetCreation.giveGold(self.client.pg_con, price, ctx.author.id)
                 await AssetCreation.giveGold(self.client.pg_con, 0 - price, player.id)
