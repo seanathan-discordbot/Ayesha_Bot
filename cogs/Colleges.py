@@ -110,7 +110,7 @@ class Colleges(commands.Cog):
         await message.add_reaction('\u274E') #X
 
         def check(reaction, user):
-            return user == player
+            return user == player and reaction.message.id == message.id
 
         reaction = None
         readReactions = True
@@ -250,7 +250,7 @@ class Colleges(commands.Cog):
             await message.add_reaction('\u274E') #X
 
             def check(reaction, user):
-                return user == ctx.author
+                return user == ctx.author and reaction.message.id == message.id
 
             reaction = None
             readReactions = True

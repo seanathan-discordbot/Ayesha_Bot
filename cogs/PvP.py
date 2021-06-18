@@ -93,7 +93,7 @@ class PvP(commands.Cog):
         await message.add_reaction('\u274E') #X
 
         def check(reaction, user):
-            return user == opponent
+            return user == opponent and reaction.message.id == message.id
 
         reaction = None
         readReactions = True

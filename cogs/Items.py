@@ -322,7 +322,7 @@ class Items(commands.Cog):
         await message.add_reaction('\u274E') #X
 
         def check(reaction, user):
-            return user == player
+            return user == player and reaction.message.id == message.id
 
         reaction = None
         readReactions = True
@@ -347,7 +347,7 @@ class Items(commands.Cog):
                 await message.delete()
                 await ctx.send('They did not respond to your offer.')
     
-    @commands.command()
+    @commands.command(brief='<item ID> <new name>', description='Name your weapon anything you want!')
     @commands.check(Checks.is_player)
     async def weaponname(self, ctx, item_id : int, *, weaponname : str):
         if len(weaponname) > 20:
