@@ -352,6 +352,31 @@ class Items(commands.Cog):
                 readReactions = not readReactions
                 await message.delete()
                 await ctx.send('They did not respond to your offer.')
+
+    @commands.command(brief='<gold> <player>', description='Give some gold to the target player.')
+    @commands.check(Checks.is_player)
+    async def give(self, ctx, gold : int, player : commands.MemberConverter):
+        #Make sure second player is also a player
+        if player.id == ctx.author.id:
+            await ctx.reply('Dude...no.')
+            return
+        if not await Checks.has_char(self.client.pg_con, player):
+            await ctx.reply('This person does not have a character.')
+            return
+
+        #Make sure this person actually has gold
+        if gold < 0:
+            return await ctx.reply('That is impossible.')
+
+        player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
+        if gold > player_gold:
+            return await ctx.reply('You don\'t have that much gold to give away.')
+
+        #Perform transaction
+        await AssetCreation.giveGold(self.client.pg_con, gold * -1, ctx.author.id)
+        await AssetCreation.giveGold(self.client.pg_con, gold, player.id)
+
+        await ctx.reply(f'Gave `{gold}` gold to {player.display_name}. You now have `{player_gold - gold}` gold.')
     
     @commands.command(brief='<item ID> <new name>', description='Name your weapon anything you want!')
     @commands.check(Checks.is_player)
