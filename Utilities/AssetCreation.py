@@ -1456,6 +1456,11 @@ async def log_raid_attack(pool, user_id : int, attack : int):
         await conn.execute('INSERT INTO raid_logs (user_id, attack_damage) VALUES ($1, $2)', user_id, attack)
         await pool.release(conn)
 
+async def get_player_raid_damage(pool, user_id : int):
+    """Return a player's total damage for this raid."""
+    async with pool.acquire() as conn:
+        return await conn.fetchval('SELECT SUM(attack_damage) FROM raid_logs WHERE user_id = $1', user_id)
+
 async def clear_raid_attacks(pool):
     """Clears all records from raid_logs. For use at beginning/end of raid."""
     async with pool.acquire() as conn:
