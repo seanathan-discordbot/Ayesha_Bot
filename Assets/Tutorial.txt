@@ -54,3 +54,17 @@ What if you don't want to block in a level? Or what if you only want to attack? 
 If you want to use a command more, assign it a higher weighting; less, give it a smaller number. What if you only want to attack? Do `strategy 1 0 0 0 0`. This sets the attack weight to 1, and the rest to 0. What if you want to parry a lot, and not so much the rest? Do `strategy 5 5 10 5 5`, setting the chance to parry to be double the chance of any other reaction. You could even use big numbers, like `strategy 35 288 16 45 8`, to show all the possibilities of the command.
 After setting your strategy, I will convert it to percentages. You put `strategy 1 1 1 1 1`? That means each action has a 20% chance of occuring. 
 The default settings are 60% attack, 15% block, 15% parry, 5% heal, and 5% bide. Try different strategies against each of the bosses!
+
+-- INVEST TUTORIAL -- [58, 63]
+The comptroller is selected every week as the richest person in all of Aramithea. The main tool at their disposal is the `invest` command, which is split into `invest set` and `invest upgrade`.
+At the beginning of their term, the comptroller should use `invest set <type>` as soon as possible. They have three choices for 'type':
+`combat` : 5 ATK, 1 CRIT when fighting bounties
+`sales`: 4% more earnings from the `sell` command
+`travel`: 2% faster expedition speed
+This effect cannot be changed once selected, and affects only the Comptroller and his guild members. This effect lasts the entire week until the Comptroller's term ends, when it is reset. This bonus resets even if the same person is elected Comptroller for a consecutive term.
+
+--INVEST TUTORIAL (2) -- [66, 69]
+During this term, the Comptroller has the opportunity to use `invest enhance <money>` to strengthen the effect. For every `100,000` gold they invest, the effect gains a level, up to 10 levels, and `1,000,000` gold. These bonuses are:
+`combat`: +5 ATK, +1 CRIT per level
+`sales`: +4% more sales bonus per level
+`travel`: +2% to expedition speed per level>
