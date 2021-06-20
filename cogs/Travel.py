@@ -250,8 +250,8 @@ class Travel(commands.Cog):
         #Make sure they're not on an adventure or traveling
         adventure = await AssetCreation.getAdventure(self.client.pg_con, ctx.author.id)
         if adventure['adventure'] is not None:
-            await ctx.reply('You are currently traveling. Please wait until you arrive at your destination before traveling again.')
-            return
+            ctx.command.reset_cooldown(ctx)
+            return await ctx.reply('You are currently traveling. Please wait until you arrive at your destination before traveling again.')
 
         #Tell database they're going on an expedition
         await AssetCreation.setAdventure(self.client.pg_con, int(time.time()), "EXPEDITION", ctx.author.id)

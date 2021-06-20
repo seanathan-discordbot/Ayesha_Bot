@@ -75,6 +75,7 @@ class Raid(commands.Cog):
     @cooldown(1, 900, BucketType.user) #15 minute cooldown
     async def attack(self, ctx):
         if not self.raid_info['Active']:
+            ctx.command.reset_cooldown(ctx)
             return await ctx.reply(f'No raid is currently being fought. Wait for one to start in {self.client.announcement_channel.mention}!')
 
         attack, crit = await AssetCreation.getAttack(self.client.pg_con, ctx.author.id)
@@ -82,10 +83,12 @@ class Raid(commands.Cog):
         if random.randint(1,100) > crit:
             attack *= 2
 
-        damage = random.randint(0, attack + 10)
+        damage = random.randint(int(attack / 2), int(attack * 1.25))
         self.raid_info['HP'] -= damage
         await AssetCreation.log_raid_attack(self.client.pg_con, ctx.author.id, damage)
+        total_damage = await AssetCreation.get_player_raid_damage(self.client.pg_con, ctx.author.id)
         await ctx.reply(f"Your attack dealt {damage} damage to the {self.raid_info['Enemy']}.")
+        await self.client.announcement_channel.send(f"{ctx.author.mention} dealt **{damage}** damage to the **{self.raid_info['Enemy']}**, for a total of **{total_damage}** this campaign!")
 
         if self.raid_info['HP'] < 0:
             self.raid_info['HP'] = 999999 #Just in case of concurrency issues

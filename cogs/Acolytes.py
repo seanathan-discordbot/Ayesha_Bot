@@ -194,6 +194,29 @@ class Acolytes(commands.Cog):
 
         await ctx.reply(embed=embed)
 
+    @commands.command(aliases=['al'], description='See a list of all acolytes attainable ingame.')
+    async def acolytelist(self, ctx):
+        with open(Links.acolyte_list, "r") as f:
+            info = json.load(f)
+
+        acolyte_embeds = []
+        for acolyte in info:
+            embed = discord.Embed(title=f"{info[acolyte]['Name']}", color=self.client.ayesha_blue)
+            if info[acolyte]['Image'] is not None:
+                embed.set_thumbnail(url=info[acolyte]['Image']) 
+            embed.add_field(name="Backstory", value=f"{info[acolyte]['Story']}")
+            embed.add_field(name='Effect', value=f"{info[acolyte]['Effect']}", inline=False)
+            embed.add_field(name="Stats", 
+                            value=f"Attack: {info[acolyte]['Attack']} + {info[acolyte]['Scale']}/lvl\nCrit: {info[acolyte]['Crit']}\nHP: {info[acolyte]['HP']}")
+            embed.add_field(name="Details", 
+                            value=f"Rarity: {info[acolyte]['Rarity']}\u2B50\nUpgrade Material: {info[acolyte]['Mat'].title()}")
+            acolyte_embeds.append(embed)
+
+        acolist = menus.MenuPages(source=PageSourceMaker.PageMaker(acolyte_embeds), 
+                                 clear_reactions_after=True, 
+                                 delete_message_after=True)
+        await acolist.start(ctx)
+
     @commands.command(brief='<acolyte ID>', description='Check your acolyte\'s xp and level.')
     @commands.check(Checks.is_player)
     async def acolytexp(self, ctx, instance_id : int):
