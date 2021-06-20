@@ -290,11 +290,19 @@ class Brotherhoods(commands.Cog):
 
     @brotherhood.command(aliases=['guildinfo', 'bhinfo'], brief='<guild ID>', 
                          description='See info on another guild based on their ID')
-    async def info(self, ctx, guild_id : int):
-        try:
-            info = await AssetCreation.getGuildByID(self.client.pg_con, guild_id)
-        except TypeError:
-            return await ctx.reply('No association has that ID.')
+    async def info(self, ctx, *, source : str):
+        if source.lower().startswith("id:"):
+            try:
+                info = await AssetCreation.getGuildByID(self.client.pg_con, int(source[3:]))
+                if info is None:
+                    return await ctx.reply('There is no association with that ID.')
+            except (ValueError, TypeError):
+                return await ctx.reply('That is an invalid ID number.')
+        else:
+            try:
+                info = await AssetCreation.getGuildByName(self.client.pg_con, source)
+            except TypeError:
+                return await ctx.reply('No association goes by that name.')
 
         leader = await self.client.fetch_user(info['Leader'])
         level, progress = await AssetCreation.getGuildLevel(self.client.pg_con, 

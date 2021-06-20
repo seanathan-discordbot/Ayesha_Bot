@@ -365,16 +365,26 @@ class Guilds(commands.Cog):
             await ctx.reply(f"{guild['Name']} is now based in {area}!\n`WARNING:` Changing your base again will cost `1,000,000` gold.")
 
     @guild.command(brief='<guild ID>', description='See info on another guild based on their ID')
-    async def info(self, ctx, guild_id : int):
-        try:
-            info = await AssetCreation.getGuildByID(self.client.pg_con, guild_id)
-        except TypeError:
-            await ctx.reply('No association has that ID.')
-            return
+    async def info(self, ctx, *, source : str):
+        if source.lower().startswith("id:"):
+            try:
+                info = await AssetCreation.getGuildByID(self.client.pg_con, int(source[3:]))
+                if info is None:
+                    return await ctx.reply('There is no association with that ID.')
+            except (ValueError, TypeError):
+                return await ctx.reply('That is an invalid ID number.')
+        else:
+            try:
+                info = await AssetCreation.getGuildByName(self.client.pg_con, source)
+            except TypeError:
+                return await ctx.reply('No association goes by that name.')
 
         leader = await self.client.fetch_user(info['Leader'])
-        level, progress = await AssetCreation.getGuildLevel(self.client.pg_con, info['ID'], returnline=True)
-        members = await AssetCreation.getGuildMemberCount(self.client.pg_con, info['ID'])
+        level, progress = await AssetCreation.getGuildLevel(self.client.pg_con, 
+                                                            info['ID'], 
+                                                            returnline=True)
+        members = await AssetCreation.getGuildMemberCount(self.client.pg_con, 
+                                                          info['ID'])
         capacity = await AssetCreation.getGuildCapacity(self.client.pg_con, info['ID'])
 
         embed = discord.Embed(title=f"{info['Name']}", color=self.client.ayesha_blue)
@@ -385,7 +395,7 @@ class Guilds(commands.Cog):
         embed.add_field(name='EXP Progress', value=f'{progress}')
         embed.add_field(name='Base', value=f"{info['Base']}")
         embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.", 
-                        value=f"{info['Desc']}", 
+                        value=f"{info['Desc']}",
                         inline=False)
         embed.set_footer(text=f"{info['Type']} ID: {info['ID']}")
         await ctx.reply(embed=embed)
