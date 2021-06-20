@@ -103,7 +103,7 @@ class Brotherhoods(commands.Cog):
         await message.add_reaction('\u274E') #X
 
         def check(reaction, user):
-            return user == player and reaction.message.id = message.id
+            return user == player and reaction.message.id == message.id
 
         reaction = None
         readReactions = True
