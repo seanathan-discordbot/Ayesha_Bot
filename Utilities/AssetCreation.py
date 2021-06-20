@@ -198,20 +198,20 @@ async def applySaleBonuses(pool, user_id : int):
     Calculates bonuses based off class, guild, and comptroller.
     """
     sale_bonus = 1
-    playerjob = await AssetCreation.getClass(pool, user_id)
+    playerjob = await getClass(pool, user_id)
     if playerjob == 'Merchant':
         sale_bonus += .5
 
     try:
-        guild = await AssetCreation.getGuildFromPlayer(pool, user_id)
+        guild = await getGuildFromPlayer(pool, user_id)
         if guild['Type'] == 'Guild':
-            guild_level = await AssetCreation.getGuildLevel(pool, guild['ID'])
+            guild_level = await getGuildLevel(pool, guild['ID'])
             sale_bonus += .5 + (guild_level * .1)
     except TypeError:
         pass
 
-    if await AssetCreation.check_for_comptroller_bonus(pool, user_id, 'sales'):
-        comp_bonus = await AssetCreation.get_comptroller_bonus(pool)
+    if await check_for_comptroller_bonus(pool, user_id, 'sales'):
+        comp_bonus = await get_comptroller_bonus(pool)
         sale_bonus += .04 + (.04 * comp_bonus['Level'])
 
     return sale_bonus
@@ -228,7 +228,7 @@ async def sellAllItems(pool, user_id : int, rarity : str):
             return 0, 0
 
         #Consider class, guild, comptroller bonus
-        sale_bonus = await AssetCreation.applySaleBonuses(self.client.pg_con, user_id)
+        sale_bonus = await applySaleBonuses(pool, user_id)
         
         #Calculate taxes and perform the transaction
         subtotal = random.randint(Weaponvalues[rarity][0], Weaponvalues[rarity][1]) * amount
@@ -595,6 +595,14 @@ async def getGuildFromPlayer(pool, user_id : int):
     
     return await getGuildByID(pool, guild_id)
 
+async def getGuildByName(pool, name : str):
+    """Returns a dict containing the info of the specified guild.
+    Dict: ID, Name, Type, XP, Leader, Desc, Icon, Join, Base"""
+    async with pool.acquire() as conn:
+        guild_id = await conn.fetchval('SELECT guild_id FROM guilds WHERE guild_name = $1', name)
+
+    return await getGuildByID(pool, guild_id)
+
 async def getGuildByID(pool, guild_id : int):
     """Returns a dict containing the info of the specified guild.
     Dict: ID, Name, Type, XP, Leader, Desc, Icon, Join, Base"""
@@ -747,7 +755,7 @@ async def getAdventure(pool, user_id : int):
 
             #Implement the comptroller travel bonus, which is similar to Radishes
             if await check_for_comptroller_bonus(pool, user_id, 'travel'):
-                comp_bonus = await AssetCreation.get_comptroller_bonus(self.client.pg_con)
+                comp_bonus = await get_comptroller_bonus(pool)
                 time_bonus += int(time_diff * (.02 + (.02 * comp_bonus['Level'])))
 
             adv['adventure'] -= time_bonus
