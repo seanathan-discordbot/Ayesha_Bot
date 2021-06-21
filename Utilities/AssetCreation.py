@@ -524,7 +524,11 @@ async def check_last_guild_join(pool, user_id):
     """Return time in seconds since specified player has joined any association."""
     async with pool.acquire() as conn:
         last_join = await conn.fetchval("SELECT join_date FROM guild_joins WHERE user_id = $1 ORDER BY id DESC LIMIT 1", user_id)
-        return datetime.now() - last_join
+        try:
+            return datetime.now() - last_join
+        except TypeError: #no join logged
+            return 999999 #Just return greater than the 86400 second threshold
+
 
 async def joinGuild(pool, guild_id, user_id): #DOES NOT VERIFY IF THEY'RE ALREADY IN A GUILD
     """Adds a specific player to a guild."""
@@ -719,6 +723,35 @@ async def changeGuildRank(pool, rank : str, user_id : int):
             await conn.execute('UPDATE guilds SET leader_id = $1 WHERE guild_id = $2', user_id, guild['ID'])  
 
         await pool.release(conn)
+
+async def deleteGuild(pool, guild_id : int, leader_id : int, guild_type : str):
+    """Disbands a guild with the specified ID.
+    The guild is not actually deleted, but set in such a way that there are no members and cannot be joined. It takes a "historic" status.
+    """
+    async with pool.acquire() as conn:
+        # Set guild to untouchable status and remove the leader from the guild
+        await conn.execute("""UPDATE guilds SET
+                                leader_id = 767234703161294858,
+                                guild_desc = 'This association has been disbanded.',
+                                join_status = 'closed' 
+                              WHERE guild_id = $1""", guild_id)
+
+        await conn.execute('UPDATE players SET guild = NULL, guild_rank = NULL WHERE guild = $1', guild_id)
+
+        # Brotherhoods and guilds have related tables: brotherhood_champions, area_control, guild_bank_account
+        if guild_type == 'Brotherhood':
+            await conn.execute('UPDATE brotherhood_champions SET champ1 = NULL, champ2 = NULL, champ3 = NULL WHERE guild_id = $1', guild_id)
+
+            for area in bh_areas:
+                if guild_id == await get_area_controller(pool, area):
+                    await set_area_controller(pool, area)
+
+        elif guild_type == 'Guild':
+            try:
+                gold_return = await close_guild_account(pool, leader_id)
+                await giveGold(pool, gold_return, leader_id)
+            except TypeError: #Then the leader has no account
+                pass
 
 async def getAdventure(pool, user_id : int):
     """Returns a dict of the player's adventure info.
@@ -1424,7 +1457,7 @@ async def get_guild_account(pool, user_id : int):
                                         LEFT JOIN guild_levels ON players.guild = guild_levels.guild_id
                                         WHERE guild_bank_account.user_id = $1""", user_id)
     
-        if bank_info['user_id'] is None:
+        if bank_info is None:
             return None
 
         return {
