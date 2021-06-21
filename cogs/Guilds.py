@@ -95,8 +95,8 @@ class Guilds(commands.Cog):
 
         #See how recently they joined an association
         last_join = await AssetCreation.check_last_guild_join(self.client.pg_con, player.id)
-        if last_join < 86400:
-            cd = 86400 - last_join
+        if last_join.total_seconds() < 86400:
+            cd = 86400 - last_join.total_seconds()
             return await ctx.reply(f'Joining associations has a 24 hour cooldown. This player can join another association in `{time.strftime("%H:%M:%S", time.gmtime(cd))}`.')
 
         #Otherwise invite the player
@@ -458,8 +458,8 @@ class Guilds(commands.Cog):
     async def join(self, ctx, guild_id : int):
         #See how recently they joined an association
         last_join = await AssetCreation.check_last_guild_join(self.client.pg_con, ctx.author.id)
-        if last_join < 86400:
-            cd = 86400 - last_join
+        if last_join.total_seconds() < 86400:
+            cd = 86400 - last_join.total_seconds()
             return await ctx.reply(f'Joining associations has a 24 hour cooldown. You can join another association in `{time.strftime("%H:%M:%S", time.gmtime(cd))}`.')
 
         #Make sure that guild exists, is open, and has an open slot
@@ -585,6 +585,45 @@ class Guilds(commands.Cog):
         #Otherwise remove the targeted person from the association
         await AssetCreation.leaveGuild(self.client.pg_con, player.id)
         await ctx.reply(f'You kicked {player.display_name} from your association.')
+
+    @guild.command(aliases=['disband'], description='Disband your association. You can only do this when no one else remains in your association.')
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.in_guild)
+    @commands.check(Checks.is_guild_leader)
+    async def delete(self, ctx):
+        #Make sure they're the only member remaining
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        if await AssetCreation.getGuildMemberCount(self.client.pg_con, guild['ID']) > 1:
+            return await ctx.reply('Your association still has members counting on you! You can\'t disband.')
+
+        #Ask for confirmation
+        message = await ctx.reply('Are you sure you want to disband your association?')
+        await message.add_reaction('\u2705') #Check
+        await message.add_reaction('\u274E') #X
+
+        def check(reaction, user):
+            return user == ctx.author and reaction.message.id == message.id
+
+        reaction = None
+        readReactions = True
+        while readReactions: 
+            if str(reaction) == '\u2705': #Then proceed
+                await message.delete()
+                await AssetCreation.deleteGuild(self.client.pg_con, guild['ID'], guild['Leader'], guild['Type'])
+                await ctx.reply(f"You have disbanded {guild['Name']}.")
+                break
+            if str(reaction) == '\u274E': #Cancel the guild disband
+                await message.delete()
+                await ctx.reply('Cancelled the operation.')
+                break
+
+            try:
+                reaction, user = await self.client.wait_for('reaction_add', check=check, timeout=15.0)
+                await message.remove_reaction(reaction, user)
+            except asyncio.TimeoutError:
+                readReactions = not readReactions
+                await message.delete()
+                await ctx.send('Cancelled the operation.')
 
     @guild.command(description='Shows this command.')
     async def help(self, ctx):
