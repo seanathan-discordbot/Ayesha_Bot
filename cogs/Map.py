@@ -157,7 +157,7 @@ class Map(commands.Cog):
         await AssetCreation.set_tax_rate(self.client.pg_con, tax_rate, ctx.author.id)
         await ctx.reply(f'Mayor! You have set the new tax-rate to `{tax_rate}`%!')
 
-    @commands.command(description='See the current tax rate!')
+    @commands.command(aliases=['taxes'], description='See the current tax rate!')
     async def tax(self, ctx):
         tax_info = await AssetCreation.get_tax_info(self.client.pg_con)
         await ctx.reply(f"The current tax rate is `{tax_info['tax_rate']}%`, set by Mayor `{tax_info['user_name']}` on `{tax_info['setdate'].date()}`\nThe mayor has collected `{tax_info['Total_Collection']}` gold so far this term.")
