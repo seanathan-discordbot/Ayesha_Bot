@@ -42,10 +42,10 @@
         "Crit": 10,
         "HP": 250,
         "Rarity": 5,
-        "Effect": "Heal 35 HP when attacking or parrying. Crit hits heal for an additional 20% of your attack.",
+        "Effect": "Crit hits heal for an additional 20% of your attack.",
         "Mat" : "oat",
         "Story": "Ayesha, the duchess of Glakelys, the northernmost sections of Aramythia. The sparseness of the frontier has hardened her people. She is responsible for pushing back many invasions from the north. There she lost her father, ascending to one of the most powerful positions of Aramythia, she cares only for her younger sister. Learned in the ways of Aramythians, Lunarians, and Maritimialans alike, she is perhaps the single most powerful combatant in southern Rabidus.",
-        "Image": null
+        "Image": "https://i.imgur.com/VWCUt3H.png"
     },
     "Onion": {
         "Name" : "Onion",
@@ -54,9 +54,21 @@
         "Crit": 5,
         "HP": 125,
         "Rarity": 5,
-        "Effect": "When fighting a boss, your crit is doubled on turn 7.",
+        "Effect": "When fighting a boss, your crit is doubled on turn 5.",
         "Mat" : "cacao",
         "Story": "Onions.",
+        "Image": null
+    },
+    "Ajar": {
+        "Name" : "Ajar",
+        "Attack": 0,
+        "Scale": 0.65,
+        "Crit": 5,
+        "HP": 25,
+        "Rarity": 5,
+        "Effect": "Gain 2 gravitas daily; Gain 20 attack and lose 50 HP each turn.",
+        "Mat" : "silver",
+        "Story": "Ajar I Ophidias is the young king of Aramythia. Originally from Riverburn, the Ophidias family has increasingly been assimilating into southern Aramythian society. Yet untested, the timid Ajar is drafting plans for a campaign against the tribes of the far north. Its success will decide his reputation: will he make a great name for himself, or will he succumb to the influence of the Aramythian dukes?",
         "Image": null
     },
     "Octavia": {
@@ -95,6 +107,42 @@
         "Story": "A pristess of the Crumidian god Aiaccios, Alia is learned in the arts of assassination. She has travelled extensively in the Crumidian highlands, becoming a hardened warrior and excellent survivalist. Hopefully she never leaves this area.",
         "Image": null
     },
+    "Rea": {
+        "Name" : "Rea",
+        "Attack": 8,
+        "Scale": 0.35,
+        "Crit": 3,
+        "HP": 60,
+        "Rarity": 4,
+        "Effect": null,
+        "Mat" : "pine",
+        "Story": "A local noble in Russe, Rea is one of the biggest patrons of foreign art forms. Unfortunately, his people want none of it.",
+        "Image": null
+    },
+    "Duchess": {
+        "Name" : "Duchess",
+        "Attack": 0,
+        "Scale": 0,
+        "Crit": 0,
+        "HP": 120,
+        "Rarity": 4,
+        "Effect": "Gain 2 gravitas daily.",
+        "Mat" : "oat",
+        "Story": "One of the horses in the king's stables. Literally impossible to deal with.",
+        "Image": null
+    },
+    "Spartacus": {
+        "Name" : "Spartacus",
+        "Attack": 40,
+        "Scale": 0,
+        "Crit": 5,
+        "HP": 180,
+        "Rarity": 4,
+        "Effect": "Gain an extra 200 gold from defeating bounties.",
+        "Mat" : "iron",
+        "Story": "Spartacus was one of the most esteemed gladiators in Crumidia. He broke multiple records during his 42-win streak, making the elites very wealthy off the games he participated in. It was because of this that he was unable to buy his freedom, forcing him to kill his masters. He escaped to the jungles of southern Crumidia, seeking to rebuild society among fellow outlaws.",
+        "Image": null
+    },
     "Layla": {
         "Name" : "Layla",
         "Attack": 0,
@@ -130,6 +178,18 @@
         "Mat" : "oat",
         "Story": "Radishes the wild horse can be found raiding small farms in Fernheim. He always eats through the radish crop. Some farmers have quit planting them entirely. Others line their fields with them, hoping to make a new friend.",
         "Image": "https://i.imgur.com/FIkqZmB.jpg"
+    },
+    "Anne": {
+        "Name" : "Anne",
+        "Attack": 7,
+        "Scale": 0.2,
+        "Crit": 4,
+        "HP": 100,
+        "Rarity": 3,
+        "Effect": null,
+        "Mat" : "fur",
+        "Story": "Anne is a champion of poker. If you find yourself at the same table as him, you may want to leave.",
+        "Image": null
     },
     "Bort": {
         "Name" : "Bort",
@@ -190,6 +250,30 @@
         "Mat" : "pine",
         "Story": "This seal thinks hes a master of trolling and trickery. Nah.",
         "Image": "https://i.imgur.com/JZc19rp.png"
+    },
+    "Shadwow Tisawode": {
+        "Name" : "Shadwow Tisawode",
+        "Attack": 2,
+        "Scale": 0.15,
+        "Crit": 3,
+        "HP": 20,
+        "Rarity": 2,
+        "Effect": null,
+        "Mat" : "pine",
+        "Story": "The baby mascot of Powerglide, Shadwow Tisawode spends his time playing gacha games (like this one).",
+        "Image": null
+    },
+    "Jackie": {
+        "Name" : "Jackie",
+        "Attack": 16,
+        "Scale": 0,
+        "Crit": 0,
+        "HP": 75,
+        "Rarity": 2,
+        "Effect": null,
+        "Mat" : "moss",
+        "Story": "idk",
+        "Image": null
     },
     "PrxRdr": {
         "Name" : "PrxRdr",

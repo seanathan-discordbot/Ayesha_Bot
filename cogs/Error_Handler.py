@@ -5,6 +5,8 @@ from discord.ext.commands import CommandOnCooldown
 import time
 from datetime import datetime
 
+from Utilities import Checks
+
 class Error_Handler(commands.Cog):
     def __init__(self,client):
         self.client = client
@@ -38,9 +40,44 @@ class Error_Handler(commands.Cog):
                                 value=f'{ctx.command.description}', 
                                 inline=False)
             await ctx.reply(embed=embed)
-        if isinstance(error, commands.CheckFailure):
-            if ctx.command.name != 'start':
-                await ctx.reply('You are ineligible to use this command.')
+
+        # --- ALL commands.CheckFailure MANMADE SUBCLASSES COVERED HERE
+        if isinstance(error, Checks.HasChar):
+            await ctx.reply(f'You already have a character.\nFor help, read the `{ctx.prefix}tutorial` or go to the `{ctx.prefix}support` server.')
+        if isinstance(error, Checks.NoChar):
+            await ctx.reply(f'You do not have a character yet. Do `{ctx.prefix}start` to make one!')
+
+        if isinstance(error, Checks.NotBrotherhoodMember):
+            await ctx.reply('You are not in a brotherhood.')
+        if isinstance(error, Checks.NotGuildMember):
+            await ctx.reply('You are not in a guild.')
+        if isinstance(error, Checks.NotCollegeMember):
+            await ctx.reply('You are not in a college.')
+
+        if isinstance(error, Checks.IsNotAssociationLeader):
+            await ctx.reply('Only the leader of your association can use this command!')
+        if isinstance(error, Checks.IsNotAssociationOfficer):
+            await ctx.reply('Only an officer or leader of your association can use this command!')
+        if isinstance(error, Checks.IsAssociationLeader):
+            await ctx.reply('You can\'t use this command as the leader of your association!')
+
+        if isinstance(error, Checks.AssociationFull):
+            await ctx.reply('Your association has no vacancies.')
+        
+        if isinstance(error, Checks.NotAdmin):
+            await ctx.reply('You woulda thought.')
+        if isinstance(error, Checks.NotMayor):
+            await ctx.reply('This command is reserved for the mayor. Become the mayor by joining a college and gaining a lot of gravitas!')
+        if isinstance(error, Checks.NotComptroller):
+            await ctx.reply('This command is reserved for the comptroller. Become the comptroller by joining a guild and becoming the richest player in Aramythia!')
+
+        if isinstance(error, Checks.HasNoBankAccount):
+            await ctx.reply(f'You don\'t have a guild bank account. Do `{ctx.prefix}guild account open` to get one!')
+        if isinstance(error, Checks.HasBankAccount):
+            await ctx.reply(f'You already have a guild bank account! Do `{ctx.prefix}guild account` to view it!')
+
+        # --- OTHER ---
+
         if isinstance(error, commands.MaxConcurrencyReached):
             await ctx.reply('Max concurrency reached. Please wait until this command ends.')
         if isinstance(error, commands.MemberNotFound):

@@ -315,7 +315,7 @@ class Gacha(commands.Cog):
     @commands.check(Checks.is_player)
     async def rubidics(self, ctx):
         info = await AssetCreation.getRubidics(self.client.pg_con, ctx.author.id)
-        await ctx.reply(f"You have **{info['rubidic']}** rubidics.\nYou will get a 5⭐ weapon or acolyte in **{80-info['pitycounter']}** summons.")
+        await ctx.reply(f"You have **{info['rubidic']}** rubidics.\nYou will get a 5⭐ acolyte in **{80-info['pitycounter']}** summons.")
 
     @commands.group(description='Exchange extra gold for some stuff!', invoke_without_command=True, case_insensitive=True)
     @commands.check(Checks.is_player)

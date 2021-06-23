@@ -12,14 +12,16 @@ from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 # **Music:** Ayesha's own music player! (it sucks)
 
 listCogs = """`Acolytes:` Commands involving your party members
-`Guilds` or `Brotherhoods` Join a brotherhood or guild for bonuses!
+`Guilds`/`Brotherhoods`/`Colleges` Join an association for bonuses!
 `Classes` Customize your character!
 `Gacha` Roll for weapons and acolytes!
 `Items` View your inventory and other commands involving items
+`Map` Special commands for the Mayor and Comptroller
 `Misc` Other Ayesha-related commands
 `Profile` Create a character and view your stats!
 `PvE` Basic gameplay in AyeshaBot
 `PvP` Challenge your friends to battle!
+`Raid` Join a cooperative raid against a common enemy
 `Reminders` Simple reminders for bot commands (low capacity)
 `Travel` Explore the land of Rabidus and get items for your party members!"""
 

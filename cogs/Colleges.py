@@ -9,6 +9,7 @@ from Utilities import Checks, AssetCreation, PageSourceMaker
 import random
 import math
 import aiohttp
+import time
 
 # There will be brotherhoods, guilds, and later colleges for combat, economic, and political gain
 
@@ -25,7 +26,7 @@ class Colleges(commands.Cog):
     @commands.group(aliases=['cl'], 
                     invoke_without_command=True, 
                     case_insensitive=True, 
-                    description='See your college.')
+                    description='See your college. Do `college help` to see more college commands.')
     @commands.check(Checks.is_player)
     @commands.check(Checks.in_college)
     async def college(self, ctx):
@@ -42,6 +43,7 @@ class Colleges(commands.Cog):
         embed.add_field(name='Members', value=f"{members}/{capacity}")
         embed.add_field(name='Level', value=f"{level}")
         embed.add_field(name='EXP Progress', value=f'{progress}')
+        embed.add_field(name='Base', value=f"{info['Base']}")
         embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.", 
                         value=f"{info['Desc']}", 
                         inline=False)
@@ -88,6 +90,13 @@ class Colleges(commands.Cog):
         if not await Checks.target_not_in_guild(self.client.pg_con, player):
             await ctx.reply('This player is already in an association.')
             return
+
+        #See how recently they joined an association
+        last_join = await AssetCreation.check_last_guild_join(self.client.pg_con, player.id)
+        if last_join.total_seconds() < 86400:
+            cd = 86400 - last_join.total_seconds()
+            return await ctx.reply(f'Joining associations has a 24 hour cooldown. This player can join another association in `{time.strftime("%H:%M:%S", time.gmtime(cd))}`.')
+
         #Otherwise invite the player
         #Load the guild
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
@@ -101,7 +110,7 @@ class Colleges(commands.Cog):
         await message.add_reaction('\u274E') #X
 
         def check(reaction, user):
-            return user == player
+            return user == player and reaction.message.id == message.id
 
         reaction = None
         readReactions = True
@@ -205,7 +214,7 @@ class Colleges(commands.Cog):
             await AssetCreation.give_gravitas(self.client.pg_con, ctx.author.id, gravitas_loss * -1)
             await ctx.reply(f'Your political play was wildly unpopular with the people of {location}. You lost {gravitas_loss} gravitas.')
 
-        if chance > 75: #Success
+        elif chance > 75: #Success
             gravitas_gain = random.randint(0,3)
 
             await AssetCreation.give_gravitas(self.client.pg_con, ctx.author.id, gravitas_gain)
@@ -216,17 +225,80 @@ class Colleges(commands.Cog):
             await AssetCreation.give_gravitas(self.client.pg_con, ctx.author.id, gravitas_gain)
             await ctx.reply(f'Your maneuver was received with raucous applause from the people of {location}! You gained {gravitas_gain} gravitas from such a well-mannered speech.')
 
+    @college.command(brief='<area>', description='Select an area to base your association in. The valid locations are:\n`Aramithea`, `Riverburn`, `Thenuille`')
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.is_guild_leader)
+    async def base(self, ctx, *, area : str):
+        #Make sure input is valid.
+        area = area.title()
+        areas = ('Aramithea', 'Riverburn', 'Thenuille')
+        if area not in areas:
+            return await ctx.reply('Please select a valid area on the map:\n`Aramithea`, `Riverburn`, `Thenuille`')
+
+        #Load guild info
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+
+        #Check to see if this is first change and apply charge if necessary
+        base_info = await AssetCreation.get_association_base(self.client.pg_con, guild['ID'])
+        if base_info['base_set']:
+            player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
+            if player_gold < 1000000:
+                return await ctx.reply(f'Changing your association\'s base costs `1,000,000` gold but you only have `{player_gold}` gold.')
+
+            message = await ctx.reply('This operation will cost `1,000,000` gold. Continue?')
+            await message.add_reaction('\u2705') #Check
+            await message.add_reaction('\u274E') #X
+
+            def check(reaction, user):
+                return user == ctx.author and reaction.message.id == message.id
+
+            reaction = None
+            readReactions = True
+            while readReactions: 
+                if str(reaction) == '\u2705': #Then change base
+                    await message.delete()
+                    await AssetCreation.giveGold(self.client.pg_con, -1000000, ctx.author.id)
+                    await AssetCreation.set_association_base(self.client.pg_con, guild['ID'], area)
+                    await ctx.reply(f"{guild['Name']} is now based in {area}!")
+                    break
+                if str(reaction) == '\u274E':
+                    await message.delete()
+                    await ctx.reply('Cancelled base movement.')
+                    break
+
+                try:
+                    reaction, user = await self.client.wait_for('reaction_add', check=check, timeout=15.0)
+                    await message.remove_reaction(reaction, user)
+                except asyncio.TimeoutError:
+                    readReactions = not readReactions
+                    await message.delete()
+                    await ctx.send('Cancelled base movement.')
+
+        else: #Change base for free
+            await AssetCreation.set_association_base(self.client.pg_con, guild['ID'], area)
+            await ctx.reply(f"{guild['Name']} is now based in {area}!\n`WARNING:` Changing your base again will cost `1,000,000` gold.")
+
     @college.command(brief='<guild ID>', description='See info on another guild based on their ID')
-    async def info(self, ctx, guild_id : int):
-        try:
-            info = await AssetCreation.getGuildByID(self.client.pg_con, guild_id)
-        except TypeError:
-            await ctx.reply('No association has that ID.')
-            return
+    async def info(self, ctx, *, source : str):
+        if source.lower().startswith("id:"):
+            try:
+                info = await AssetCreation.getGuildByID(self.client.pg_con, int(source[3:]))
+                if info is None:
+                    return await ctx.reply('There is no association with that ID.')
+            except (ValueError, TypeError):
+                return await ctx.reply('That is an invalid ID number.')
+        else:
+            try:
+                info = await AssetCreation.getGuildByName(self.client.pg_con, source)
+            except TypeError:
+                return await ctx.reply('No association goes by that name.')
 
         leader = await self.client.fetch_user(info['Leader'])
-        level, progress = await AssetCreation.getGuildLevel(self.client.pg_con, info['ID'], returnline=True)
-        members = await AssetCreation.getGuildMemberCount(self.client.pg_con, info['ID'])
+        level, progress = await AssetCreation.getGuildLevel(self.client.pg_con, 
+                                                            info['ID'], 
+                                                            returnline=True)
+        members = await AssetCreation.getGuildMemberCount(self.client.pg_con, 
+                                                          info['ID'])
         capacity = await AssetCreation.getGuildCapacity(self.client.pg_con, info['ID'])
 
         embed = discord.Embed(title=f"{info['Name']}", color=self.client.ayesha_blue)
@@ -235,8 +307,9 @@ class Colleges(commands.Cog):
         embed.add_field(name='Members', value=f"{members}/{capacity}")
         embed.add_field(name='Level', value=f"{level}")
         embed.add_field(name='EXP Progress', value=f'{progress}')
+        embed.add_field(name='Base', value=f"{info['Base']}")
         embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.", 
-                        value=f"{info['Desc']}", 
+                        value=f"{info['Desc']}",
                         inline=False)
         embed.set_footer(text=f"{info['Type']} ID: {info['ID']}")
         await ctx.reply(embed=embed)
@@ -297,6 +370,12 @@ class Colleges(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.not_in_guild)
     async def join(self, ctx, guild_id : int):
+        #See how recently they joined an association
+        last_join = await AssetCreation.check_last_guild_join(self.client.pg_con, ctx.author.id)
+        if last_join.total_seconds() < 86400:
+            cd = 86400 - last_join.total_seconds()
+            return await ctx.reply(f'Joining associations has a 24 hour cooldown. You can join another association in `{time.strftime("%H:%M:%S", time.gmtime(cd))}`.')
+
         #Make sure that guild exists, is open, and has an open slot
         try:
             guild = await AssetCreation.getGuildByID(self.client.pg_con, guild_id)
@@ -419,6 +498,45 @@ class Colleges(commands.Cog):
         #Otherwise remove the targeted person from the association
         await AssetCreation.leaveGuild(self.client.pg_con, player.id)
         await ctx.reply(f'You kicked {player.display_name} from your association.')
+
+    @college.command(aliases=['disband'], description='Disband your association. You can only do this when no one else remains in your association.')
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.in_college)
+    @commands.check(Checks.is_guild_leader)
+    async def delete(self, ctx):
+        #Make sure they're the only member remaining
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        if await AssetCreation.getGuildMemberCount(self.client.pg_con, guild['ID']) > 1:
+            return await ctx.reply('Your association still has members counting on you! You can\'t disband.')
+
+        #Ask for confirmation
+        message = await ctx.reply('Are you sure you want to disband your association?')
+        await message.add_reaction('\u2705') #Check
+        await message.add_reaction('\u274E') #X
+
+        def check(reaction, user):
+            return user == ctx.author and reaction.message.id == message.id
+
+        reaction = None
+        readReactions = True
+        while readReactions: 
+            if str(reaction) == '\u2705': #Then proceed
+                await message.delete()
+                await AssetCreation.deleteGuild(self.client.pg_con, guild['ID'], guild['Leader'], guild['Type'])
+                await ctx.reply(f"You have disbanded {guild['Name']}.")
+                break
+            if str(reaction) == '\u274E': #Cancel the guild disband
+                await message.delete()
+                await ctx.reply('Cancelled the operation.')
+                break
+
+            try:
+                reaction, user = await self.client.wait_for('reaction_add', check=check, timeout=15.0)
+                await message.remove_reaction(reaction, user)
+            except asyncio.TimeoutError:
+                readReactions = not readReactions
+                await message.delete()
+                await ctx.send('Cancelled the operation.')
 
     @college.command(description='Shows this command.')
     async def help(self, ctx):

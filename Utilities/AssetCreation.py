@@ -5,6 +5,7 @@ from discord.ext import commands, menus
 
 import asyncpg
 
+from datetime import datetime, timedelta
 import json
 import random
 import math
@@ -192,6 +193,29 @@ async def increaseItemAttack(pool, item_id : int, increase : int):
         await conn.execute('UPDATE items SET attack = attack + $1 WHERE item_id = $2', increase, item_id)
         await pool.release(conn)
 
+async def applySaleBonuses(pool, user_id : int):
+    """Return the total bonuses a player receives from selling an item.
+    Calculates bonuses based off class, guild, and comptroller.
+    """
+    sale_bonus = 1
+    playerjob = await getClass(pool, user_id)
+    if playerjob == 'Merchant':
+        sale_bonus += .5
+
+    try:
+        guild = await getGuildFromPlayer(pool, user_id)
+        if guild['Type'] == 'Guild':
+            guild_level = await getGuildLevel(pool, guild['ID'])
+            sale_bonus += .5 + (guild_level * .1)
+    except TypeError:
+        pass
+
+    if await check_for_comptroller_bonus(pool, user_id, 'sales'):
+        comp_bonus = await get_comptroller_bonus(pool)
+        sale_bonus += .04 + (.04 * comp_bonus['Level'])
+
+    return sale_bonus
+
 async def sellAllItems(pool, user_id : int, rarity : str):
     """Deletes all items of a given player and rarity. 
     Returns three integers: amount of items deleted, corresponding gold value, amount paid in taxes.
@@ -202,15 +226,25 @@ async def sellAllItems(pool, user_id : int, rarity : str):
         if amount == 0:
             await pool.release(conn)
             return 0, 0
+
+        #Consider class, guild, comptroller bonus
+        sale_bonus = await applySaleBonuses(pool, user_id)
         
+        #Calculate taxes and perform the transaction
         subtotal = random.randint(Weaponvalues[rarity][0], Weaponvalues[rarity][1]) * amount
-        cost_info = calc_cost_with_tax_rate(pool, subtotal)
+        subtotal = (subtotal * sale_bonus)
+        cost_info = await calc_cost_with_tax_rate(pool, subtotal)
+        tax = cost_info['tax_amount']
         payout = subtotal - cost_info['tax_amount']
 
         await conn.execute('UPDATE players SET gold = gold + $1 WHERE user_id = $2', payout, user_id)
+        await log_transaction(pool,
+                              user_id,
+                              cost_info['subtotal'],
+                              cost_info['tax_amount'],
+                              cost_info['tax_rate'])
         await conn.execute('DELETE FROM items WHERE owner_id = $1 AND rarity = $2 AND is_equipped = FALSE', user_id, rarity)
-        await pool.release(conn)
-    return amount, subtotal, cost_info['tax_amount']
+        return amount, subtotal, cost_info['tax_amount']
 
 async def createAcolyte(pool, owner_id, acolyte_name):
     """Inserts new acolyte of given user and type into database"""
@@ -483,36 +517,108 @@ async def createGuild(pool, name, guild_type, leader, icon):
     """Creates an association with the given info."""
     async with pool.acquire() as conn:
         await conn.execute('INSERT INTO guilds (guild_name, guild_type, leader_id, guild_icon) VALUES ($1, $2, $3, $4)', name, guild_type, leader, icon)
-        guild_id = await conn.fetchrow('SELECT guild_id FROM guilds WHERE leader_id = $1', leader)
-        await conn.execute("UPDATE players SET guild = $1, gold = gold - 15000, guild_rank = 'Leader' WHERE user_id = $2", guild_id['guild_id'], leader)
+        guild_id = await conn.fetchval('SELECT guild_id FROM guilds WHERE leader_id = $1', leader)
+        await conn.execute("UPDATE players SET guild = $1, gold = gold - 15000, guild_rank = 'Leader' WHERE user_id = $2", guild_id, leader)
+
+        #If brotherhood, also add empty record to the champions table
+        guild_type = await conn.fetchval('SELECT guild_type FROM guilds WHERE guild_id = $1', guild_id)
+        if guild_type == 'Brotherhood':
+            await conn.execute('INSERT INTO brotherhood_champions(guild_id) VALUES ($1)', guild_id)
+
         await pool.release(conn)
+
+async def check_last_guild_join(pool, user_id):
+    """Return time in seconds since specified player has joined any association."""
+    async with pool.acquire() as conn:
+        last_join = await conn.fetchval("SELECT join_date FROM guild_joins WHERE user_id = $1 ORDER BY id DESC LIMIT 1", user_id)
+        try:
+            return datetime.now() - last_join
+        except TypeError: #no join logged
+            return timedelta(seconds=99999) #Just return greater than the 86400 second threshold
+
 
 async def joinGuild(pool, guild_id, user_id): #DOES NOT VERIFY IF THEY'RE ALREADY IN A GUILD
     """Adds a specific player to a guild."""
     async with pool.acquire() as conn:
         await conn.execute("UPDATE players SET guild = $1, guild_rank = 'Member' WHERE user_id = $2", guild_id, user_id)
+        await conn.execute("INSERT INTO guild_joins (user_id, guild_id) VALUES ($1, $2)", user_id, guild_id)
         await pool.release(conn)
 
 async def leaveGuild(pool, user_id : int): #DOES NOT VERIFY IF MEMBER LEAVING IS LEADER USE ON MEMBERS ONLYYY
     """Removes a player from a guild."""
     async with pool.acquire() as conn:
         await conn.execute('UPDATE Players SET guild = NULL, guild_rank = NULL WHERE user_id = $1', user_id)
+
+        #If in brotherhood, remove them if they are a champion
+        await conn.execute('UPDATE brotherhood_champions SET champ1 = NULL WHERE champ1 = $1', user_id)
+        await conn.execute('UPDATE brotherhood_champions SET champ2 = NULL WHERE champ2 = $1', user_id)
+        await conn.execute('UPDATE brotherhood_champions SET champ3 = NULL WHERE champ3 = $1', user_id)
+
+        await pool.release(conn)
+
+async def insert_brotherhood_champions(pool, guild_id : int):
+    """Insert empty record for champions in a brotherhood. Use only when a record does not yet exist for a brotherhood."""
+    async with pool.acquire() as conn:
+        await conn.execute("""INSERT INTO brotherhood_champions (guild_id) VALUES ($1)""", guild_id)
+        await pool.release(conn)
+
+async def get_brotherhood_champions(pool, guild_id : int):
+    """Returns the IDs of the champions of the specified brotherhood in list form."""
+    async with pool.acquire() as conn:
+        champs = await conn.fetchrow('SELECT champ1, champ2, champ3 FROM brotherhood_champions WHERE guild_id = $1', guild_id)
+
+        if not champs:
+            await insert_brotherhood_champions(pool, guild_id)
+            return [None, None, None]
+
+        return [champs['champ1'], champs['champ2'], champs['champ3']]
+
+async def update_brotherhood_champion(pool, guild_id : int, champion_id : int, slot : int):
+    """Update the ID of a brotherhood champion. Slot must be in [1,3]."""
+    async with pool.acquire() as conn:
+        if slot == 1:
+            await conn.execute('UPDATE brotherhood_champions SET champ1 = $1 WHERE guild_id = $2', champion_id, guild_id)
+        elif slot == 2:
+            await conn.execute('UPDATE brotherhood_champions SET champ2 = $1 WHERE guild_id = $2', champion_id, guild_id)
+        elif slot == 3:
+            await conn.execute('UPDATE brotherhood_champions SET champ3 = $1 WHERE guild_id = $2', champion_id, guild_id)
+
+        await pool.release(conn)
+
+async def remove_brotherhood_champion(pool, guild_id, slot : int):
+    """Remove the champion of a specific guild's slot."""
+    async with pool.acquire() as conn:
+        if slot == 1:
+            await conn.execute('UPDATE brotherhood_champions SET champ1 = NULL WHERE guild_id = $1', guild_id)
+        elif slot == 2:
+            await conn.execute('UPDATE brotherhood_champions SET champ2 = NULL WHERE guild_id = $1', guild_id)
+        elif slot == 3:
+            await conn.execute('UPDATE brotherhood_champions SET champ3 = NULL WHERE guild_id = $1', guild_id)
+
         await pool.release(conn)
 
 async def getGuildFromPlayer(pool, user_id : int):
     """Returns a dict containing the info of the guild the specified player is in.
-    Dict: ID, Name, Type, XP, Leader, Desc, Icon, Join"""
+    Dict: ID, Name, Type, XP, Leader, Desc, Icon, Join, Base"""
     async with pool.acquire() as conn:
         guild_id = await conn.fetchval('SELECT guild FROM players WHERE user_id = $1', user_id)
         await pool.release(conn) 
     
     return await getGuildByID(pool, guild_id)
 
+async def getGuildByName(pool, name : str):
+    """Returns a dict containing the info of the specified guild.
+    Dict: ID, Name, Type, XP, Leader, Desc, Icon, Join, Base"""
+    async with pool.acquire() as conn:
+        guild_id = await conn.fetchval('SELECT guild_id FROM guilds WHERE guild_name = $1', name)
+
+    return await getGuildByID(pool, guild_id)
+
 async def getGuildByID(pool, guild_id : int):
     """Returns a dict containing the info of the specified guild.
-    Dict: ID, Name, Type, XP, Leader, Desc, Icon, Join"""
+    Dict: ID, Name, Type, XP, Leader, Desc, Icon, Join, Base"""
     async with pool.acquire() as conn:
-        info = await conn.fetchrow('SELECT guild_id, guild_name, guild_type, guild_xp, leader_id, guild_desc, guild_icon, join_status FROM guilds WHERE guild_id = $1', guild_id)
+        info = await conn.fetchrow('SELECT guild_id, guild_name, guild_type, guild_xp, leader_id, guild_desc, guild_icon, join_status, base FROM guilds WHERE guild_id = $1', guild_id)
         await pool.release(conn)
 
     guild = {
@@ -523,7 +629,8 @@ async def getGuildByID(pool, guild_id : int):
         'Leader' : info['leader_id'],
         'Desc' : info['guild_desc'],
         'Icon' : info['guild_icon'],
-        'Join' : info['join_status']
+        'Join' : info['join_status'],
+        'Base' : info['base']
     }
 
     return guild
@@ -624,13 +731,41 @@ async def changeGuildRank(pool, rank : str, user_id : int):
 
         await pool.release(conn)
 
+async def deleteGuild(pool, guild_id : int, leader_id : int, guild_type : str):
+    """Disbands a guild with the specified ID.
+    The guild is not actually deleted, but set in such a way that there are no members and cannot be joined. It takes a "historic" status.
+    """
+    async with pool.acquire() as conn:
+        # Set guild to untouchable status and remove the leader from the guild
+        await conn.execute("""UPDATE guilds SET
+                                leader_id = 767234703161294858,
+                                guild_desc = 'This association has been disbanded.',
+                                join_status = 'closed' 
+                              WHERE guild_id = $1""", guild_id)
+
+        await conn.execute('UPDATE players SET guild = NULL, guild_rank = NULL WHERE guild = $1', guild_id)
+
+        # Brotherhoods and guilds have related tables: brotherhood_champions, area_control, guild_bank_account
+        if guild_type == 'Brotherhood':
+            await conn.execute('UPDATE brotherhood_champions SET champ1 = NULL, champ2 = NULL, champ3 = NULL WHERE guild_id = $1', guild_id)
+
+            for area in bh_areas:
+                if guild_id == await get_area_controller(pool, area):
+                    await set_area_controller(pool, area)
+
+        elif guild_type == 'Guild':
+            try:
+                gold_return = await close_guild_account(pool, leader_id)
+                await giveGold(pool, gold_return, leader_id)
+            except TypeError: #Then the leader has no account
+                pass
+
 async def getAdventure(pool, user_id : int):
     """Returns a dict of the player's adventure info.
     Dict: adventure (int specifying time), destination (str)"""
     async with pool.acquire() as conn:
         adventure = await conn.fetchrow('SELECT adventure, destination FROM players WHERE user_id = $1', user_id)
         
-
         adv = {
             'adventure' : adventure['adventure'],
             'destination' : adventure['destination']
@@ -649,13 +784,21 @@ async def getAdventure(pool, user_id : int):
             else:
                 a2 = {'Name' : None}
 
+            time_bonus = 0
             try:
                 if a1['Name'] == 'Radishes' or a2['Name'] == 'Radishes':
-                    time_diff = int(time.time() - adventure['adventure'])
-                    ten_percent_bonus = int(time_diff / 10)
-                    adv['adventure'] -= ten_percent_bonus
+                    time_diff = int(time.time() - adventure['adventure']) #The vanilla total time of expedition
+                    #Subtract the correct proportion of the time_diff from the vanilla total time, effectively lengthening it
+                    time_bonus = int(time_diff / 10) 
             except KeyError:
                 pass
+
+            #Implement the comptroller travel bonus, which is similar to Radishes
+            if await check_for_comptroller_bonus(pool, user_id, 'travel'):
+                comp_bonus = await get_comptroller_bonus(pool)
+                time_bonus += int(time_diff * (.02 + (.02 * comp_bonus['Level'])))
+
+            adv['adventure'] -= time_bonus
 
         await pool.release(conn)
     
@@ -870,6 +1013,11 @@ async def resetPlayerLevel(pool, user_id : int): #DONT USE THIS
         await conn.execute('UPDATE players SET lvl = 0, xp = 0 WHERE user_id = $1', user_id)
         await pool.release(conn)
 
+async def getPlayerName(pool, user_id : int):
+    """Return the player's user name."""
+    async with pool.acquire() as conn:
+        return await conn.fetchval('SELECT user_name FROM players WHERE user_id = $1', user_id)
+
 async def setPlayerName(pool, user_id : int, name : str):
     """Sets the payer's user_name."""
     async with pool.acquire() as conn:
@@ -941,6 +1089,11 @@ async def getTopPvP(pool):
         await pool.release(conn)
 
     return board  
+
+async def getTopGravitas(pool):
+    """Returns a list of records/dicts giving the top 5 players in gravitas."""
+    async with pool.acquire() as conn:
+        return await conn.fetch("SELECT user_id, user_name, gravitas FROM players ORDER BY gravitas DESC LIMIT 5")
 
 async def getRubidics(pool, user_id : int):
     """Returns a record/dict giving the rubidics and pity info of the given player.
@@ -1073,6 +1226,40 @@ async def get_tax_rate(pool):
     async with pool.acquire() as conn:
         return await conn.fetchval('SELECT tax_rate FROM tax_rates ORDER BY id DESC LIMIT 1')
 
+async def get_tax_info(pool):
+    """Return info related to the curent tax rate."""
+    async with pool.acquire() as conn:
+        tax_info = await conn.fetchrow("""
+                                    SELECT tax_rates.tax_rate, players.user_name, tax_rates.setdate
+                                    FROM tax_rates
+                                    INNER JOIN players
+                                        ON players.user_id = tax_rates.setby
+                                    ORDER BY id DESC
+                                    LIMIT 1""")
+        collected = await conn.fetchval("""
+                                    WITH start_date AS (
+                                        SELECT setdate
+                                        FROM officeholders
+                                        WHERE office = 'Mayor'
+                                        ORDER BY setdate DESC
+                                        LIMIT 1
+                                    )
+                                    SELECT SUM(tax_amount)
+                                    FROM tax_transactions
+                                    WHERE time > (SELECT * FROM start_date);""")
+
+        tax_output = dict(tax_info)
+        tax_output['Total_Collection'] = collected
+
+        return tax_output
+
+
+async def set_tax_rate(pool, tax_rate : float, setby : int):
+    """Set the tax-rate."""
+    async with pool.acquire() as conn:
+        await conn.execute('INSERT INTO tax_rates (tax_rate, setby) VALUES ($1, $2)', tax_rate, setby)
+        await pool.release(conn)
+
 async def calc_cost_with_tax_rate(pool, subtotal):
     """Calculate the new price of something with tax rate included.
     Returns a dict with 'subtotal' (input), 'total', 'tax_rate', 'tax_amount'.
@@ -1093,3 +1280,244 @@ async def log_transaction(pool, user_id : int, subtotal : int, tax_amount : int,
         await conn.execute("""INSERT INTO tax_transactions (user_id, before_tax, tax_amount, tax_rate)
                                 VALUES ($1, $2, $3, $4)""", user_id, subtotal, tax_amount, tax_rate)
         await pool.release(conn)
+
+async def get_association_base(pool, guild_id : int):
+    """Return the current base of an association and whether it has been changed before."""
+    async with pool.acquire() as conn:
+        return await conn.fetchrow('SELECT base, base_set FROM guilds WHERE guild_id = $1', guild_id)
+
+async def set_association_base(pool, guild_id : int, base : str):
+    """Sets the given association's base to the given string. Will not check for valid base names."""
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE guilds SET base = $1, base_set = TRUE WHERE guild_id = $2', base, guild_id)
+        await pool.release(conn)
+
+async def get_officeholders(pool):
+    """Returns a dict containing the ID's of the current 'Mayor' and 'Comptroller' of the bot.
+    Those entries return their names, whereas `[Role]_ID` will return their IDs. `[Role]_Term` will return the date of term start.
+    """
+    async with pool.acquire() as conn:
+        mayor = await conn.fetchrow("""
+                                    SELECT officeholder, setdate, players.user_name 
+                                    FROM officeholders 
+                                    INNER JOIN players
+                                        ON officeholders.officeholder = players.user_id
+                                    WHERE office = 'Mayor'
+                                    ORDER BY id DESC LIMIT 1;""")
+        
+        comptroller = await conn.fetchrow("""
+                                            SELECT officeholder, setdate, players.user_name
+                                            FROM officeholders 
+                                            INNER JOIN players
+                                                ON officeholders.officeholder = players.user_id
+                                            WHERE office = 'Comptroller'
+                                            ORDER BY id DESC LIMIT 1""")
+
+        return {
+            'Mayor' : mayor['user_name'],
+            'Mayor_ID' : mayor['officeholder'],
+            'Mayor_Term' : mayor['setdate'],
+            'Comptroller' : comptroller['user_name'],
+            'Comptroller_ID' : comptroller['officeholder'],
+            'Comptroller_Term' : comptroller['setdate']
+        }
+
+async def get_comptroller_bonus(pool):
+    """Return the ID and type of the current comptroller bonus."""
+    async with pool.acquire() as conn:
+        info = await conn.fetchrow("""SELECT id, bonus, bonus_xp, is_set FROM comptroller_bonuses
+                                        ORDER BY id DESC LIMIT 1""")
+        output = dict(info)
+        output['Level'] = int(info['bonus_xp'] / 100000)
+
+        return output
+
+async def set_comptroller_bonus(pool, bonus : str):
+    """Sets the current comptroller bonus to the specified term."""
+    async with pool.acquire() as conn:
+        await conn.execute("""
+                            WITH current_bonus AS (
+                                SELECT id
+                                FROM comptroller_bonuses
+                                ORDER BY id DESC LIMIT 1
+                            )
+                            UPDATE comptroller_bonuses
+                            SET bonus = $1, is_set = TRUE
+                            WHERE id = (SELECT * FROM current_bonus);""", bonus)
+        await pool.release(conn)
+
+async def set_comptroller_bonus_xp(pool, xp : int):
+    """Add the specified amount to the current bonus."""
+    async with pool.acquire() as conn:
+        await conn.execute("""
+                            WITH current_bonus AS (
+                                SELECT id
+                                FROM comptroller_bonuses
+                                ORDER BY id DESC LIMIT 1
+                            )
+                            UPDATE comptroller_bonuses
+                            SET bonus = bonus + $1
+                            WHERE id = (SELECT * FROM current_bonus);""", xp)
+        await pool.release(conn)
+
+class IncorrectBonus(Exception):
+    pass
+
+async def check_for_comptroller_bonus(pool, user_id : int, bonus_type : str):
+    """Return true if this player currently benefits from a comptroller bonus.
+
+    Parameters
+    ----------
+    user_id: int
+        The ID of the player in question.
+    bonus_type: str
+        Either combat/sales/travel, depending on the context of the invocation.
+
+    Returns
+    -------
+    eligibility: bool
+        True if the user_id and bonus_type match the comptroller's requirements.
+    """
+    if bonus_type not in ['combat', 'sales', 'travel']:
+        raise IncorrectBonus
+        return
+    
+    async with pool.acquire() as conn:
+        requirements = await conn.fetchrow("""SELECT bonus, guild_id FROM comptroller_bonuses 
+                                                ORDER BY id DESC LIMIT 1;""")
+
+        guild = await conn.fetchval('SELECT guild FROM players WHERE user_id = $1', user_id)
+        
+        if not requirements:
+            return False
+
+        if guild == requirements['guild_id'] and bonus_type == requirements['bonus']:
+            return True
+        else:
+            return False
+            
+class InvalidPlace(Exception):
+    pass
+
+bh_areas = ('Mythic Forest', 'Fernheim', 'Sunset Prairie', 'Thanderlans', 'Glakelys', 'Russe', 'Croire', 'Crumidia', 'Kucre')
+async def get_most_recent_area_attack(pool, area : str):
+    """Return the time of the last attack on the given area. May be None if no attacks exist.
+    Areas: Mythic Forest, Fernheim, Sunset Prairie, Thanderlans, Glakelys, Russe, Croire, Crumidia, Kucre
+    """
+    if area not in bh_areas:
+        raise InvalidPlace
+        return
+
+    async with pool.acquire() as conn:
+        return await conn.fetchval('SELECT battle_date FROM area_attacks WHERE area = $1 ORDER BY id DESC LIMIT 1', area)
+
+async def log_area_attack(pool, area : str, attacker : int, defender : int, winner : int):
+    """Log an area attack."""
+    if area not in bh_areas:
+        raise InvalidPlace
+        return
+
+    async with pool.acquire() as conn:
+        await conn.execute("""INSERT INTO area_attacks (area, attacker, defender, winner) 
+                                VALUES ($1, $2, $3, $4)""", area, attacker, defender, winner)
+        await pool.release(conn)
+
+async def get_area_controller(pool, area : str): 
+    """Return the ID of the brotherhood currently controlling an area of the map."""
+    if area not in bh_areas:
+        raise InvalidPlace
+        return 
+
+    async with pool.acquire() as conn:
+        return await conn.fetchval('SELECT owner FROM area_control WHERE area = $1 ORDER BY id DESC LIMIT 1', area)
+
+async def set_area_controller(pool, area : str, owner : int = None):
+    """Change the controller of an area."""
+    if area not in bh_areas:
+        raise InvalidPlace
+        return
+
+    async with pool.acquire() as conn:
+        await conn.execute('INSERT INTO area_control (area, owner) VALUES ($1, $2)', area, owner)
+        await pool.release(conn)
+
+async def check_for_map_control_bonus(pool, user_id : int):
+    """Return true if this player currently benefits from their brotherhood controlling a territory."""
+    async with pool.acquire() as conn:
+        player_info = await conn.fetchrow('SELECT guild, loc FROM players WHERE user_id = $1', user_id)
+        requirements = await conn.fetchval('SELECT owner FROM area_control WHERE area = $1 ORDER BY id DESC LIMIT 1', player_info['loc'])
+
+        return player_info['guild'] == requirements
+
+async def get_guild_account(pool, user_id : int):
+    """Returns the account info of a guild member.
+    Optional[Dict]: id, guild_id, guild_name, user_name, account_funds, capacity
+    """
+    async with pool.acquire() as conn:
+        bank_info = await conn.fetchrow("""
+                                        SELECT guild_bank_account.user_id, 
+                                            guild_bank_account.account_funds, 
+                                            players.guild, 
+                                            players.user_name, 
+                                            guilds.guild_name,
+                                            guild_levels.guild_level
+                                        FROM guild_bank_account
+                                        LEFT JOIN players ON guild_bank_account.user_id = players.user_id
+                                        LEFT JOIN guilds ON players.guild = guilds.guild_id
+                                        LEFT JOIN guild_levels ON players.guild = guild_levels.guild_id
+                                        WHERE guild_bank_account.user_id = $1""", user_id)
+    
+        if bank_info is None:
+            return None
+
+        return {
+            'id' : bank_info['user_id'],
+            'guild_id' : bank_info['guild'],
+            'guild_name' : bank_info['guild_name'],
+            'user_name' : bank_info['user_name'],
+            'account_funds' : bank_info['account_funds'],
+            'capacity' : bank_info['guild_level'] * 1000000
+        }
+
+async def open_guild_account(pool, user_id : int, initial_deposit : int = 0):
+    """Opens a guild account for the specified player. Player must be in a guild."""
+    async with pool.acquire() as conn:
+        await conn.execute('INSERT INTO guild_bank_account (user_id, account_funds) VALUES ($1, $2)', user_id, initial_deposit)
+        await pool.release(conn)
+
+async def guild_bank_deposit(pool, user_id : int, deposit : int):
+    """Deposit money into an existing guild bank account."""
+    async with pool.acquire() as conn:
+        await conn.execute('UPDATE guild_bank_account SET account_funds = account_funds + $1 WHERE user_id = $2', deposit, user_id)
+        await pool.release(conn)
+
+async def close_guild_account(pool, user_id : int):
+    """Returns all money in a guild account to the player and deletes the record.
+    Return the amount.    
+    """
+    async with pool.acquire() as conn:
+        gold = await conn.fetchval('SELECT account_funds FROM guild_bank_account WHERE user_id = $1', user_id)
+        await conn.execute('DELETE FROM guild_bank_account WHERE user_id = $1', user_id)
+
+        return gold
+
+async def log_raid_attack(pool, user_id : int, attack : int):
+    """Log a player's raid attack in the database."""
+    async with pool.acquire() as conn:
+        await conn.execute('INSERT INTO raid_logs (user_id, attack_damage) VALUES ($1, $2)', user_id, attack)
+        await pool.release(conn)
+
+async def get_player_raid_damage(pool, user_id : int):
+    """Return a player's total damage for this raid."""
+    async with pool.acquire() as conn:
+        return await conn.fetchval('SELECT SUM(attack_damage) FROM raid_logs WHERE user_id = $1', user_id)
+
+async def clear_raid_attacks(pool):
+    """Clears all records from raid_logs. For use at beginning/end of raid."""
+    async with pool.acquire() as conn:
+        raid_info = await conn.fetch('SELECT user_id, SUM(attack_damage) FROM raid_logs GROUP BY user_id')
+
+        for player in raid_info:
+            await conn.execute('UPDATE players SET gold = gold + $1 WHERE user_id = $2', player['sum'], player['user_id'])
+
+        await conn.execute('DELETE FROM raid_logs')

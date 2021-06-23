@@ -55,7 +55,7 @@ class PvP(commands.Cog):
     def checkCrit(self, crit, damage, attack, acolyte1, acolyte2):
         is_crit = random.choices(['Normal', 'Crit'], [100-crit, crit])
         if is_crit[0] == 'Crit':
-            damage *= 2
+            damage = int(damage * 1.5)
 
             try:
                 if acolyte1['Name'] == 'Aulus' or acolyte2['Name'] == 'Aulus': #Aulus gives crit bonuses
@@ -93,7 +93,7 @@ class PvP(commands.Cog):
         await message.add_reaction('\u274E') #X
 
         def check(reaction, user):
-            return user == opponent
+            return user == opponent and reaction.message.id == message.id
 
         reaction = None
         readReactions = True
@@ -168,18 +168,38 @@ class PvP(commands.Cog):
             if player1_crit == 'Crit':
                 try:
                     if player1['Acolyte1']['Name'] == 'Ayesha' or player1['Acolyte2']['Name'] == 'Ayesha':
-                        player1['HP'] += 35 + int(player1['Attack'] * .3)
+                        player1['HP'] += int(player1['Attack'] * .2)
                 except TypeError:
                     pass
             if player2_crit == 'Crit':
                 try:
                     if player2['Acolyte1']['Name'] == 'Ayesha' or player2['Acolyte2']['Name'] == 'Ayesha':
-                        player2['HP'] += 35 + int(player2['HP'] * .3)
+                        player2['HP'] += int(player2['Attack'] * .2)
                 except TypeError:
                     pass
 
             player1['HP'] -= int(player2_dealt * player1_taken)
             player2['HP'] -= int(player1_dealt * player2_taken)
+
+            #Add Ajar's Effect
+            try:
+                if player1['Acolyte1']['Name'] == 'Ajar' or player1['Acolyte2']['Name'] == 'Ajar':
+                    player1['Attack'] += 20
+                    player1['HP'] -= 50
+                if player2['Acolyte1']['Name'] == 'Ajar' or player2['Acolyte2']['Name'] == 'Ajar':
+                    player2['Attack'] += 20
+                    player2['HP'] -= 50
+            except TypeError:
+                pass
+
+            if len(battle_turns) == 4: #Add Onion's Effect
+                try:
+                    if player1['Acolyte1']['Name'] == 'Onion' or player1['Acolyte2']['Name'] == 'Onion':
+                        player1['Crit'] *= 2
+                    if player2['Acolyte1']['Name'] == 'Onion' or player2['Acolyte2']['Name'] == 'Onion':
+                        player2['Crit'] *= 2
+                except TypeError:
+                    pass    
 
             #Output information
             if player1_crit == 'Crit' and player2_crit =='Crit':
@@ -228,6 +248,142 @@ class PvP(commands.Cog):
             embed.add_field(name=f'Turn {turn[0]}', value=f'{turn[1]}', inline=False)
 
         await ctx.reply(embed=embed)
+
+    @commands.command(brief='<reward money : int>', 
+                      description='Start a single-elimination PvP tournament between 2 or more players!')
+    @commands.check(Checks.is_player)
+    @cooldown(1, 300, type=BucketType.user)
+    async def tournament(self, ctx, reward : int = 0):
+        async def get_player_info(user_id : int):
+            """Returns a dict containing a player's ID, name, ATK, and Crit."""
+            player = {}
+            player['ID'] = user_id
+            player['Name'] = await AssetCreation.getPlayerName(self.client.pg_con, user_id)
+            player['ATK'], player['Crit'] = await AssetCreation.getAttack(self.client.pg_con, user_id)
+
+            return player
+
+        async def deny_repeats(players : list, user):
+            """Return True if player does not have a character or is already in tournament."""
+            if not await Checks.has_char(self.client.pg_con, user):
+                return True
+
+            player_ids = [player['ID'] for player in players]
+            if user.id in player_ids:
+                return True
+
+        def match_players(players : list):
+            """Matches the players in the inputted list.
+            Returns a list of tuples, each tuple holding the info for 2 players.
+            If there are an odd amount of players, the remainder gets matched against a fake with no stats.
+            """
+            matches = []
+            i = 0
+            while i < len(players):
+                try:
+                    match = (
+                        players[i],
+                        players[i+1]
+                    )
+                except IndexError: #In case there are an odd amount of players
+                    fake_player = {
+                        'Name' : 'another contestant',
+                        'ATK' : 0,
+                        'Crit' : 0
+                    }
+                    match = (
+                        players[i],
+                        fake_player
+                    )
+                finally:
+                    matches.append(match)
+                    i+=2 #Skip over every other player since matches have 2 people
+                    
+            return matches
+
+        def simulate_battle(player1, player2):
+            """Simulate a battle between two players based solely off ATK and Crit.
+            Each side has a small chance to land a "crit" (based off crit) and win.
+            Otherwise it will base the victor off the proportions of the attack.
+            Return the winner and loser in that order."""
+            #See if one side lands a critical hit - Highest crit possible is theoretically ~70%.
+            p1vict = player1['Crit']
+            p2vict = p1vict + player2['Crit'] #This should theoretically be <=140
+            random_crit = random.randint(0,500)
+            if random_crit < p1vict:
+                return player1, player2 #player1 wins; Winner is returned first
+            elif random_crit < p2vict:
+                return player2, player1
+            
+            #If no victory occurs, then base it off proportion of ATK
+            victory_number = random.randint(0, player1['ATK'] + player2['ATK'])
+            if victory_number < player1['ATK']:
+                return player1, player2
+            else:
+                return player2, player1
+
+        #Check for valid input
+        if reward < 0:
+            return await ctx.reply('Tournaments should be free to win!')
+
+        player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
+        if reward > player_gold:
+            return await ctx.reply('You do not have enough gold to post that as a reward')
+
+        await AssetCreation.giveGold(self.client.pg_con, reward * -1, ctx.author.id)
+
+        #Send message allowing people to join by hitting a reaction
+        #When joining, check for valid player and load their stats, strategy
+        #Store all players in a list
+        players = [await get_player_info(ctx.author.id)]
+
+        join_message = await ctx.reply(f'{ctx.author.mention} is hosting a tournament! The prize is `{reward}` gold!\n Hit the \N{CROSSED SWORDS} to join!')
+        await join_message.add_reaction('\N{CROSSED SWORDS}')
+
+        reaction = None
+        while True:
+            if str(reaction) == '\N{CROSSED SWORDS}':
+                if not await deny_repeats(players, user):
+                    players.append(await get_player_info(user.id))
+                    await ctx.send(f'{user.display_name} joined {ctx.author.display_name}\'s tournament.')
+
+            try:
+                reaction, user = await self.client.wait_for('reaction_add', timeout=10.0)
+            except asyncio.TimeoutError:
+                await join_message.delete()
+                break
+        
+        #Enumerate and iterate over list, matching consecutive players and popping the loser.
+        #Continue tournament while len(list) > 1. Inside put a for-loop
+        #that goes over each player. In case off odd number of players, add byes with try statement
+        await ctx.send(f'Tournament hosted by {ctx.author.mention} starting with {len(players)} participants!')
+
+        roundnum = 1
+        while len(players) > 1:
+            await ctx.send(f'__**Round {roundnum}**__')
+            matches = match_players(players)
+            for match in matches:
+                #Send the battle message
+                temp_msg = await ctx.send(f"**{match[0]['Name']}** vs. **{match[1]['Name']}**")
+    
+                #Simulate a battle between the two participants
+                await asyncio.sleep(2)
+                winner, loser = simulate_battle(match[0], match[1])
+
+                #Send result and eliminate loser from the list
+                verbs = ['defeated','vanquished','knocked out','eliminated','sussy-amogused',]
+                await temp_msg.edit(content=f"**{winner['Name']}** has {random.choices(verbs, [5,5,5,5,1])[0]} **{loser['Name']}**!")
+                try:
+                    players.remove(loser)
+                except ValueError: #Occurs when the fake participant loses.
+                    pass
+                await asyncio.sleep(3)
+            roundnum+=1
+
+        victor = players[0]['Name']
+        #Declare winner and give them reward
+        await AssetCreation.giveGold(self.client.pg_con, reward, players[0]['ID'])
+        await ctx.send(f'**{victor}** won the tournament hosted by {ctx.author.mention}!')
 
 def setup(client):
     client.add_cog(PvP(client)) 

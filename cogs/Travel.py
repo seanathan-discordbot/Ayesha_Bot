@@ -66,7 +66,7 @@ location_dict = {
     'Crumidia' : {
         'Biome' : 'Hills', 
         'CD' : 10800,
-        'Drops' : 'You can `mine` and `forage` here for `iron`.'
+        'Drops' : 'You can `mine` and `forage` here for `iron` and `silver`.'
         },
     'Kucre' : {
         'Biome' : 'Jungle', 
@@ -197,7 +197,7 @@ class Travel(commands.Cog):
 
         #Send results of player
         if elapsed_time >= 43200 and city_expedition:
-            await ctx.reply(f'You returned from your urban expedition and received `{gold}` gold, `{xp}` xp, and `{mats}` {resource}.\nYou also gained `{gravitas}` while campaigning.')
+            await ctx.reply(f'You returned from your urban expedition and received `{gold}` gold, `{xp}` xp, and `{mats}` {resource}.\nYou also gained `{gravitas}` gravitas while campaigning.')
         else:
             await ctx.reply(f'You returned from your expedition and received `{gold}` gold, `{xp}` xp, and `{mats}` {resource}.\nUnfortunately, you lost `{gravitas_decay}` gravitas while in the wild.')
 
@@ -250,8 +250,8 @@ class Travel(commands.Cog):
         #Make sure they're not on an adventure or traveling
         adventure = await AssetCreation.getAdventure(self.client.pg_con, ctx.author.id)
         if adventure['adventure'] is not None:
-            await ctx.reply('You are currently traveling. Please wait until you arrive at your destination before traveling again.')
-            return
+            ctx.command.reset_cooldown(ctx)
+            return await ctx.reply('You are currently traveling. Please wait until you arrive at your destination before traveling again.')
 
         #Tell database they're going on an expedition
         await AssetCreation.setAdventure(self.client.pg_con, int(time.time()), "EXPEDITION", ctx.author.id)
@@ -390,12 +390,17 @@ class Travel(commands.Cog):
             fur = random.randint(5,10)
             bone = int(fur/1.2)
 
-        #Modify the result given player's role and weapontype
+        #Modify the result given player's role, weapontype, and brotherhood
         role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
         if role == 'Hunter':
             gold *= 2
             fur *= 2
             bone *= 2
+
+        if await AssetCreation.check_for_map_control_bonus(self.client.pg_con, ctx.author.id):
+            gold = int(gold * 1.5)
+            fur = int(fur * 1.5)
+            bone = int(bone * 1.5)
 
         item_id = await AssetCreation.getEquippedItem(self.client.pg_con, ctx.author.id)
         item_info = await AssetCreation.getItem(self.client.pg_con, item_id)
@@ -451,6 +456,11 @@ class Travel(commands.Cog):
             silver = random.randint(2,8)
 
         #Modify rewards given player's weapontype
+        if await AssetCreation.check_for_map_control_bonus(self.client.pg_con, ctx.author.id):
+            gold = int(gold * 1.5)
+            iron = int(iron * 1.5)
+            silver = int(silver * 1.5)
+
         item_id = await AssetCreation.getEquippedItem(self.client.pg_con, ctx.author.id)
         item_info = await AssetCreation.getItem(self.client.pg_con, item_id)
         if item_info['Type'] == 'Dagger':
@@ -521,6 +531,9 @@ class Travel(commands.Cog):
         role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
         if role == 'Traveler':
             amount *= 2
+
+        if await AssetCreation.check_for_map_control_bonus(self.client.pg_con, ctx.author.id):
+            amount = int(amount * 1.5)
 
         item_id = await AssetCreation.getEquippedItem(self.client.pg_con, ctx.author.id)
         item_info = await AssetCreation.getItem(self.client.pg_con, item_id)
@@ -677,11 +690,6 @@ class Travel(commands.Cog):
 
         #Send output
         await ctx.reply(f'You worked at the local {workplace} and made `{gold}` gold.')
-
-    @commands.command(description='See the map!')
-    async def map(self, ctx):
-        map_file = discord.File(Links.map_file)
-        await ctx.reply(file=map_file)
 
 def setup(client):
     client.add_cog(Travel(client))

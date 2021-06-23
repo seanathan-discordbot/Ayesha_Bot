@@ -9,6 +9,7 @@ from Utilities import Checks, AssetCreation, PageSourceMaker
 import random
 import math
 import aiohttp
+import time
 
 # There will be brotherhoods, guilds, and later colleges for combat, economic, and political gain
 
@@ -39,6 +40,7 @@ class Guilds(commands.Cog):
         embed.add_field(name='Members', value=f"{members}/{capacity}")
         embed.add_field(name='Level', value=f"{level}")
         embed.add_field(name='EXP Progress', value=f'{progress}')
+        embed.add_field(name='Base', value=f"{info['Base']}")
         embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.", 
                         value=f"{info['Desc']}", 
                         inline=False)
@@ -70,6 +72,11 @@ class Guilds(commands.Cog):
     @commands.check(Checks.in_guild)
     @commands.check(Checks.is_not_guild_leader)
     async def leave(self, ctx):
+        bank_info = await AssetCreation.get_guild_account(self.client.pg_con, ctx.author.id)
+        if bank_info is not None:
+            gold_payment = await AssetCreation.close_guild_account(self.client.pg_con)
+            await AssetCreation.giveGold(self.client.pg_con, gold_payment, ctx.author.id)
+
         await AssetCreation.leaveGuild(self.client.pg_con, ctx.author.id)
         await ctx.reply('You left your guild.')
 
@@ -85,6 +92,13 @@ class Guilds(commands.Cog):
         if not await Checks.target_not_in_guild(self.client.pg_con, player):
             await ctx.reply('This player is already in an association.')
             return
+
+        #See how recently they joined an association
+        last_join = await AssetCreation.check_last_guild_join(self.client.pg_con, player.id)
+        if last_join.total_seconds() < 86400:
+            cd = 86400 - last_join.total_seconds()
+            return await ctx.reply(f'Joining associations has a 24 hour cooldown. This player can join another association in `{time.strftime("%H:%M:%S", time.gmtime(cd))}`.')
+
         #Otherwise invite the player
         #Load the guild
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
@@ -98,7 +112,7 @@ class Guilds(commands.Cog):
         await message.add_reaction('\u274E') #X
 
         def check(reaction, user):
-            return user == player
+            return user == player and reaction.message.id == message.id
 
         reaction = None
         readReactions = True
@@ -217,17 +231,160 @@ class Guilds(commands.Cog):
         await AssetCreation.giveGold(self.client.pg_con, capital_gain, ctx.author.id)
         await ctx.reply(f'You invested `{capital}` gold in {project} in {location} and earned a return of `{capital_gain}` gold.')
 
+    @guild.group(aliases=['a'], invoke_without_command=True, case_insensitive=True, description='See your guild bank funds.')
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.in_guild)
+    async def account(self, ctx):
+        bank_info = await AssetCreation.get_guild_account(self.client.pg_con, ctx.author.id)
+
+        if bank_info is None:
+            return await ctx.reply('You do not have a guild bank account. Do `{ctx.prefix}guild account open` to make one!')
+
+        embed = discord.Embed(title=f"Bank of {bank_info['guild_name']}: {bank_info['user_name']}'s Account",
+                              color=self.client.ayesha_blue)
+        embed.add_field(name='Bank Balance', value=f"{bank_info['account_funds']} / {bank_info['capacity']}")
+        embed.set_footer(text='Increase your bank capacity by levelling it up.')
+
+        await ctx.reply(embed=embed)
+
+    @account.command(brief='<initial deposit = 0', description='Open a bank account with your guild! If you wish, also deposit a certain amount of money once opened.')
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.in_guild)
+    @commands.check(Checks.not_has_bank_account)
+    async def open(self, ctx, initial_deposit : int = 0):
+        #Check for invalid input
+        if initial_deposit < 0:
+            return await ctx.reply('The bank cannot complete this deposit.')
+
+        player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
+        if player_gold < initial_deposit:
+            return await ctx.reply('You cannot deposit more money than you own!')
+
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        if initial_deposit > math.floor(guild['XP'] / 1000000) * 1000000:
+            return await ctx.reply(f"The most you can store in your guild bank account is `{math.floor(guild['XP'] / 1000000) * 1000000}` gold.")
+
+        #Open the account
+        await AssetCreation.open_guild_account(self.client.pg_con, ctx.author.id, initial_deposit)
+        return await ctx.reply(f"You opened a bank account with your guild. Do `{ctx.prefix}guild account` to view it!")
+
+    @account.command(aliases=['d','save'], brief='<deposit>', description='Deposit some of your money into your guild bank account.')
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.in_guild)
+    @commands.check(Checks.has_bank_account)
+    async def deposit(self, ctx, deposit : int):
+        #Check for invalid input
+        if deposit < 0:
+            return await ctx.reply(f'Please use `{ctx.prefix}guild account withdraw` instead.')
+
+        player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
+        if player_gold < deposit:
+            return await ctx.reply('You cannot deposit more money than you own!')
+
+        bank_info = await AssetCreation.get_guild_account(self.client.pg_con, ctx.author.id)
+        if deposit > bank_info['capacity'] - bank_info['account_funds']:
+            return await ctx.reply(f"This transaction will overfill your account. Please deposit `{bank_info['capacity'] - bank_info['account_funds']}` gold at most.")
+
+        #Deposit money and give receipt
+        await AssetCreation.giveGold(self.client.pg_con, deposit*-1, ctx.author.id)
+        await AssetCreation.guild_bank_deposit(self.client.pg_con, ctx.author.id, deposit)
+
+        await ctx.reply(f"You deposited `{deposit}` gold into your guild bank account.\nYou have `{player_gold - deposit}` gold and `{bank_info['account_funds'] + deposit}` gold in your account.")
+
+    @account.command(aliases=['w','pay'], brief='<deposit>', description='Deposit some of your money into your guild bank account.')
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.in_guild)
+    @commands.check(Checks.has_bank_account)
+    async def withdraw(self, ctx, withdrawal : int):
+        #Check for invalid input
+        if withdrawal < 0:
+            return await ctx.reply(f"Please use `{ctx.prefix}guild account deposit` instead.")
+
+        bank_info = await AssetCreation.get_guild_account(self.client.pg_con, ctx.author.id)
+        if withdrawal > bank_info['account_funds']:
+            return await ctx.reply(f"You cannot withdraw that amount as you only have `{bank_info['account_funds']}` saved.")
+
+        #Withdraw money and give receipt
+        await AssetCreation.giveGold(self.client.pg_con, withdrawal, ctx.author.id)
+        await AssetCreation.guild_bank_deposit(self.client.pg_con, ctx.author.id, withdrawal*-1)
+        player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
+
+        await ctx.reply(f"You withdrew `{withdrawal}` gold from your guild bank account.\nYou have `{player_gold}` gold and `{bank_info['account_funds'] - withdrawal}` gold in your account.")
+
+    @guild.command(brief='<area>', description='Select an area to base your association in. The valid locations are:\n`Aramithea`, `Riverburn`, `Thenuille`')
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.is_guild_leader)
+    async def base(self, ctx, *, area : str):
+        #Make sure input is valid.
+        area = area.title()
+        areas = ('Aramithea', 'Riverburn', 'Thenuille')
+        if area not in areas:
+            return await ctx.reply('Please select a valid area on the map:\n`Aramithea`, `Riverburn`, `Thenuille`')
+
+        #Load guild info
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+
+        #Check to see if this is first change and apply charge if necessary
+        base_info = await AssetCreation.get_association_base(self.client.pg_con, guild['ID'])
+        if base_info['base_set']:
+            player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
+            if player_gold < 1000000:
+                return await ctx.reply(f'Changing your association\'s base costs `1,000,000` gold but you only have `{player_gold}` gold.')
+
+            message = await ctx.reply('This operation will cost `1,000,000` gold. Continue?')
+            await message.add_reaction('\u2705') #Check
+            await message.add_reaction('\u274E') #X
+
+            def check(reaction, user):
+                return user == ctx.author and reaction.message.id == message.id
+
+            reaction = None
+            readReactions = True
+            while readReactions: 
+                if str(reaction) == '\u2705': #Then change base
+                    await message.delete()
+                    await AssetCreation.giveGold(self.client.pg_con, -1000000, ctx.author.id)
+                    await AssetCreation.set_association_base(self.client.pg_con, guild['ID'], area)
+                    await ctx.reply(f"{guild['Name']} is now based in {area}!")
+                    break
+                if str(reaction) == '\u274E':
+                    await message.delete()
+                    await ctx.reply('Cancelled base movement.')
+                    break
+
+                try:
+                    reaction, user = await self.client.wait_for('reaction_add', check=check, timeout=15.0)
+                    await message.remove_reaction(reaction, user)
+                except asyncio.TimeoutError:
+                    readReactions = not readReactions
+                    await message.delete()
+                    await ctx.send('Cancelled base movement.')
+
+        else: #Change base for free
+            await AssetCreation.set_association_base(self.client.pg_con, guild['ID'], area)
+            await ctx.reply(f"{guild['Name']} is now based in {area}!\n`WARNING:` Changing your base again will cost `1,000,000` gold.")
+
     @guild.command(brief='<guild ID>', description='See info on another guild based on their ID')
-    async def info(self, ctx, guild_id : int):
-        try:
-            info = await AssetCreation.getGuildByID(self.client.pg_con, guild_id)
-        except TypeError:
-            await ctx.reply('No association has that ID.')
-            return
+    async def info(self, ctx, *, source : str):
+        if source.lower().startswith("id:"):
+            try:
+                info = await AssetCreation.getGuildByID(self.client.pg_con, int(source[3:]))
+                if info is None:
+                    return await ctx.reply('There is no association with that ID.')
+            except (ValueError, TypeError):
+                return await ctx.reply('That is an invalid ID number.')
+        else:
+            try:
+                info = await AssetCreation.getGuildByName(self.client.pg_con, source)
+            except TypeError:
+                return await ctx.reply('No association goes by that name.')
 
         leader = await self.client.fetch_user(info['Leader'])
-        level, progress = await AssetCreation.getGuildLevel(self.client.pg_con, info['ID'], returnline=True)
-        members = await AssetCreation.getGuildMemberCount(self.client.pg_con, info['ID'])
+        level, progress = await AssetCreation.getGuildLevel(self.client.pg_con, 
+                                                            info['ID'], 
+                                                            returnline=True)
+        members = await AssetCreation.getGuildMemberCount(self.client.pg_con, 
+                                                          info['ID'])
         capacity = await AssetCreation.getGuildCapacity(self.client.pg_con, info['ID'])
 
         embed = discord.Embed(title=f"{info['Name']}", color=self.client.ayesha_blue)
@@ -236,8 +393,9 @@ class Guilds(commands.Cog):
         embed.add_field(name='Members', value=f"{members}/{capacity}")
         embed.add_field(name='Level', value=f"{level}")
         embed.add_field(name='EXP Progress', value=f'{progress}')
+        embed.add_field(name='Base', value=f"{info['Base']}")
         embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.", 
-                        value=f"{info['Desc']}", 
+                        value=f"{info['Desc']}",
                         inline=False)
         embed.set_footer(text=f"{info['Type']} ID: {info['ID']}")
         await ctx.reply(embed=embed)
@@ -298,6 +456,12 @@ class Guilds(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.not_in_guild)
     async def join(self, ctx, guild_id : int):
+        #See how recently they joined an association
+        last_join = await AssetCreation.check_last_guild_join(self.client.pg_con, ctx.author.id)
+        if last_join.total_seconds() < 86400:
+            cd = 86400 - last_join.total_seconds()
+            return await ctx.reply(f'Joining associations has a 24 hour cooldown. You can join another association in `{time.strftime("%H:%M:%S", time.gmtime(cd))}`.')
+
         #Make sure that guild exists, is open, and has an open slot
         try:
             guild = await AssetCreation.getGuildByID(self.client.pg_con, guild_id)
@@ -422,14 +586,56 @@ class Guilds(commands.Cog):
         await AssetCreation.leaveGuild(self.client.pg_con, player.id)
         await ctx.reply(f'You kicked {player.display_name} from your association.')
 
+    @guild.command(aliases=['disband'], description='Disband your association. You can only do this when no one else remains in your association.')
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.in_guild)
+    @commands.check(Checks.is_guild_leader)
+    async def delete(self, ctx):
+        #Make sure they're the only member remaining
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        if await AssetCreation.getGuildMemberCount(self.client.pg_con, guild['ID']) > 1:
+            return await ctx.reply('Your association still has members counting on you! You can\'t disband.')
+
+        #Ask for confirmation
+        message = await ctx.reply('Are you sure you want to disband your association?')
+        await message.add_reaction('\u2705') #Check
+        await message.add_reaction('\u274E') #X
+
+        def check(reaction, user):
+            return user == ctx.author and reaction.message.id == message.id
+
+        reaction = None
+        readReactions = True
+        while readReactions: 
+            if str(reaction) == '\u2705': #Then proceed
+                await message.delete()
+                await AssetCreation.deleteGuild(self.client.pg_con, guild['ID'], guild['Leader'], guild['Type'])
+                await ctx.reply(f"You have disbanded {guild['Name']}.")
+                break
+            if str(reaction) == '\u274E': #Cancel the guild disband
+                await message.delete()
+                await ctx.reply('Cancelled the operation.')
+                break
+
+            try:
+                reaction, user = await self.client.wait_for('reaction_add', check=check, timeout=15.0)
+                await message.remove_reaction(reaction, user)
+            except asyncio.TimeoutError:
+                readReactions = not readReactions
+                await message.delete()
+                await ctx.send('Cancelled the operation.')
+
     @guild.command(description='Shows this command.')
     async def help(self, ctx):
         def write(ctx, start, entries):
-            helpEmbed = discord.Embed(title=f'Ayesha Help: Brotherhoods', description='Guilds are a financially-oriented association. Its members gain more money from selling items. They also gain access to the `invest` command.', color=self.client.ayesha_blue)
+            helpEmbed = discord.Embed(title=f'Ayesha Help: Guilds', description='Guilds are a financially-oriented association. Its members gain more money from selling items. They also gain access to the `invest` command.', color=self.client.ayesha_blue)
             helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
             
             iteration = 0
             while start < len(entries) and iteration < 5: #Will loop until 5 entries are processed or there's nothing left in the queue
+                if entries[start].parent.name == 'account': #Account subcommand needs to list 'account' parent as well
+                    entries[start].name = f'account {entries[start].name}'
+                
                 if entries[start].brief and entries[start].aliases:
                     helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', 
                                         value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', 
@@ -452,7 +658,7 @@ class Guilds(commands.Cog):
             return helpEmbed
 
         cmds, embeds = [], []
-        for command in self.client.get_command('brotherhood').walk_commands():
+        for command in self.client.get_command('guild').walk_commands():
             cmds.append(command)
         for i in range(0, len(cmds), 5):
             embeds.append(write(ctx, i, cmds))
