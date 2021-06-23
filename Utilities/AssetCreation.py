@@ -5,7 +5,7 @@ from discord.ext import commands, menus
 
 import asyncpg
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import random
 import math
@@ -238,6 +238,11 @@ async def sellAllItems(pool, user_id : int, rarity : str):
         payout = subtotal - cost_info['tax_amount']
 
         await conn.execute('UPDATE players SET gold = gold + $1 WHERE user_id = $2', payout, user_id)
+        await log_transaction(pool,
+                              user_id,
+                              cost_info['subtotal'],
+                              cost_info['tax_amount'],
+                              cost_info['tax_rate'])
         await conn.execute('DELETE FROM items WHERE owner_id = $1 AND rarity = $2 AND is_equipped = FALSE', user_id, rarity)
         return amount, subtotal, cost_info['tax_amount']
 
@@ -512,11 +517,13 @@ async def createGuild(pool, name, guild_type, leader, icon):
     """Creates an association with the given info."""
     async with pool.acquire() as conn:
         await conn.execute('INSERT INTO guilds (guild_name, guild_type, leader_id, guild_icon) VALUES ($1, $2, $3, $4)', name, guild_type, leader, icon)
-        guild_id = await conn.fetchrow('SELECT guild_id FROM guilds WHERE leader_id = $1', leader)
-        await conn.execute("UPDATE players SET guild = $1, gold = gold - 15000, guild_rank = 'Leader' WHERE user_id = $2", guild_id['guild_id'], leader)
+        guild_id = await conn.fetchval('SELECT guild_id FROM guilds WHERE leader_id = $1', leader)
+        await conn.execute("UPDATE players SET guild = $1, gold = gold - 15000, guild_rank = 'Leader' WHERE user_id = $2", guild_id, leader)
 
         #If brotherhood, also add empty record to the champions table
-        await conn.execute('INSERT INTO brotherhood_champions(guild_id) VALUES ($1)', guild_id)
+        guild_type = await conn.fetchval('SELECT guild_type FROM guilds WHERE guild_id = $1', guild_id)
+        if guild_type == 'Brotherhood':
+            await conn.execute('INSERT INTO brotherhood_champions(guild_id) VALUES ($1)', guild_id)
 
         await pool.release(conn)
 
@@ -527,7 +534,7 @@ async def check_last_guild_join(pool, user_id):
         try:
             return datetime.now() - last_join
         except TypeError: #no join logged
-            return 999999 #Just return greater than the 86400 second threshold
+            return timedelta(seconds=99999) #Just return greater than the 86400 second threshold
 
 
 async def joinGuild(pool, guild_id, user_id): #DOES NOT VERIFY IF THEY'RE ALREADY IN A GUILD
@@ -1381,6 +1388,9 @@ async def check_for_comptroller_bonus(pool, user_id : int, bonus_type : str):
 
         guild = await conn.fetchval('SELECT guild FROM players WHERE user_id = $1', user_id)
         
+        if not requirements:
+            return False
+
         if guild == requirements['guild_id'] and bonus_type == requirements['bonus']:
             return True
         else:
