@@ -75,7 +75,7 @@ class Map(commands.Cog):
                 await self.client.pg_con.release(conn)
 
         async def weekly_offices():
-            schedule.every().friday.at("22:59").do(offices_func)
+            schedule.every().wednesday.at("12:00").do(offices_func)
             while True:
                 schedule.run_pending()
                 print(f'{date.today()}: Selecting new officeholders...')

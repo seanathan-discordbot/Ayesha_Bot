@@ -128,7 +128,7 @@ class Profile(commands.Cog):
                 await self.client.pg_con.release(conn)
 
         async def daily_gravitas():
-            schedule.every().day.at("14:02").do(gravitas_func)
+            schedule.every().day.at("12:00").do(gravitas_func)
             while True:
                 schedule.run_pending()
                 print(f'{date.today()}: Updating gravitas...')
