@@ -264,6 +264,11 @@ class Items(commands.Cog):
         payout = subtotal - cost_info['tax_amount']
 
         await AssetCreation.giveGold(self.client.pg_con, payout, ctx.author.id)
+        await AssetCreation.log_transaction(self.client.pg_con,
+                                            ctx.author.id,
+                                            cost_info['subtotal'],
+                                            cost_info['tax_amount'],
+                                            cost_info['tax_rate'])
 
         if len(errors) == 0:
             await ctx.reply(f"You received `{subtotal}` gold for selling these items. You paid `{cost_info['tax_amount']}` gold in income taxes.")
@@ -279,8 +284,11 @@ class Items(commands.Cog):
         if rarity not in rarities:
             await ctx.reply('That is not a valid rarity.')
             return
-        items, gold, tax = await AssetCreation.sellAllItems(self.client.pg_con, ctx.author.id, rarity)
-        await ctx.reply(f'You sold all {items} of your {rarity.lower()} items for `{gold}` gold. You paid `{tax}` gold in income taxes.')
+        try:
+            items, gold, tax = await AssetCreation.sellAllItems(self.client.pg_con, ctx.author.id, rarity)
+            await ctx.reply(f'You sold all {items} of your {rarity.lower()} items for `{gold}` gold. You paid `{tax}` gold in income taxes.')
+        except ValueError:
+            await ctx.reply('You have no items in your inventory of that rarity.')
 
     @commands.command(brief='<player> <item_id : int> <price : int>', description='Sell an item to someone')
     @commands.check(Checks.is_player)

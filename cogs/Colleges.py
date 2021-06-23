@@ -214,7 +214,7 @@ class Colleges(commands.Cog):
             await AssetCreation.give_gravitas(self.client.pg_con, ctx.author.id, gravitas_loss * -1)
             await ctx.reply(f'Your political play was wildly unpopular with the people of {location}. You lost {gravitas_loss} gravitas.')
 
-        if chance > 75: #Success
+        elif chance > 75: #Success
             gravitas_gain = random.randint(0,3)
 
             await AssetCreation.give_gravitas(self.client.pg_con, ctx.author.id, gravitas_gain)
