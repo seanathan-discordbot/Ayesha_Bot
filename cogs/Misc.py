@@ -18,16 +18,17 @@ class Misc(commands.Cog):
     def __init__(self,client):
         self.client=client
         self.claimed_dailies = []
+        self.daily_scheduler = schedule.Scheduler()
 
         def clearDailies():
             self.claimed_dailies.clear()
 
         async def checkTime():
-            schedule.every().day.at("00:00").do(clearDailies)
+            self.daily_scheduler.every().day.at("00:00").do(clearDailies)
             while True:
-                schedule.run_pending()
+                self.daily_scheduler.run_pending()
                 print(f'Checked time for reset: {date.today()}')
-                await asyncio.sleep(schedule.idle_seconds())
+                await asyncio.sleep(self.daily_scheduler.idle_seconds)
 
         asyncio.ensure_future(checkTime())
 
@@ -66,7 +67,7 @@ class Misc(commands.Cog):
     async def daily(self, ctx):
         """Get 2 rubidics daily. Resets everyday at 12 a.m. EST."""
         if ctx.author.id in self.claimed_dailies:
-            await ctx.reply(f'You already claimed your daily. It will refresh in `{time.strftime("%H:%M:%S", time.gmtime(schedule.idle_seconds()))}`.')
+            await ctx.reply(f'You already claimed your daily. It will refresh in `{time.strftime("%H:%M:%S", time.gmtime(self.daily_scheduler.idle_seconds))}`.')
             return
         else:
             await AssetCreation.giveRubidics(self.client.pg_con, 2, ctx.author.id)
@@ -108,7 +109,7 @@ class Misc(commands.Cog):
 
         #Also see if daily has been used
         if ctx.author.id in self.claimed_dailies:
-            output += f'`daily`: {time.strftime("%H:%M:%S", time.gmtime(schedule.idle_seconds()))}\n'
+            output += f'`daily`: {time.strftime("%H:%M:%S", time.gmtime(self.daily_scheduler.idle_seconds))}\n'
 
         #Create embed to send
         embed = discord.Embed(color=self.client.ayesha_blue)
