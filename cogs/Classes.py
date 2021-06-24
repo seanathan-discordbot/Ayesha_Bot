@@ -49,6 +49,7 @@ ori = enumerate(origins)
 ori = list(ori)
 
 class Classes(commands.Cog):
+    """Customize your character!"""
 
     def __init__(self, client):
         self.client = client
@@ -63,6 +64,10 @@ class Classes(commands.Cog):
     @commands.command(name='class', 
                       description='Choose your player class. This can be changed.')
     async def change_class(self, ctx, player_job : str = None):
+        """`player_job`: the class you want to switch to. To see the list of valid classes, just do `class`.
+
+        Choose your player class. This can be changed in the future.
+        """
         if player_job is None:
             ctx.command.reset_cooldown(ctx)
 
@@ -92,6 +97,10 @@ class Classes(commands.Cog):
     @cooldown(1, 3600, BucketType.user)
     @commands.command(aliases=['background','birthplace'], description='Choose your birthplace.')
     async def origin(self, ctx, *, player_origin : str = None):
+        """`player_origin`: Your birthplace. To see the valid areas, just do `origin`
+
+        Choose your homeland.
+        """
         if player_origin is None:
             ctx.command.reset_cooldown(ctx)
 

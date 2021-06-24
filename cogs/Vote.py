@@ -73,6 +73,7 @@ class Vote_Handler:
         self.session.close()
 
 class Vote(commands.Cog):
+    """Small module to reward votes"""
     def __init__(self,client):
         self.client = client
 

@@ -35,6 +35,7 @@ class YesNo(menus.Menu):
         self.stop() 
 
 class Profile(commands.Cog):
+    """Create a character and view your stats!"""
 
     def __init__(self, client):
         self.client = client
@@ -147,6 +148,10 @@ class Profile(commands.Cog):
                       description='Start the game of AyeshaBot.')
     @commands.check(Checks.not_player)
     async def start(self, ctx, *, name : str = None):
+        """`name`: the name of your character
+
+        Begin the game of Ayesha by creating a character!
+        """
         if not name:
             name = ctx.author.display_name
         if len(name) > 32:
@@ -164,6 +169,10 @@ class Profile(commands.Cog):
 
     @commands.command(aliases=['p'], description='View your profile')
     async def profile(self, ctx, player : commands.MemberConverter = None):
+        """`player`: the player whose profile you want to see. Defaults to your own if none is given
+
+        View your or any other player's profile!
+        """
         # Make sure targeted person is a player
         if player is None: #return author profile
             if not await Checks.has_char(self.client.pg_con, ctx.author):
@@ -241,12 +250,14 @@ class Profile(commands.Cog):
     @commands.command(aliases=['e', 'econ', 'economy', 'wallet'], description='See how much gold you have.')
     @commands.check(Checks.is_player)
     async def gold(self, ctx):
+        """See how much gold you have."""
         gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
         await ctx.reply(f'You have `{gold}` gold.')
 
     @commands.command(aliases=['xp'], description='Check your xp and level.')
     @commands.check(Checks.is_player)
     async def level(self, ctx):
+        """See your current level, xp, and distance from levelling up."""
         level, xp = await AssetCreation.getPlayerXP(self.client.pg_con, ctx.author.id)
         prestige = await AssetCreation.getPrestige(self.client.pg_con, ctx.author.id)
         w = 6000000 + (250000 * prestige)
@@ -264,6 +275,10 @@ class Profile(commands.Cog):
     @commands.command(brief='<name>', description='Change your character name.')
     @commands.check(Checks.is_player)
     async def rename(self, ctx, *, name):
+        """`name`: your new name (max 32 characters)
+        
+        Change your character name.
+        """
         if len(name) > 32:
             await ctx.reply('Name max 32 characters.')
             return
@@ -273,6 +288,7 @@ class Profile(commands.Cog):
     @commands.command(description='Rebirth your character, resetting their level and giving them 30 attack and 50 HP.')
     @commands.check(Checks.is_player)
     async def prestige(self, ctx):
+        """Rebirth your character, resetting their level and giving them 30 attack and 50 HP."""
         #Make sure player is lvl 100
         level = await AssetCreation.getLevel(self.client.pg_con, ctx.author.id)
         if level < 100:
@@ -294,6 +310,7 @@ class Profile(commands.Cog):
     #Add a tutorial command at the end of alpha
     @commands.group(description='Learn the game.', case_insensitive=True, invoke_without_command=True)
     async def tutorial(self, ctx):
+        """Learn the game."""
         with open(Links.tutorial, "r") as f:
             tutorial = f.readlines()
 
@@ -316,6 +333,7 @@ class Profile(commands.Cog):
 
     @tutorial.command(aliases=['acolyte'], description='Learn more about Acolytes!')
     async def Acolytes(self, ctx):
+        """Learn the game."""
         with open(Links.tutorial, "r") as f:
             tutorial = f.readlines()
 
@@ -336,6 +354,7 @@ class Profile(commands.Cog):
 
     @tutorial.command(aliases=['item', 'weapon', 'weapons'], description='Learn more about Items!')
     async def Items(self, ctx):
+        """Learn the game."""
         with open(Links.tutorial, "r") as f:
             tutorial = f.readlines()
 
@@ -347,6 +366,7 @@ class Profile(commands.Cog):
 
     @tutorial.command(description='Learn more about PvE!')
     async def pve(self, ctx):
+        """Learn the game."""
         with open(Links.tutorial, "r") as f:
             tutorial = f.readlines()
 
@@ -358,6 +378,7 @@ class Profile(commands.Cog):
 
     @tutorial.command(description='Learn more about Travel!')
     async def Travel(self, ctx):
+        """Learn the game."""
         with open(Links.tutorial, "r") as f:
             tutorial = f.readlines()
 

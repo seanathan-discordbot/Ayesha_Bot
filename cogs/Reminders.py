@@ -10,6 +10,7 @@ from datetime import timedelta
 import time
 
 class Reminders(commands.Cog):
+    """Simple, low-capacity reminder system for your bot needs"""
 
     def __init__(self, client):
         self.client = client
@@ -67,6 +68,12 @@ class Reminders(commands.Cog):
                     invoke_without_command=True, 
                     case_insensitive=True)
     async def remind(self, ctx, duration : str, *, content : str = 'None'):
+        """`duration`: the length of the reminder. Follow the format `DD:HH:MM:SS` or simply `MM:SS`.
+        `content`: a message for yourself to be sent when the reminder ends
+
+        Set a reminder. The maximum time is 7 days, and the reminder will be DMed to you when over.
+        Do `remind help` for more commands related to reminders.
+        """
         #Make sure input is valid
         length = 0
 
@@ -127,6 +134,7 @@ class Reminders(commands.Cog):
 
     @remind.command(name='list', description='See your active reminders.')
     async def _list(self, ctx):
+        """Get a list of your active reminders. Each reminder has an ID that can be referenced in other commands."""
         reminders = await AssetCreation.get_reminders_from_person(self.client.pg_con, ctx.author.id)
         
         if len(reminders) == 0:
@@ -144,6 +152,10 @@ class Reminders(commands.Cog):
 
     @remind.command(aliases=['cancel', 'remove', 'stop'], brief='<id of reminder>', description='Cancel one of your reminders')
     async def delete(self, ctx, reminder_id : int):
+        """`reminder_id`: the ID of the reminder being deleted. The ID can be retrieved from `r list`
+
+        Delete one of your reminders so that you are not reminded of it.
+        """
         reminders = await AssetCreation.get_reminders_from_person(self.client.pg_con, ctx.author.id)
 
         for reminder in reminders:
@@ -156,6 +168,7 @@ class Reminders(commands.Cog):
 
     @remind.command(description='Show this command.')
     async def help(self, ctx):
+        """Show all commands related to reminders."""
         def write(ctx, entries):
             helpEmbed = discord.Embed(title=f'NguyenBot Help: Reminders', 
                                       description='We created a simple reminder module to help you plan your expeditions, travels, voting, etc. We recommend using it only for these purposes, as this module is not perfect and other bots (and applications) probably have better systems for doing this. This cog however will fulfill any of your bot-related timer needs.', 

@@ -76,6 +76,7 @@ location_dict = {
 }
 
 class Travel(commands.Cog):
+    """Explore the land of Rabidus"""
 
     def __init__(self, client):
         self.client = client
@@ -209,6 +210,10 @@ class Travel(commands.Cog):
     @commands.command(brief='<destination>', description='Travel to another area of the map, unlocking a different subset of commands.')
     @commands.check(Checks.is_player)
     async def travel(self, ctx, *, destination : str = None):
+        """`destination`: where on the map you are travelling to. Leave blank to see a menu of valid areas.
+
+        Travel to another area of the map, unlocking a different subset of commands.
+        """
         if destination is None:
             locations = self.write()
             travel_pages = menus.MenuPages(source=PageSourceMaker.PageMaker(locations), 
@@ -247,6 +252,10 @@ class Travel(commands.Cog):
     @commands.check(Checks.is_player)
     @cooldown(1, 900, type=BucketType.user)
     async def expedition(self, ctx):
+        """Go on an expedition for an extended period of time, returning with materials.
+        You will receive gold, xp, and materials related to the territory you are in. Urban expeditions will also net you gravitas.
+        The longer the expedition, the more you will be rewarded. Rewards only scale up to 1 week, so use `arrive` by then.
+        """
         #Make sure they're not on an adventure or traveling
         adventure = await AssetCreation.getAdventure(self.client.pg_con, ctx.author.id)
         if adventure['adventure'] is not None:
@@ -262,6 +271,7 @@ class Travel(commands.Cog):
     @commands.command(description='See how long until you arrive at your new location or collect rewards for moving.')
     @commands.check(Checks.is_player)
     async def arrive(self, ctx):
+        """Arrive at your destination. This command is used to both complete `travel` and `expedition`."""
         adv = await AssetCreation.getAdventure(self.client.pg_con, ctx.author.id)
         if adv['adventure'] is None:
             await ctx.reply('You aren\'t travelling. Use `travel` to explore somewhere new!')
@@ -313,6 +323,7 @@ class Travel(commands.Cog):
     @commands.command(description='Cancel your current travel-state.')
     @commands.check(Checks.is_player)
     async def cancel(self, ctx):
+        """Cancel your current adventure if travelling."""
         adv = await AssetCreation.getAdventure(self.client.pg_con, ctx.author.id)
         if adv is None:
             await ctx.reply('You aren\'t travelling. Use `travel` to explore somewhere new!')
@@ -365,6 +376,7 @@ class Travel(commands.Cog):
     @commands.check(Checks.is_player)
     @cooldown(1, 10, type=BucketType.user)
     async def hunt(self, ctx):
+        """Hunt for food, gaining fur and bone, materials that buff certain acolytes."""
         #Make sure they're in hunting territory
         location = await AssetCreation.getLocation(self.client.pg_con, ctx.author.id)
         biome = location_dict[location]['Biome']
@@ -431,6 +443,7 @@ class Travel(commands.Cog):
     @commands.check(Checks.is_player)
     @cooldown(1, 10, type=BucketType.user)
     async def mine(self, ctx):
+        """Mine for ore, gaining iron and silver, materials that buff certain acolytes."""
         #Make sure they're in mining territory
         location = await AssetCreation.getLocation(self.client.pg_con, ctx.author.id)
         biome = location_dict[location]['Biome']
@@ -490,6 +503,7 @@ class Travel(commands.Cog):
     @commands.check(Checks.is_player)
     @cooldown(1, 10, type=BucketType.user)
     async def forage(self, ctx):
+        """Forage for food, gaining different materials depending on your location."""
         #Get player location and materials.
         location = await AssetCreation.getLocation(self.client.pg_con, ctx.author.id)
         try:
@@ -547,6 +561,7 @@ class Travel(commands.Cog):
     @commands.command(aliases=['pack'], description='See how many materials you have.')
     @commands.check(Checks.is_player)
     async def backpack(self, ctx):
+        """See the resources you currently possess."""
         mats = ('Fur', 'Bone', 'Iron', 'Silver', 'Wood', 'Wheat', 'Oat', 'Reeds', 'Pine', 'Moss', 'Cacao')
         backpack = []
 
@@ -563,6 +578,7 @@ class Travel(commands.Cog):
     @commands.check(Checks.is_player)
     @cooldown(1,10,type=BucketType.user)
     async def fish(self, ctx):
+        """Fish for food."""
         #Fishing only in Thenuille
         location = await AssetCreation.getLocation(self.client.pg_con, ctx.author.id)
         if location != 'Thenuille':
@@ -594,6 +610,11 @@ class Travel(commands.Cog):
     @commands.check(Checks.is_player)
     @cooldown(1,90,type=BucketType.user)
     async def upgrade(self, ctx, item_id : int = None):
+        """`item_id`: the ID of the item you are upgrading
+
+        Upgrade the ATK stat of a weapon. The cost of upgrading is `3*(ATK+1)` iron and `20*(ATK+1)` gold.
+        Weapons of a rarity can also only be upgraded to a certain value:\n**Common:** 50\n**Uncommon:** 75\n**Rare:** 100\n**Epic:** 125\n**Legendary:** 160
+        """
         if item_id is None:
             embed = discord.Embed(title='Upgrade', color=self.client.ayesha_blue)
             embed.add_field(name='Upgrade an item\'s attack stat by 1.', value='The cost of upgrading scales with the attack of the item. You will have to pay `3*(ATK+1)` iron and `20*(ATK+1)` gold to upgrade an item\'s ATK stat.\nEach rarity also has a maximum ATK:\n**Common:** 50\n**Uncommon:** 75\n**Rare:** 100\n**Epic:** 125\n**Legendary:** 160\n`Upgrade` has a 90 second cooldown.')
@@ -669,6 +690,7 @@ class Travel(commands.Cog):
     @commands.check(Checks.is_player)
     @cooldown(1, 7200, type=BucketType.user)
     async def work(self, ctx):
+        """Get a short gig in town, making some money."""
         #Upgrade only in Cities or Towns
         location = await AssetCreation.getLocation(self.client.pg_con, ctx.author.id)
         if location != 'Thenuille' and location != 'Aramithea' and location != 'Riverburn':

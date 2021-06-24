@@ -270,6 +270,7 @@ gold_rewards = {
 }
 
 class PvE(commands.Cog):
+    """Basic gameplay in Ayesha"""
 
     def __init__(self, client):
         self.client = client
@@ -452,6 +453,10 @@ class PvE(commands.Cog):
     @cooldown(1, 10, type=BucketType.user)
     @commands.max_concurrency(1, per=BucketType.user, wait=False)
     async def bounty(self, ctx, level : int = 0):
+        """`level`: the level of the PvE you want to fight. Leave blank to see a menu of bosses.
+
+        Fight an enemy for rewards, gaining xp, gold, and possibly an item.
+        """
         if level == 0:
             levels = self.showBounties()
             pages = menus.MenuPages(source=PageSourceMaker.PageMaker(levels), 
@@ -751,6 +756,7 @@ class PvE(commands.Cog):
                       description='Set the action weighting when fighting bosses. Do this command without any arguments for more info.')
     @commands.check(Checks.is_player)
     async def strategy(self, ctx, attack : int = None, block : int = None, parry : int = None, heal : int = None, bide : int = None):
+        """Set the action weighting when fighting bosses. Do this command without any arguments for more info."""
         #Explain command if nothing input
         if bide is None:
             with open(Links.tutorial, "r") as f:

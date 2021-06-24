@@ -10,6 +10,7 @@ import random
 import math
 
 class PvP(commands.Cog):
+    """Challenge your friends to battle!"""
 
     def __init__(self, client):
         self.client = client
@@ -76,6 +77,10 @@ class PvP(commands.Cog):
     @commands.check(Checks.is_player)
     @cooldown(1, 30, BucketType.user)
     async def battle(self, ctx, opponent : commands.MemberConverter):
+        """`opponent`: the person you want to fight
+
+        Challenge another player to battle you.
+        """
         #Make sure target is a player
         if not await Checks.has_char(self.client.pg_con, opponent):
             await ctx.reply('This person does not have a character')
@@ -254,6 +259,10 @@ class PvP(commands.Cog):
     @commands.check(Checks.is_player)
     @cooldown(1, 300, type=BucketType.user)
     async def tournament(self, ctx, reward : int = 0):
+        """`reward`: the amount of gold you want to give to the winner of this tournament.
+
+        Start a single-elimination PvP tournament between 2 or more players!
+        """
         async def get_player_info(user_id : int):
             """Returns a dict containing a player's ID, name, ATK, and Crit."""
             player = {}

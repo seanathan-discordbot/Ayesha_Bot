@@ -14,6 +14,7 @@ import random
 import schedule
 
 class Misc(commands.Cog):
+    """Other Ayesha-related commands"""
     def __init__(self,client):
         self.client=client
         self.claimed_dailies = []
@@ -38,6 +39,7 @@ class Misc(commands.Cog):
     #COMMANDS
     @commands.command(description='Invite Ayesha to your server!')
     async def invite(self, ctx):
+        """Invite Ayesha to your server!"""
         embed = discord.Embed(title='Click me to invite Ayesha to your server!',
             url = 'https://discord.com/api/oauth2/authorize?client_id=767234703161294858&permissions=70347841&scope=bot',
             color = self.client.ayesha_blue)
@@ -47,10 +49,12 @@ class Misc(commands.Cog):
 
     @commands.command(description='Join the support server here!')
     async def support(self, ctx):
+        """Join the support server here!"""
         await ctx.reply('https://discord.gg/FRTTARhN44')
 
     @commands.command(description='Vote for the bot to receive a rubidic!')
     async def vote(self, ctx):
+        """Vote for the bot to receive rubidics. Receive 1 rubidic for each vote, up to 4/day."""
         embed = discord.Embed(title='Receive 1 rubidic each time you vote for the bot, up to 4 rubidics a day!',
             description='Vote on [Top.gg!](https://top.gg/bot/767234703161294858) (12 hr cooldown)\nVote on [Discord Bot List!](https://discordbotlist.com/bots/ayesha) (12 hr cooldown)',
             color=self.client.ayesha_blue)
@@ -60,6 +64,7 @@ class Misc(commands.Cog):
     @commands.check(Checks.is_player)
     # @cooldown(1, 86400, BucketType.user)
     async def daily(self, ctx):
+        """Get 2 rubidics daily. Resets everyday at 12 a.m. EST."""
         if ctx.author.id in self.claimed_dailies:
             await ctx.reply(f'You already claimed your daily. It will refresh in `{time.strftime("%H:%M:%S", time.gmtime(schedule.idle_seconds()))}`.')
             return
@@ -70,11 +75,13 @@ class Misc(commands.Cog):
         
     @commands.command(description='Link to a place to report bugs in AyeshaBot.')
     async def report(self,ctx):
+        """A link to our github, in which you can report issues. Alternatively, notify a dev in the support server."""
         embed=discord.Embed(title="bug reporter", url="https://github.com/seanathan-discordbot/seanathan/issues", description="If you encounter what you believe to be a bug while using our bot please report it here", color=discord.Color.red())
         await ctx.send(embed=embed)
 
     @commands.command(pass_context=True, aliases=['cd', 'cooldown'], description='View any cooldowns your character has.')
     async def cooldowns(self, ctx):
+        """View any cooldowns your character has."""
         cooldowns = []
         output = ""
         for command in self.client.walk_commands():
@@ -166,6 +173,7 @@ class Misc(commands.Cog):
                     invoke_without_command=True, 
                     case_insensitive=True)
     async def leaderboard(self, ctx):
+        """See the leaderboards for Ayesha."""
         embed = discord.Embed(title='Ayesha Help: Leaderboards', color=self.client.ayesha_blue)
         embed.set_thumbnail(url=ctx.author.avatar_url)
         embed.add_field(name = '```leaderboard xp/pve/pvp/gold/gravitas```', 
@@ -174,6 +182,7 @@ class Misc(commands.Cog):
 
     @leaderboard.command(aliases=['exp', 'xp'])
     async def experience(self, ctx):
+        """See the players with the most experience."""
         board = await AssetCreation.getTopXP(self.client.pg_con)
         embed = discord.Embed(title='AyeshaBot Leaderboards', color=self.client.ayesha_blue)
         
@@ -188,6 +197,7 @@ class Misc(commands.Cog):
 
     @leaderboard.command(aliases=['bosses', 'bounties'])
     async def pve(self, ctx):
+        """See the players with the most bounty wins."""
         board = await AssetCreation.getTopBosses(self.client.pg_con)
         embed = discord.Embed(title='AyeshaBot Leaderboards', color=self.client.ayesha_blue)
         
@@ -202,6 +212,7 @@ class Misc(commands.Cog):
 
     @leaderboard.command(aliases=['richest', 'money'])
     async def gold(self, ctx):
+        """See the richest gold."""
         board = await AssetCreation.getTopGold(self.client.pg_con)
         embed = discord.Embed(title='AyeshaBot Leaderboards', color=self.client.ayesha_blue)
         
@@ -216,6 +227,7 @@ class Misc(commands.Cog):
 
     @leaderboard.command()
     async def pvp(self, ctx):
+        """See the players with the most PvP victories."""
         board = await AssetCreation.getTopPvP(self.client.pg_con)
         embed = discord.Embed(title='AyeshaBot Leaderboards', color=self.client.ayesha_blue)
         
@@ -230,6 +242,7 @@ class Misc(commands.Cog):
 
     @leaderboard.command()
     async def gravitas(self, ctx):
+        """See the players with the most gravitas."""
         board = await AssetCreation.getTopGravitas(self.client.pg_con)
         embed = discord.Embed(title='AyeshaBot Leaderboards', color=self.client.ayesha_blue)
 
@@ -246,6 +259,7 @@ class Misc(commands.Cog):
     @commands.check(Checks.is_player)
     @cooldown(1, 7200, type=BucketType.user)
     async def crime(self, ctx):
+        """Partake in a criminal activity. There is a chance you may become very rich. There is also the risk you get fined for lots of gold."""
         #Determine success or failure; 5% crit, 55% success, 40% failure
         result = random.choices(['critical success', 'success', 'failure'], [5, 55, 40])
         if result[0] == 'critical success':
@@ -273,6 +287,11 @@ class Misc(commands.Cog):
     @commands.check(Checks.is_player)
     @cooldown(1, 21600, type=BucketType.user)
     async def influence(self, ctx, gravitas : int, target : commands.MemberConverter):
+        """`gravitas`: the amount of gravitas you are spending to boost another's
+        `target`: the person you want to raise the influence of
+
+        Spend your gravitas to support another person. Spending gravitas will affect your target\'s gravitas by up to a similar amount.
+        """
         # Make sure targeted person is a player
         if target.id == ctx.author.id:
             return await ctx.reply('Patting yourself on the back might injure you more than help.')
@@ -321,6 +340,11 @@ class Misc(commands.Cog):
     @commands.check(Checks.is_player)
     @cooldown(1, 21600, type=BucketType.user)
     async def insult(self, ctx, gravitas : int, target : commands.MemberConverter):
+        """`gravitas`: the amount of gravitas you are spending to lower another's
+        `target`: the person you want to insult
+
+        Spend your gravitas to defame another person. Spending gravitas will affect your target\'s gravitas by up to a similar amount.
+        """
         # Make sure targeted person is a player
         if target.id == ctx.author.id:
             return await ctx.reply('Self-hate is not the solution.')
@@ -364,6 +388,7 @@ class Misc(commands.Cog):
 
     @commands.command(description='Oof.')
     async def pain(self, ctx):
+        """Oof."""
         await ctx.reply('Pain.')
 
 def setup(client):

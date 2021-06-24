@@ -1,82 +1,82 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Oct 21 19:10:23 2020
-
-@author: sebas
-"""
-
 import discord
 from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
-# **Music:** Ayesha's own music player! (it sucks)
+from Utilities import PageSourceMaker
 
-listCogs = """`Acolytes:` Commands involving your party members
-`Guilds`/`Brotherhoods`/`Colleges` Join an association for bonuses!
-`Classes` Customize your character!
-`Gacha` Roll for weapons and acolytes!
-`Items` View your inventory and other commands involving items
-`Map` Special commands for the Mayor and Comptroller
-`Misc` Other Ayesha-related commands
-`Profile` Create a character and view your stats!
-`PvE` Basic gameplay in AyeshaBot
-`PvP` Challenge your friends to battle!
-`Raid` Join a cooperative raid against a common enemy
-`Reminders` Simple reminders for bot commands (low capacity)
-`Travel` Explore the land of Rabidus and get items for your party members!"""
+class AyeshaEmbed(discord.Embed):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
-class HelpPaginator(menus.ListPageSource):
-    def __init__(self, data):
-        super().__init__(data, per_page=1)
-    
-    async def format_page(self, menu, entries):
-        return entries
+        self.color = 0xBEDCF6
 
 class HelpCommand(commands.Cog):
+    """Bot help command."""
     
     def __init__(self, client):
         self.client = client
         
-    def write(self, ctx, start, entries, cog):
-        helpEmbed = discord.Embed(title=f'Ayesha Help: {cog}', color=self.client.ayesha_blue)
+    def write_help_embed(self, ctx, start, entries, cog):
+        """Return a help embed for up to 5 commands in the given list.
+        
+        Parameters
+        ----------
+        ctx: commands.Context
+            the context of the command invocation
+        start: int
+            the index of the first value in entries being written
+        entries: list
+            a list of commands
+        cog: str
+            the name of the cog for which help is being sought
+
+        Returns
+        -------
+        helpEmbed: discord.Embed
+            an embed to be displayed to the user
+        """
+        # helpEmbed = discord.Embed(title=f'Ayesha Help: {cog}', color=self.client.ayesha_blue)
+        helpEmbed = AyeshaEmbed(title=f'Ayesha Help: {cog}')
         helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
         
         iteration = 0
         while start < len(entries) and iteration < 5: #Will loop until 5 entries are processed or there's nothing left in the queue
-            if entries[start].brief and entries[start].aliases:
-                helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', 
-                                    value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', 
-                                    inline=False)
-            elif entries[start].brief and not entries[start].aliases:
-                helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', 
-                                    value=f'{entries[start].description}', 
-                                    inline=False)
-            elif not entries[start].brief and entries[start].aliases:
-                helpEmbed.add_field(name=f'{entries[start].name}', 
-                                    value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', 
-                                    inline=False)
-            else:
-                helpEmbed.add_field(name=f'{entries[start].name}', 
-                                    value=f'{entries[start].description}', 
-                                    inline=False)
+            command_info = self.write_help_for_command(entries[start])
+            helpEmbed.add_field(name=command_info['name'],
+                                value=command_info['help'],
+                                inline=False)
+
             iteration += 1
             start +=1 
             
         return helpEmbed
-    
-    async def createHelp(self, ctx, cog):
-        entries = []
-        listCommands = self.client.get_cog(cog).get_commands()
-        for i in range(len(listCommands)):
-            if listCommands[i].hidden:
-                listCommands.pop(i)
-        for j in range(0, len(listCommands), 5): #For spacing reasons, only 5 entries will be displayed at a time
-            entries.append(self.write(ctx, j, listCommands, cog)) #Write will create the embeds for us
-            
-        pages = menus.MenuPages(source=HelpPaginator(entries), 
-                                clear_reactions_after=True, 
-                                delete_message_after=True)
-        await pages.start(ctx)
+
+    def write_help_for_command(self, command : commands.Command):
+        """Return a dict containing the help output of a command.
+        Dict: 'name': str including parent, name, and parameters
+              'help': str containing description and aliases
+        """
+        if command.parent is None:
+            parent = ''
+        else:
+            parent = command.parent.name + ' '
+
+        if len(command.aliases) == 0:
+            aliases = ''
+        else:
+            aliases = '**Aliases: **'
+            for alias in command.aliases:
+                aliases += f'`{alias}` '
+
+        if len(command.signature) == 0:
+            params = ''
+        else:
+            params = f'`{command.signature}`'
+
+        return {
+            'name' : f'{parent}{command.name} {params}',
+            'help' : f'{command.help}\n{aliases}'
+        }
         
     #EVENTS
     @commands.Cog.listener() # needed to create event in cog
@@ -84,50 +84,56 @@ class HelpCommand(commands.Cog):
         print('HelpCommand is ready.')
 
     #COMMANDS
-    @commands.group(invoke_without_command=True, case_insensitive=True)
-    async def help(self, ctx, cog : str = None):
-        if not cog:
-            prefix = await self.client.get_prefix(ctx.message)
-            helpEmbed = discord.Embed(title='Ayesha Help', 
-                                      color=self.client.ayesha_blue)
-            helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
-            # helpEmbed.set_author(name='Ayesha Help')
-            helpEmbed.add_field(
-                name = f'__Please enter `{prefix}help <Module>` for more info on that module__',
-                value = listCogs, inline=False #LIST THE COGS
-            )
-            helpEmbed.set_footer(text=f'Use the {ctx.prefix}tutorial command to get started!')
-            
-            embed = discord.Embed(color=self.client.ayesha_blue)
+    @commands.command()
+    async def help(self, ctx, *, helpquery : str = None):
+        """The one-stop help command for Ayesha. Do `help` to view all the cog names, then `help <cog>` to get a list of commands for that module.
+        You can also do `help <command>` to get help on a specific command.
+        """
+        # -- GIVE MENU OF COGS --
+        if helpquery is None: 
+            # Gives a basic menu listing every cog name a short description (the cog's docstring)
+            # Therefore this command only works if everything is well documented (which it isn't)
+            cog_info = {cog.qualified_name:(cog.qualified_name, cog.description) for cog in self.client.cogs.values()}
+
+            for name in ['Admin', 'HelpCommand', 'Vote', 'Error_Handler']:
+                cog_info.pop(name) #These cogs should remain hidden from users
+
+            embed = discord.Embed(title='Ayesha Help: Cogs', 
+                                  description=f'__**Please enter **__**`{ctx.prefix}help <Module>`**__** for more info on that module**__',
+                                  color=self.client.ayesha_blue)
             embed.set_thumbnail(url=ctx.author.avatar_url)
-            embed.set_author(name='Ayesha Help: Logistics')
-            embed.add_field(name='changeprefix', #CHANGEPREFIX
-                value='`changeprefix <str>`\nChanges the server prefix to <str>', 
-                inline=False)   
-            embed.add_field(name='ping', #PING
-                value='`ping`\nSee if the bot is online.', 
-                inline=False)
-            embed.add_field(name='servers', #SERVERS
-                value='`servers`\nSee how many servers this bot is in!', 
-                inline=False)
-            embed.set_footer(text='Use the tutorial command to get started!')
-            
-            entries = [helpEmbed, embed]
+            embed.set_footer(text=f'Use the {ctx.prefix}tutorial command to get started!')
+
+            for cog in cog_info.values():
+                embed.add_field(name=cog[0], value=f"{cog[1]}")
+
+            return await ctx.reply(embed=embed)
+
+        # -- GIVE HELP FOR A CERTAIN COG --
+        helpquery = helpquery.lower()
+        cogs = {name.lower():name for name in self.client.cogs} #Get all cog names in convenient way
+
+        if helpquery in cogs:
+            listCommands = self.client.get_cog(cogs[helpquery]).get_commands()
+            entries = [self.write_help_embed(ctx, i, listCommands, cogs[helpquery]) for i in range(0, len(listCommands), 5)]
+            #For spacing reasons, only 5 entries will be displayed at a time --> write_help_embed() will create the embeds
                 
-            pages = menus.MenuPages(source=HelpPaginator(entries), 
+            pages = menus.MenuPages(source=PageSourceMaker.PageMaker(entries), 
                                     clear_reactions_after=True, 
                                     delete_message_after=True)
-            await pages.start(ctx)
-        else:
-            try:
-                cog = cog.title()
-                if cog == 'Pve':
-                    cog = 'PvE'
-                if cog == 'Pvp':
-                    cog = 'PvP'
-                await self.createHelp(ctx, cog)
-            except AttributeError:
-                await ctx.send("That is not a valid module.")
+            return await pages.start(ctx) # Outputs the cog help, else searches for a command
+
+        # -- GIVE HELP FOR A SPECIFIC COMMAND --
+        command = self.client.get_command(helpquery) #All commands should be lowercase
+        if command is None:
+            return await ctx.reply('No command was found')
+
+        command_info = self.write_help_for_command(command)
+        embed = discord.Embed(title=command_info['name'],
+                              description=command_info['help'],
+                              color=self.client.ayesha_blue)
+        embed.set_thumbnail(url=ctx.author.avatar_url)
+        await ctx.reply(embed=embed)
 
 def setup(client):
     client.add_cog(HelpCommand(client))

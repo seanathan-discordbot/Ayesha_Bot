@@ -6,6 +6,9 @@ from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 from Utilities import Checks, AssetCreation
 
 class Admin(commands.Cog):
+    """Admin commands for bot administrators.
+    Each command in this module must have the is_admin check.
+    """
 
     def __init__(self, client):
         self.client = client

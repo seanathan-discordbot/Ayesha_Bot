@@ -32,6 +32,7 @@ WeaponValues = (
 # 13. Mace
 
 class Items(commands.Cog):
+    """View and manipulate inventory"""
 
     def __init__(self, client):
         self.client = client
@@ -66,6 +67,10 @@ class Items(commands.Cog):
     @commands.command(aliases=['i', 'inv'], description='View your inventory of items')
     @commands.check(Checks.is_player)
     async def inventory(self, ctx, sort = None):
+        """`sort`: the way you want to sort your items. Sort by `Rarity` or `Crit`. Sorts by Attack by default.
+        
+        View your inventory of items. Each item has an ID listed next to its name that can be referenced for related commands.
+        """
         invpages = []
         inv = await AssetCreation.getAllItemsFromPlayer(self.client.pg_con, ctx.author.id, sort)
         for i in range(0, len(inv), 5): #list 5 entries at a time
@@ -83,6 +88,10 @@ class Items(commands.Cog):
                       description='Equip an item from your inventory using its ID')
     @commands.check(Checks.is_player)
     async def equip(self, ctx, item_id : int):
+        """`item_id`: the ID of the weapon; can be found from `inventory`
+
+        Equip an item from your inventory using its ID.
+        """
         # Make sure that 1. item exists 2. they own this item
         item_is_valid = await AssetCreation.verifyItemOwnership(self.client.pg_con, item_id, ctx.author.id)
         if not item_is_valid:
@@ -110,6 +119,7 @@ class Items(commands.Cog):
     @commands.command(description='Unequip your item')
     @commands.check(Checks.is_player)
     async def unequip(self, ctx):
+        """Unequip your currently equipped item."""
         await AssetCreation.unequipItem(self.client.pg_con, ctx.author.id)
         await ctx.reply('Unequipped your item.')
 
@@ -117,6 +127,11 @@ class Items(commands.Cog):
                       description='Merge an item into another to boost its ATK by 1. The fodder item must be of the same weapontype and have at least 15 less ATK than the buffed item. Merging items costs `10,000` gold.')
     @commands.check(Checks.is_player)
     async def merge(self, ctx, buff_item : int, fodder : int):
+        """`buff_item`: the item you want strengthened
+        `fodder`: the item you are destroying to strengthen the other weapon
+
+        Merge an item into another to boost its ATK by 1. The fodder item must be of the same weapontype and have at least 15 less ATK than the buffed item. Merging items costs 10,000 gold.
+        """
         #Make sure player owns both items and that the fodder is NOT equipped
         if not await AssetCreation.verifyItemOwnership(self.client.pg_con, buff_item, ctx.author.id):
             return await ctx.reply(f'You do not own an item with ID `{buff_item}`.')
@@ -156,6 +171,10 @@ class Items(commands.Cog):
     @commands.command(brief='<item_id : int>', description='Sell an item for a random price.')
     @commands.check(Checks.is_player)
     async def sell(self, ctx, item_id : int):
+        """`item_id`: the ID of the weapon; can be found from `inventory`
+
+        Sell an item for a random price.
+        """
         #Make sure item exists and author owns it
         item_is_valid = await AssetCreation.verifyItemOwnership(self.client.pg_con, item_id, ctx.author.id)
         if not item_is_valid:
@@ -210,6 +229,10 @@ class Items(commands.Cog):
     @commands.command(brief='<items>', description='Sell multiple items for random prices.')
     @commands.check(Checks.is_player)
     async def sellmultiple(self, ctx, *, items : str):
+        """`items`: the IDs of the items being sold, separated by spaces
+
+        Sell multiple items for random prices.
+        """
         itemlist = items.split()
         errors = ''
         total = 0
@@ -278,6 +301,10 @@ class Items(commands.Cog):
     @commands.command(brief='<rarity>', description='Sell all the items in your inventory of the stated rarity.')
     @commands.check(Checks.is_player)
     async def sellall(self, ctx, rarity : str):
+        """`rarity`: the rarity of the items you want to sell.
+
+        Sell all items in your inventory of the stated rarity.
+        """
         #Ensure that a valid rarity is input
         rarities = ('Common', 'Uncommon', 'Rare', 'Epic', 'Legendary')
         rarity = rarity.title()
@@ -293,6 +320,12 @@ class Items(commands.Cog):
     @commands.command(brief='<player> <item_id : int> <price : int>', description='Sell an item to someone')
     @commands.check(Checks.is_player)
     async def offer(self, ctx, player : commands.MemberConverter, item_id : int, price : int):
+        """`player`: the player you want to offer the item to
+        `item_id`: the ID of the weapon; can be found from `inventory`
+        `price`: the rate you are selling the weapon for
+
+        Sell an item to someone.
+        """
         #Make sure second player is also a player
         if player.id == ctx.author.id:
             await ctx.reply('Dude...no.')
@@ -364,6 +397,11 @@ class Items(commands.Cog):
     @commands.command(brief='<gold> <player>', description='Give some gold to the target player.')
     @commands.check(Checks.is_player)
     async def give(self, ctx, gold : int, player : commands.MemberConverter):
+        """`gold`: the amount of gold you want to give
+        `player`: the player you are giving gold to
+
+        Give some gold to the target player.
+        """
         #Make sure second player is also a player
         if player.id == ctx.author.id:
             await ctx.reply('Dude...no.')
@@ -389,6 +427,11 @@ class Items(commands.Cog):
     @commands.command(brief='<item ID> <new name>', description='Name your weapon anything you want!')
     @commands.check(Checks.is_player)
     async def weaponname(self, ctx, item_id : int, *, weaponname : str):
+        """`item_id`: the ID of the weapon; can be found from `inventory`
+        `weaponname`: the name of the weapon
+
+        Name your weapon anything you want (within utf-8 encoding)!
+        """
         if len(weaponname) > 20:
             await ctx.reply('Name can only be 20 characters or less.')
             return
