@@ -261,8 +261,8 @@ class Profile(commands.Cog):
         """See your current level, xp, and distance from levelling up."""
         level, xp = await AssetCreation.getPlayerXP(self.client.pg_con, ctx.author.id)
         prestige = await AssetCreation.getPrestige(self.client.pg_con, ctx.author.id)
-        w = 6000000 + (250000 * prestige)
-        tonext = math.floor(w * math.cos(((level+1)/64)+3.14) + w) - xp
+        w = 600 + (25 * prestige)
+        tonext = int(w * ((level+1)**2)) - xp
 
         embed = discord.Embed(color=self.client.ayesha_blue)
         embed.add_field(name='Level', value=f'{level}')

@@ -252,7 +252,7 @@ class Acolytes(commands.Cog):
             return
 
         info = await AssetCreation.getAcolyteXP(self.client.pg_con, instance_id)
-        tonext = math.floor(3000000 * math.cos(((info['lvl']+1)/64)+3.14) + 3000000) - info['xp']
+        tonext = int(300 * ((info['lvl']+1)**2) - info['xp'])
 
         embed = discord.Embed(color=self.client.ayesha_blue)
         embed.add_field(name='Level', value=f"{info['lvl']}")
