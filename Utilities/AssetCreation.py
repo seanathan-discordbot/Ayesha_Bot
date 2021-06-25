@@ -151,7 +151,9 @@ async def equipItem(pool, item_id : int, user_id : int):
         await pool.release(conn)
 
 async def getItem(pool, item_id : int):
-    """Returns a dict of the given item ID."""
+    """Returns a dict of the given item ID.
+    Dict: ID, Type, Owner, Attack, Crit, Name, Rarity, Equip
+    """
     async with pool.acquire() as conn:
         info = await conn.fetchrow('SELECT weapontype, owner_id, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE item_id = $1', item_id)
         await pool.release(conn)
@@ -269,7 +271,7 @@ async def checkLevel(pool, ctx, user_id, aco1=None, aco2=None):
         if current['lvl'] < calcLevel(current['xp'], current['prestige']):
             #Give some rewards
             gold = (current['lvl'] + 1) * 500
-            rubidic = math.ceil((current['lvl'] + 1) / 20)
+            rubidic = int((current['lvl'] + 1) / 20)+1
             await conn.execute('UPDATE Players SET lvl = lvl + 1, gold = gold + $1, rubidic = rubidic + $2 WHERE user_id = $3', gold, rubidic, user_id)
 
             #Send level-up message
@@ -287,8 +289,8 @@ def getAcolyteLevel(xp):
     level = 0
 
     def f(x):
-        w = 3000000
-        y = math.floor(w * math.cos((x/64)+3.14) + w)
+        w = 300
+        y = int(w * (x**2))
         return y 
     
     while(xp >= f(level)):
@@ -306,8 +308,8 @@ def calcLevel(xp, prestige):
     level = 0
 
     def f(x):
-        w = 6000000 + (250000 * prestige)
-        y = math.floor(w * math.cos((x/64)+3.14) + w)
+        w = 600 + (25 * prestige)
+        y = int(w * (x**2))
         return y 
     
     while(xp >= f(level)):
@@ -408,14 +410,18 @@ async def getAttack(pool, user_id, returnothers = False):
         return int(attack), crit, hp, char['occupation'], char['acolyte1'], char['acolyte2'] #returns Class, then acolytes
 
 def getAcolyteByName(name : str):
-    """Returns a dict of the general info of the acolyte."""
+    """Returns a dict of the general info of the acolyte.
+    Dict: Name, Attack, Scale, Crit, HP, Rarity, Effect, Mat, Story, Image
+    """
     with open(ACOLYTE_PATH, 'r') as acolyte_list:
         acolytes = json.load(acolyte_list) #acolytes is a dict
         acolyte_list.close()
     return acolytes[name]
 
 async def getAcolyteByID(pool, instance : int):
-    """Returns a dict, containing the info specific to the given ID along with the general info."""
+    """Returns a dict, containing the info specific to the given ID along with the general info.
+    Dict: Level, ID, Equip, Dupes, Name, Attack, Scale, Crit, HP, Rarity, Effect, Mat, Story, Image
+    """
     async with pool.acquire() as conn:
         info = await conn.fetchrow('SELECT acolyte_name, lvl, is_equipped, duplicate FROM Acolytes WHERE instance_id = $1', instance)
         acolyte = getAcolyteByName(info['acolyte_name'])
@@ -1521,3 +1527,246 @@ async def clear_raid_attacks(pool):
             await conn.execute('UPDATE players SET gold = gold + $1 WHERE user_id = $2', player['sum'], player['user_id'])
 
         await conn.execute('DELETE FROM raid_logs')
+
+async def get_acolyte_attack(pool, user_id : int):
+    """Return a tuple containing the attack and crit of requested acolyte"""
+    acolyte1, acolyte2 = await getAcolyteFromPlayer(pool, user_id)
+
+async def get_attack_crit_hp(pool, user_id : int):
+    """Return the dict containing the named variables.
+    Dict: ATK, Crit, HP
+    """
+    # -- GET THE GROSS TOTALS FOR STATS FROM ALL SOURCES -- 
+    level_attack = 0
+    weapon_attack = 0
+    acolyte_attack = 0
+    brotherhood_attack = 0
+    crit = 5
+    hp = 500
+
+    #Level Attack: Level / 2. Pretend each prestige is 100 levels.
+    level_attack = int((await getPrestige(pool, user_id) * 50) + (await getLevel(pool, user_id) / 2))
+
+    #Weapon Attack is the currently equipped weapon
+    player_item = await getItem(pool, await getEquippedItem(pool, user_id))
+    weapon_attack = player_item['Attack']
+    crit += player_item['Crit']
+
+    #Acolytes affect all three stats
+    acolyte1, acolyte2 = await getAcolyteFromPlayer(pool, user_id)
+
+    if acolyte1 is not None:
+        a1atk, a1crit, a1hp = await getAcolyteAttack(pool, acolyte1)
+        acolyte_attack += a1atk
+        crit += a1crit
+        hp += a1hp
+
+    if acolyte2 is not None:
+        a2atk, a2crit, a2hp = await getAcolyteAttack(pool, acolyte2)
+        acolyte_attack += a2atk
+        crit += a2crit
+        hp += a2hp
+
+    #Brotherhood Attack is the sum of all integers preceding its level -> Comptroller can also boost
+    try:
+        bh = await getGuildFromPlayer(pool, user_id)
+        if bh['Type'] == 'Brotherhood':
+            bh_lvl = await getGuildLevel(pool, bh['ID'])
+            brotherhood_attack = int(bh_lvl * (bh_lvl + 1)/2)
+            crit += bh_lvl
+    except TypeError:
+        brotherhood_attack = 0
+
+    if await check_for_comptroller_bonus(pool, user_id, 'combat'):
+        comp_bonus = await get_comptroller_bonus(pool)
+        brotherhood_attack += 5 + (5 * comp_bonus['Level'])
+        crit += 1 + comp_bonus['Level']
+
+    attack = level_attack + weapon_attack + acolyte_attack + brotherhood_attack
+
+    # -- ADD UP BONUSES FROM ALL POSSIBLE SOURCES --    
+    #Class Attack Bonus
+    player_class = await getClass(pool, user_id)
+    if player_class == 'Soldier':
+        attack = int(attack * 1.2)
+    elif player_class == 'Scribe':
+        crit += 10
+    elif player_class == 'Leatherworker':
+        hp += 250
+
+    return {
+        'Attack' : attack,
+        'Crit' : crit,
+        'HP' : hp
+    }
+
+async def get_player_battle_info(pool, user_id : int):
+    """For use in all battle simulations. Return a dict with all necessary player info.
+
+    Returns
+    -------
+    ID: int
+        the player's Discord ID
+    Attack: int
+        the player's attack
+    Crit: int
+        the player's crit rate
+    HP: int
+        the player's HP 
+    Class: str
+        the player's class
+    Acolyte1: dict
+        Level, ID, Equip, Dupes, Name, Attack, Scale, Crit, HP, Rarity, Effect, Mat, Story, Image
+    Acolyte2: dict
+        Same as Acolyte1 but with a different acolyte ID
+    Strategy: asyncpg.record
+        attack, block, parry, heal, bide
+    """
+    base_info = await get_attack_crit_hp(pool, user_id)
+
+    acolyte1, acolyte2 = await getAcolyteFromPlayer(pool, user_id)
+    if acolyte1 is not None:
+        acolyte1_info = await getAcolyteByID(pool, acolyte1)
+    else:
+        acolyte1_info = empty_acolyte_dict()
+
+    if acolyte2 is not None:
+        acolyte2_info = await getAcolyteByID(pool, acolyte2)
+    else:
+        acolyte2_info = empty_acolyte_dict()
+
+    return {
+        'ID' : user_id,
+        'Name' : await getPlayerName(pool, user_id),
+        'Attack' : base_info['Attack'],
+        'Crit' : base_info['Crit'],
+        'HP' : base_info['HP'],
+        'Class' : await getClass(pool, user_id),
+        'Acolyte1' : acolyte1_info,
+        'Acolyte2' : acolyte2_info,
+        'Strategy' : await getStrategy(pool, user_id)
+    }
+
+def empty_acolyte_dict():
+    """Return an empty acolyte dict for those who don't have one equipped.
+    Dict: Level, ID, Equip, Dupes, Name, Attack, Scale, Crit, HP, Rarity, Effect, Mat, Story, Image
+    """
+    return {
+        'Level' : 0,
+        'ID' : None,
+        'Equip' : 0,
+        'Dupes' : 0,
+        'Name' : '',
+        'Attack' : 0,
+        'Scale' : 0,
+        'Crit' : 0,
+        'HP' : 0,
+        'Rarity' : 'Common',
+        'Effect' : None,
+        'Mat' : None,
+        'Story' : None,
+        'Image' : None
+    }
+
+def apply_acolytes_with_damage(attacker : dict):
+    """Perform the effects of acolytes whose effects affect the damage of that turn.
+    Valid Acolytes: Paterius
+    """
+    if attacker['Acolyte1']['Name'] == 'Paterius' or attacker['Acolyte2']['Name'] == 'Paterius':
+        attacker['Damage'] += 15
+
+    return attacker
+
+def apply_acolytes_on_crit(attacker : dict, opponent : dict):
+    """Perform the effects of acolytes whose effects apply on critical hits.
+    Valid Acolytes: Ayesha, Aulus
+    """
+    if attacker['Acolyte1']['Name'] == 'Aulus' or attacker['Acolyte2']['Name'] == 'Aulus':
+        attacker['Attack'] += 50
+
+    if attacker['Acolyte1']['Name'] == 'Ayesha' or attacker['Acolyte2']['Name'] == 'Ayesha':
+        heal_amount = int(attacker['Attack'] / 5)
+        attacker['HP'] += heal_amount
+        attacker['Heal'] += heal_amount
+
+    return attacker, opponent
+
+def apply_acolytes_on_turn_end(attacker : dict, opponent : dict, turn_counter : int):
+    """Perform the effects of acolytes whose effects apply at the end of every turn.
+    Valid Acolytes: Ajar, Onion
+    """
+    if attacker['Acolyte1']['Name'] == 'Ajar' or attacker['Acolyte2']['Name'] == 'Ajar':
+        attacker['Attack'] += 20
+        attacker['Hp'] -= 50
+
+    if turn_counter == 4:
+        if attacker['Acolyte1']['Name'] == 'Onion' or attacker['Acolyte2']['Name'] == 'Onion':
+            attacker['Crit'] *= 2
+
+    return attacker, opponent
+
+def apply_acolytes_game_end(player : dict, rewards : dict, source: str):
+    """Perform the effects of acolytes whos effects apply after battle has ended.
+    Valid Acolytes: Sean, Spartacus
+    """
+    if source == 'pve':
+        if player['Acolyte1']['Name'] == 'Sean' or player['Acolyte2']['Name'] == 'Sean':
+            rewards['xp'] = int(rewards['xp'] * 1.1)
+
+    if player['Acolyte1']['Name'] == 'Spartacus' or player['Acolyte2']['Name'] == 'Spartacus':
+        rewards['xp'] += 200
+
+    return rewards
+
+def apply_boss_game_begin(player, boss):
+    """Perform the effects of bosses whose effects apply when a battle begins.
+    Valid Bosses: Sean, Maritimialan Shaman
+    """
+    if boss['Name'] == 'Sean':
+        player['Attack'] = int(player['Attack'] * 1.5)
+
+    if boss['Name'] == 'Maritimialan Shaman':
+        player['Attack'] = int(player['Attack'] * .8)
+
+    return player, boss
+
+def apply_boss_turn_end(player, boss, turn_counter):
+    """Perform the effects of bosses whose effects apply at the end of every turn.
+    Valid Bosses: Moonlight Wolf Pack, Cursed Huntress, Laidirix, Sanguirix, Draconicus Rex
+    """
+    if boss['Name'] == 'Moonlight Wolf Pack':
+        player['Heal'] = 0
+    
+    if boss['Name'] == 'Cursed Huntress':
+        boss['Damage'] = random.randint(int(boss['Attack'] * .9), int(boss['Attack'] * 1.1))
+
+    if boss['Name'] == 'Laidirix':
+        boss['Damage'] += int(player['Damage'] / 20)
+
+    if turn_counter == 0:
+        if boss['Name'] == 'Sanguirix':
+            boss['Damage'] += int(player['Damage'] / 20)
+
+    if boss['Name'] == 'Draconicus Rex':
+        boss['Heal'] += 100
+
+    return player, boss
+
+def apply_boss_parry(player, boss):
+    """Apply the effects of bosses whose effects apply when the player parries.
+    Valid Bosses: Naysayers of the Larry Almighty
+    """
+    if boss['Name'] == 'Naysayers of the Larry Almighty':
+        boss['Damage'] = random.randint(int(boss['Attack'] * .15), int(boss['Attack'] * .35))
+
+    return player, boss
+
+def apply_boss_crit(player, boss):
+    """Apply the effects of bosses whose effects apply when the player crits.
+    Valid Bosses: Lucius Porcius Magnus Dux
+    """
+    if boss['Name'] == 'Lucius Porcius Magnus Dux':
+        player['Damage'] = 0
+        boss['Heal'] += 50
+
+    return player, boss
