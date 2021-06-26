@@ -36,6 +36,19 @@ class Items(commands.Cog):
 
     def __init__(self, client):
         self.client = client
+        self.client.weapontypes = ('Spear',
+                                   'Sword',
+                                   'Dagger',
+                                   'Bow',
+                                   'Trebuchet',
+                                   'Gauntlets',
+                                   'Staff',
+                                   'Greatsword',
+                                   'Axe',
+                                   'Sling',
+                                   'Javelin',
+                                   'Falx',
+                                   'Maxe')
 
     #EVENTS
     @commands.Cog.listener() # needed to create event in cog
@@ -64,17 +77,112 @@ class Items(commands.Cog):
         return embed
     
     #COMMANDS
+    # @commands.command(aliases=['i', 'inv'], description='View your inventory of items')
+    # @commands.check(Checks.is_player)
+    # async def inventory(self, ctx, sort = None):
+    #     """`sort`: the way you want to sort your items. Sort by `Rarity` or `Crit`. Sorts by Attack by default.
+        
+    #     View your inventory of items. Each item has an ID listed next to its name that can be referenced for related commands.
+    #     """
+    #     invpages = []
+    #     inv = await AssetCreation.getAllItemsFromPlayer(self.client.pg_con, ctx.author.id, sort)
+    #     for i in range(0, len(inv), 5): #list 5 entries at a time
+    #         invpages.append(self.write(i, inv, ctx.author.display_name)) # Write will create the embeds
+    #     if len(invpages) == 0:
+    #         await ctx.reply('Your inventory is empty!')
+    #     else:
+    #         inventory = menus.MenuPages(source=PageSourceMaker.PageMaker(invpages), 
+    #                                     clear_reactions_after=True, 
+    #                                     delete_message_after=True)
+    #         await inventory.start(ctx)
+    
     @commands.command(aliases=['i', 'inv'], description='View your inventory of items')
     @commands.check(Checks.is_player)
-    async def inventory(self, ctx, sort = None):
-        """`sort`: the way you want to sort your items. Sort by `Rarity` or `Crit`. Sorts by Attack by default.
-        
-        View your inventory of items. Each item has an ID listed next to its name that can be referenced for related commands.
+    async def inventory(self, ctx, *, query = ''):
+        """`query`: the way you want to sort your items. Put a weapontype, rarity, and order by attack or crit.
+
+        View your inventory of items. Each item has an ID listed netx to its name that can be referenced for related commands.
+        You can also sort specifically by weapontype, rarity, and order by attack or crit. Simply add the things you want to sort by in the command to get a smaller inventory.
+        For example, to get all common swords in your inventory, do `%inventory common sword`. You can also do `%inventory crit` to sort all your weapons by crit.
         """
+        #Create a list of all the queries for individual filtering
+        sort = [term.title() for term in query.split()]
+
+        #These functions will see how the items are sorted
+        def filter_weapontypes(query):
+            weapontypes = self.client.weapontypes
+            if query in weapontypes:
+                return True
+            else:
+                return False
+            
+        def filter_rarity(query):
+            rarities = ['Common','Uncommon','Rare','Epic','Legendary']
+            if query in rarities:
+                return True
+            else:
+                return False
+
+        def filter_metric(query):
+            stats = ['attack','crit']
+            if query in stats:
+                return True
+            else:
+                return False
+
+        filtered_type = filter(filter_weapontypes, sort)
+        filtered_rarity = filter(filter_rarity, sort)
+        filtered_stat = filter(filter_metric, sort)
+
+        try:
+            weapontype = list(filtered_type)[0]
+        except IndexError:
+            weapontype = None
+
+        try:
+            rarity = list(filtered_rarity)[0]
+        except IndexError:
+            rarity = None
+
+        try:
+            stat = list(filtered_stat)[0]
+        except IndexError:
+            stat = 'attack'
+
+        #Retrieve the player's inventory based off the queries, but put equipped item first always
+        inventory = []
+        equipped_item = await self.client.pg_con.fetchrow('SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 AND is_equipped = True', ctx.author.id)
+        inventory.append(equipped_item)
+
+        psql = 'SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 '
+
+        # if stat == 'attack':
+        #     psql2 = ' ORDER BY attack DESC;'
+        # else:
+        #     psql2 = ' ORDER BY crit DESC;'
+
+        if weapontype is not None and rarity is not None:
+            psql += 'AND weapontype = $2 AND rarity = $3 ORDER BY attack DESC'
+            inv = await self.client.pg_con.fetch(psql, ctx.author.id, weapontype, rarity)
+
+        elif weapontype is None and rarity is not None:
+            psql += 'AND rarity = $2 ORDER BY attack DESC'
+            inv = await self.client.pg_con.fetch(psql, ctx.author.id, rarity)
+
+        elif weapontype is not None and rarity is None:
+            psql += 'AND weapontype = $2 ORDER BY attack DESC'
+            inv = await self.client.pg_con.fetch(psql, ctx.author.id, weapontype)
+
+        else:
+            psql += 'ORDER BY attack DESC'
+            inv = await self.client.pg_con.fetch(psql, ctx.author.id)
+
+        for item in inv:
+            inventory.append(item)
+
         invpages = []
-        inv = await AssetCreation.getAllItemsFromPlayer(self.client.pg_con, ctx.author.id, sort)
         for i in range(0, len(inv), 5): #list 5 entries at a time
-            invpages.append(self.write(i, inv, ctx.author.display_name)) # Write will create the embeds
+            invpages.append(self.write(i, inventory, ctx.author.display_name)) # Write will create the embeds
         if len(invpages) == 0:
             await ctx.reply('Your inventory is empty!')
         else:
