@@ -94,7 +94,8 @@ async def createItem(pool, owner_id, attack, rarity, crit = None, weaponname = N
         return item_info
 
 async def getAllItemsFromPlayer(pool, user_id : int, sort):
-    """Returns a list of all the items the specified user owns."""
+    """DEPRECATED - LOOK AT items.inventory IF NEEDED FOR OTHER COMMANDS
+    Returns a list of all the items the specified user owns."""
     async with pool.acquire() as conn:
         if sort is not None:
             if sort.title() == 'Rarity':
@@ -115,6 +116,10 @@ async def getAllItemsFromPlayer(pool, user_id : int, sort):
         await pool.release(conn)
     
     return inv
+
+async def get_player_inventory(pool, user_id, sort : None):
+    """Return record of all items"""
+    pass
 
 async def verifyItemOwnership(pool, item_id : int, user_id : int):
     """Returns bool. True if the given item_id is in the user's inventory"""
