@@ -84,12 +84,13 @@ class Raid(commands.Cog):
             ctx.command.reset_cooldown(ctx)
             return await ctx.reply(f'No raid is currently being fought. Wait for one to start in {self.client.announcement_channel.mention}!')
 
-        attack, crit = await AssetCreation.getAttack(self.client.pg_con, ctx.author.id)
+        # attack, crit = await AssetCreation.getAttack(self.client.pg_con, ctx.author.id)
+        combat_info = await AssetCreation.get_attack_crit_hp(self.client.pg_con, ctx.author.id)
 
-        if random.randint(1,100) > crit:
-            attack *= 2
+        if random.randint(1,100) > combat_info['Crit']:
+            combat_info['Attack'] *= 2
 
-        damage = random.randint(int(attack / 2), int(attack * 1.25))
+        damage = random.randint(int(combat_info['Attack'] / 2), int(combat_info['Attack'] * 1.25))
         self.raid_info['HP'] -= damage
         await AssetCreation.log_raid_attack(self.client.pg_con, ctx.author.id, damage)
         total_damage = await AssetCreation.get_player_raid_damage(self.client.pg_con, ctx.author.id)

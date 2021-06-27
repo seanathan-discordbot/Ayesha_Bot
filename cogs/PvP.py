@@ -264,11 +264,11 @@ class PvP(commands.Cog):
         Start a single-elimination PvP tournament between 2 or more players!
         """
         async def get_player_info(user_id : int):
-            """Returns a dict containing a player's ID, name, ATK, and Crit."""
-            player = {}
+            """Returns a dict containing a player's ID, name, Attack, and Crit."""
+            player = await AssetCreation.get_attack_crit_hp(self.client.pg_con, user_id)
             player['ID'] = user_id
             player['Name'] = await AssetCreation.getPlayerName(self.client.pg_con, user_id)
-            player['ATK'], player['Crit'] = await AssetCreation.getAttack(self.client.pg_con, user_id)
+            # player['ATK'], player['Crit'] = await AssetCreation.getAttack(self.client.pg_con, user_id)
 
             return player
 
@@ -297,7 +297,7 @@ class PvP(commands.Cog):
                 except IndexError: #In case there are an odd amount of players
                     fake_player = {
                         'Name' : 'another contestant',
-                        'ATK' : 0,
+                        'Attack' : 0,
                         'Crit' : 0
                     }
                     match = (
@@ -325,8 +325,8 @@ class PvP(commands.Cog):
                 return player2, player1
             
             #If no victory occurs, then base it off proportion of ATK
-            victory_number = random.randint(0, player1['ATK'] + player2['ATK'])
-            if victory_number < player1['ATK']:
+            victory_number = random.randint(0, player1['Attack'] + player2['Attack'])
+            if victory_number < player1['Attack']:
                 return player1, player2
             else:
                 return player2, player1
@@ -357,7 +357,7 @@ class PvP(commands.Cog):
                     await ctx.send(f'{user.display_name} joined {ctx.author.display_name}\'s tournament.')
 
             try:
-                reaction, user = await self.client.wait_for('reaction_add', timeout=10.0)
+                reaction, user = await self.client.wait_for('reaction_add', timeout=25.0)
             except asyncio.TimeoutError:
                 await join_message.delete()
                 break

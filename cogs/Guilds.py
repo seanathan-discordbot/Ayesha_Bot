@@ -191,11 +191,12 @@ class Guilds(commands.Cog):
             iteration = 0
 
             while start < len(members) and iteration < 10:
-                attack, crit = await AssetCreation.getAttack(self.client.pg_con, members[start][0])
+                # attack, crit = await AssetCreation.getAttack(self.client.pg_con, members[start][0])
+                battle_stats = await AssetCreation.get_attack_crit_hp(self.client.pg_con, members[start][0])
                 level = await AssetCreation.getLevel(self.client.pg_con, members[start][0])
                 player = await self.client.fetch_user(members[start][0])
                 page.add_field(name=f'{player.name}: {members[start][1]} [{members[start][2]}]', 
-                    value=f'Level `{level}`, with `{attack}` attack and `{crit}` crit.', inline=False)
+                    value=f"Level `{level}`, with `{battle_stats['Attack']}` attack and `{battle_stats['Crit']}` crit.", inline=False)
                 start += 1
                 iteration += 1
 
