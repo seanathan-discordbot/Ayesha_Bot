@@ -94,7 +94,7 @@ async def createItem(pool, owner_id, attack, rarity, crit = None, weaponname = N
         return item_info
 
 async def getAllItemsFromPlayer(pool, user_id : int, sort):
-    """DEPRECATED - LOOK AT items.inventory IF NEEDED FOR OTHER COMMANDS
+    """[DEPRECATED] Look at items.inventory() to see the update inventory.
     Returns a list of all the items the specified user owns."""
     async with pool.acquire() as conn:
         if sort is not None:
@@ -117,10 +117,6 @@ async def getAllItemsFromPlayer(pool, user_id : int, sort):
     
     return inv
 
-async def get_player_inventory(pool, user_id, sort : None):
-    """Return record of all items"""
-    pass
-
 async def verifyItemOwnership(pool, item_id : int, user_id : int):
     """Returns bool. True if the given item_id is in the user's inventory"""
     async with pool.acquire() as conn:
@@ -135,8 +131,8 @@ async def verifyItemOwnership(pool, item_id : int, user_id : int):
 async def getEquippedItem(pool, user_id : int):
     """Returns the ID of the item equipped by the given player."""
     async with pool.acquire() as conn:
-        item = await conn.fetchrow('SELECT item_id FROM items WHERE owner_id = $1 AND is_equipped = True', user_id)
-        return item['item_id']
+        item = await conn.fetchval('SELECT item_id FROM items WHERE owner_id = $1 AND is_equipped = True', user_id)
+        return item
 
 async def unequipItem(pool, user_id : int, item_id : int = None):
     """Sets to NULL the equipped_item value for the player."""
@@ -360,7 +356,8 @@ async def getAcolyteAttack(pool, instance_id : int):
     return attack, crit, hp
 
 async def getAttack(pool, user_id, returnothers = False):
-    """Returns a player's attack and crit (integers). If specified, also returns HP, class, and acolytes."""
+    """[DEPRECATED] Use battle_stats_for_player
+    Returns a player's attack and crit (integers). If specified, also returns HP, class, and acolytes."""
     charattack, weaponattack, guildattack, acolyteattack, attack, crit, hp = 20, 0, 0, 0, 0, 5, 500
     async with pool.acquire() as conn:
         char = await conn.fetchrow('SELECT lvl, equipped_item, acolyte1, acolyte2, occupation, prestige FROM players WHERE user_id = $1', user_id)
@@ -1553,9 +1550,12 @@ async def get_attack_crit_hp(pool, user_id : int):
     level_attack = int((await getPrestige(pool, user_id) * 50) + (await getLevel(pool, user_id) / 2))
 
     #Weapon Attack is the currently equipped weapon
-    player_item = await getItem(pool, await getEquippedItem(pool, user_id))
-    weapon_attack = player_item['Attack']
-    crit += player_item['Crit']
+    try:
+        player_item = await getItem(pool, await getEquippedItem(pool, user_id))
+        weapon_attack = player_item['Attack']
+        crit += player_item['Crit']
+    except TypeError:
+        pass
 
     #Acolytes affect all three stats
     acolyte1, acolyte2 = await getAcolyteFromPlayer(pool, user_id)
@@ -1702,7 +1702,7 @@ def apply_acolytes_on_turn_end(attacker : dict, opponent : dict, turn_counter : 
     """
     if attacker['Acolyte1']['Name'] == 'Ajar' or attacker['Acolyte2']['Name'] == 'Ajar':
         attacker['Attack'] += 20
-        attacker['Hp'] -= 50
+        attacker['HP'] -= 50
 
     if turn_counter == 4:
         if attacker['Acolyte1']['Name'] == 'Onion' or attacker['Acolyte2']['Name'] == 'Onion':
