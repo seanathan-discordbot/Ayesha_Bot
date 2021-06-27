@@ -186,7 +186,8 @@ class Profile(commands.Cog):
                 await ctx.reply('This person does not have a character')
                 return
         # Otherwise target is a player and we can access their profile
-        attack, crit = await AssetCreation.getAttack(self.client.pg_con, player.id)
+        # attack, crit = await AssetCreation.getAttack(self.client.pg_con, player.id)
+        combat_info = await AssetCreation.get_attack_crit_hp(self.client.pg_con, player.id)
         character = await AssetCreation.getPlayerByID(self.client.pg_con, player.id)
 
         #Calc pvp and boss wins. If 0, hardcode to 0 to prevent div 0
@@ -233,7 +234,7 @@ class Profile(commands.Cog):
             inline=True)
         embed.add_field(
             name='Character Stats',
-            value=f"Level: `{character['Level']}`\nGravitas: `{character['gravitas']}`\nAttack: `{attack}`\nCrit: `{crit}%`\nPvP Winrate: `{pvpwinrate:.0f}%`\nBoss Winrate: `{bosswinrate:.0f}%`",
+            value=f"Level: `{character['Level']}`\nGravitas: `{character['gravitas']}`\nAttack: `{combat_info['Attack']}`\nCrit: `{combat_info['Crit']}%`\nHP: `{combat_info['HP']}`\nPvP Winrate: `{pvpwinrate:.0f}%`\nBoss Winrate: `{bosswinrate:.0f}%`",
             inline=True)
         if item is not None:
             embed.add_field(
@@ -289,7 +290,7 @@ class Profile(commands.Cog):
     @commands.command(description='Rebirth your character, resetting their level and giving them 30 attack and 50 HP.')
     @commands.check(Checks.is_player)
     async def prestige(self, ctx):
-        """Rebirth your character, resetting their level and giving them 30 attack and 50 HP."""
+        """Rebirth your character, resetting their level and upgrading their ATK and HP."""
         #Make sure player is lvl 100
         level = await AssetCreation.getLevel(self.client.pg_con, ctx.author.id)
         if level < 100:

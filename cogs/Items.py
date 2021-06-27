@@ -48,7 +48,7 @@ class Items(commands.Cog):
                                    'Sling',
                                    'Javelin',
                                    'Falx',
-                                   'Maxe')
+                                   'Mace')
 
     #EVENTS
     @commands.Cog.listener() # needed to create event in cog
@@ -124,7 +124,7 @@ class Items(commands.Cog):
                 return False
 
         def filter_metric(query):
-            stats = ['attack','crit']
+            stats = ['Attack','Crit']
             if query in stats:
                 return True
             else:
@@ -154,27 +154,27 @@ class Items(commands.Cog):
         equipped_item = await self.client.pg_con.fetchrow('SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 AND is_equipped = True', ctx.author.id)
         inventory.append(equipped_item)
 
-        psql = 'SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 '
+        psql = 'SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 AND is_equipped = False '
 
-        # if stat == 'attack':
-        #     psql2 = ' ORDER BY attack DESC;'
-        # else:
-        #     psql2 = ' ORDER BY crit DESC;'
+        if stat == 'attack':
+            psql2 = ' ORDER BY attack DESC'
+        else:
+            psql2 = ' ORDER BY crit DESC'
 
         if weapontype is not None and rarity is not None:
-            psql += 'AND weapontype = $2 AND rarity = $3 ORDER BY attack DESC'
+            psql += 'AND weapontype = $2 AND rarity = $3 ' + psql2
             inv = await self.client.pg_con.fetch(psql, ctx.author.id, weapontype, rarity)
 
         elif weapontype is None and rarity is not None:
-            psql += 'AND rarity = $2 ORDER BY attack DESC'
+            psql += 'AND rarity = $2 ' + psql2
             inv = await self.client.pg_con.fetch(psql, ctx.author.id, rarity)
 
         elif weapontype is not None and rarity is None:
-            psql += 'AND weapontype = $2 ORDER BY attack DESC'
+            psql += 'AND weapontype = $2 ' + psql2
             inv = await self.client.pg_con.fetch(psql, ctx.author.id, weapontype)
 
         else:
-            psql += 'ORDER BY attack DESC'
+            psql += psql2
             inv = await self.client.pg_con.fetch(psql, ctx.author.id)
 
         for item in inv:

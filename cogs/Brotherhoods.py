@@ -191,11 +191,12 @@ class Brotherhoods(commands.Cog):
             iteration = 0
 
             while start < len(members) and iteration < 10:
-                attack, crit = await AssetCreation.getAttack(self.client.pg_con, members[start][0])
+                # attack, crit = await AssetCreation.getAttack(self.client.pg_con, members[start][0])
+                battle_stats = await AssetCreation.get_attack_crit_hp(self.client.pg_con, members[start][0])
                 level = await AssetCreation.getLevel(self.client.pg_con, members[start][0])
                 player = await self.client.fetch_user(members[start][0])
                 page.add_field(name=f'{player.name}: {members[start][1]} [{members[start][2]}]', 
-                    value=f'Level `{level}`, with `{attack}` attack and `{crit}` crit.', inline=False)
+                    value=f"Level `{level}`, with `{battle_stats['Attack']}` attack and `{battle_stats['Crit']}` crit.", inline=False)
                 start += 1
                 iteration += 1
 
@@ -583,12 +584,13 @@ class Brotherhoods(commands.Cog):
         for i in range(0,3):
             if champions[i] is not None:
                 name = await AssetCreation.getPlayerName(self.client.pg_con, champions[i])
-                attack, crit = await AssetCreation.getAttack(self.client.pg_con, champions[i])
+                # attack, crit = await AssetCreation.getAttack(self.client.pg_con, champions[i])
+                battle_stats = await AssetCreation.get_attack_crit_hp(self.client.pg_con, champions[i])
                 
                 champions[i] = {
                     'Name' : name,
-                    'ATK' : attack,
-                    'Crit' : crit
+                    'ATK' : battle_stats['Attack'],
+                    'Crit' : battle_stats['Crit']
                 }
 
         embed = discord.Embed(title=f"{guild['Name']}'s Champions",
@@ -728,23 +730,25 @@ class Brotherhoods(commands.Cog):
         for i in range(0,3): #Replace their IDs with a dict containing battle info
             if attacker[i] is not None:
                 name = await AssetCreation.getPlayerName(self.client.pg_con, attacker[i])
-                attack, crit = await AssetCreation.getAttack(self.client.pg_con, attacker[i])
+                # attack, crit = await AssetCreation.getAttack(self.client.pg_con, attacker[i])
+                battle_stats = await AssetCreation.get_attack_crit_hp(self.client.pg_con, attacker[i])
                 
                 attacker[i] = {
                     'ID' : attacker[i],
                     'Name' : name,
-                    'ATK' : attack,
-                    'Crit' : crit
+                    'ATK' : battle_stats['Attack'],
+                    'Crit' : battle_stats['Crit']
                 }
             if defender[i] is not None:
                 name = await AssetCreation.getPlayerName(self.client.pg_con, defender[i])
-                attack, crit = await AssetCreation.getAttack(self.client.pg_con, defender[i])
+                # attack, crit = await AssetCreation.getAttack(self.client.pg_con, defender[i])
+                battle_stats = await AssetCreation.get_attack_crit_hp(self.client.pg_con, defender[i])
                 
                 defender[i] = {
                     'ID' : defender[i],
                     'Name' : name,
-                    'ATK' : attack,
-                    'Crit' : crit
+                    'ATK' : battle_stats['Attack'],
+                    'Crit' : battle_stats['Crit']
                 }
 
         for i in range(1,3): #Sort the teams so that the first slot is always a person (and not empty)

@@ -376,7 +376,13 @@ class Travel(commands.Cog):
     @commands.check(Checks.is_player)
     @cooldown(1, 10, type=BucketType.user)
     async def hunt(self, ctx):
-        """Hunt for food, gaining fur and bone, materials that buff certain acolytes."""
+        """Hunt for food, gaining fur and bone, materials that buff certain acolytes.
+        The amount of materials you gain is affected by your weapontype.
+        Bow: 100% bonus
+        Sling: 50% bonus
+        Javelin: 25% bonus
+        Gauntlets: 50% nerf
+        """
         #Make sure they're in hunting territory
         location = await AssetCreation.getLocation(self.client.pg_con, ctx.author.id)
         biome = location_dict[location]['Biome']
@@ -443,7 +449,13 @@ class Travel(commands.Cog):
     @commands.check(Checks.is_player)
     @cooldown(1, 10, type=BucketType.user)
     async def mine(self, ctx):
-        """Mine for ore, gaining iron and silver, materials that buff certain acolytes."""
+        """Mine for ore, gaining iron and silver, materials that buff certain acolytes.
+        The amount of materials you gain is affected by your weapontype:
+        Trebuchet: 100% bonus
+        Greatsword, Axe, Mace: 25% bonus
+        Dagger: 50% nerf
+        Bow, Sling: 66% nerf
+        """
         #Make sure they're in mining territory
         location = await AssetCreation.getLocation(self.client.pg_con, ctx.author.id)
         biome = location_dict[location]['Biome']
@@ -503,7 +515,9 @@ class Travel(commands.Cog):
     @commands.check(Checks.is_player)
     @cooldown(1, 10, type=BucketType.user)
     async def forage(self, ctx):
-        """Forage for food, gaining different materials depending on your location."""
+        """Forage for food, gaining different materials depending on your location.
+        Having a dagger equipped will net you 10% more rewards.
+        """
         #Get player location and materials.
         location = await AssetCreation.getLocation(self.client.pg_con, ctx.author.id)
         try:
@@ -618,21 +632,20 @@ class Travel(commands.Cog):
         if item_id is None:
             embed = discord.Embed(title='Upgrade', color=self.client.ayesha_blue)
             embed.add_field(name='Upgrade an item\'s attack stat by 1.', value='The cost of upgrading scales with the attack of the item. You will have to pay `3*(ATK+1)` iron and `20*(ATK+1)` gold to upgrade an item\'s ATK stat.\nEach rarity also has a maximum ATK:\n**Common:** 50\n**Uncommon:** 75\n**Rare:** 100\n**Epic:** 125\n**Legendary:** 160\n`Upgrade` has a 90 second cooldown.')
-            await ctx.reply(embed=embed)
             ctx.command.reset_cooldown(ctx)
-            return
+            return await ctx.reply(embed=embed)
 
         #Upgrade only in Cities or Towns
         location = await AssetCreation.getLocation(self.client.pg_con, ctx.author.id)
         if location != 'Thenuille' and location != 'Aramithea' and location != 'Riverburn':
-            await ctx.reply('You can only upgrade your items in an urban center!')
-            return
+            ctx.command.reset_cooldown(ctx)
+            return await ctx.reply('You can only upgrade your items in an urban center!')
 
         #Make sure the item exists and that they own it
         item_is_valid = await AssetCreation.verifyItemOwnership(self.client.pg_con, item_id, ctx.author.id)
         if not item_is_valid:
-            await ctx.reply("No such item of yours exists.")
-            return
+            ctx.command.reset_cooldown(ctx)
+            return await ctx.reply("No such item of yours exists.")
 
         item = await AssetCreation.getItem(self.client.pg_con, item_id)
 
