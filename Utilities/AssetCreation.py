@@ -1691,7 +1691,6 @@ def apply_acolytes_on_crit(attacker : dict, opponent : dict):
 
     if attacker['Acolyte1']['Name'] == 'Ayesha' or attacker['Acolyte2']['Name'] == 'Ayesha':
         heal_amount = int(attacker['Attack'] / 5)
-        attacker['HP'] += heal_amount
         attacker['Heal'] += heal_amount
 
     return attacker, opponent
@@ -1704,7 +1703,7 @@ def apply_acolytes_on_turn_end(attacker : dict, opponent : dict, turn_counter : 
         attacker['Attack'] += 20
         attacker['HP'] -= 50
 
-    if turn_counter == 4:
+    if turn_counter == 2:
         if attacker['Acolyte1']['Name'] == 'Onion' or attacker['Acolyte2']['Name'] == 'Onion':
             attacker['Crit'] *= 2
 
@@ -1716,7 +1715,7 @@ def apply_acolytes_game_end(player : dict, rewards : dict, source: str):
     """
     if source == 'pve':
         if player['Acolyte1']['Name'] == 'Sean' or player['Acolyte2']['Name'] == 'Sean':
-            rewards['xp'] = int(rewards['xp'] * 1.1)
+            rewards['xp'] = int(rewards['xp'] * 1.2)
 
     if player['Acolyte1']['Name'] == 'Spartacus' or player['Acolyte2']['Name'] == 'Spartacus':
         rewards['xp'] += 200
