@@ -152,7 +152,8 @@ class Items(commands.Cog):
         #Retrieve the player's inventory based off the queries, but put equipped item first always
         inventory = []
         equipped_item = await self.client.pg_con.fetchrow('SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 AND is_equipped = True', ctx.author.id)
-        inventory.append(equipped_item)
+        if equipped_item is not None:
+            inventory.append(equipped_item)
 
         psql = 'SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 AND is_equipped = False '
 

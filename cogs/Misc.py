@@ -17,20 +17,20 @@ class Misc(commands.Cog):
     """Other Ayesha-related commands"""
     def __init__(self,client):
         self.client=client
-        self.claimed_dailies = []
-        self.daily_scheduler = schedule.Scheduler()
+    #     self.claimed_dailies = []
+    #     self.daily_scheduler = schedule.Scheduler()
 
-        def clearDailies():
-            self.claimed_dailies.clear()
+    #     def clearDailies():
+    #         self.claimed_dailies.clear()
 
-        async def checkTime():
-            self.daily_scheduler.every().day.at("00:00").do(clearDailies)
-            while True:
-                self.daily_scheduler.run_pending()
-                print(f'Checked time for reset: {date.today()}')
-                await asyncio.sleep(self.daily_scheduler.idle_seconds)
+    #     async def checkTime():
+    #         self.daily_scheduler.every().day.at("00:00").do(clearDailies)
+    #         while True:
+    #             self.daily_scheduler.run_pending()
+    #             print(f'Checked time for reset: {date.today()}')
+    #             await asyncio.sleep(self.daily_scheduler.idle_seconds)
 
-        asyncio.ensure_future(checkTime())
+    #     asyncio.ensure_future(checkTime())
 
     #EVENTS
     @commands.Cog.listener() # needed to create event in cog
@@ -63,16 +63,22 @@ class Misc(commands.Cog):
 
     @commands.command(description='Get 2 rubidics daily!')
     @commands.check(Checks.is_player)
-    # @cooldown(1, 86400, BucketType.user)
+    @cooldown(1, 43200, BucketType.user)
     async def daily(self, ctx):
         """Get 2 rubidics daily. Resets everyday at 12 a.m. EST."""
-        if ctx.author.id in self.claimed_dailies:
-            await ctx.reply(f'You already claimed your daily. It will refresh in `{time.strftime("%H:%M:%S", time.gmtime(self.daily_scheduler.idle_seconds))}`.')
-            return
-        else:
-            await AssetCreation.giveRubidics(self.client.pg_con, 2, ctx.author.id)
-            await ctx.reply('You received 2 rubidics!')
-            self.claimed_dailies.append(ctx.author.id)
+        # if ctx.author.id in self.claimed_dailies:
+        #     await ctx.reply(f'You already claimed your daily. It will refresh in `{time.strftime("%H:%M:%S", time.gmtime(self.daily_scheduler.idle_seconds))}`.')
+        #     return
+        # else:
+        await AssetCreation.giveRubidics(self.client.pg_con, 2, ctx.author.id)
+        embed = discord.Embed(title='You claimed 2 Rubidics from your daily!', 
+                              color=self.client.ayesha_blue)
+        embed.add_field(name=f'Vote for the bot on top.gg to receive an additional rubidic!',
+                        value=f'[**CLICK HERE**](https://top.gg/bot/767234703161294858) to vote for the bot and receive another rubidic!\n**TIP:** Try `{ctx.prefix}remind 12:0:0 daily` to be reminded of when to daily/vote.')
+        embed.set_footer(text=f"{ctx.author.display_name}#{ctx.author.discriminator}",
+                         icon_url=ctx.author.avatar_url)
+        embed.set_thumbnail(url="https://i.imgur.com/LPxc3zI.jpeg")
+        await ctx.reply(embed=embed)
         
     @commands.command(description='Link to a place to report bugs in AyeshaBot.')
     async def report(self,ctx):
@@ -108,8 +114,8 @@ class Misc(commands.Cog):
             time_left = 0  
 
         #Also see if daily has been used
-        if ctx.author.id in self.claimed_dailies:
-            output += f'`daily`: {time.strftime("%H:%M:%S", time.gmtime(self.daily_scheduler.idle_seconds))}\n'
+        # if ctx.author.id in self.claimed_dailies:
+        #     output += f'`daily`: {time.strftime("%H:%M:%S", time.gmtime(self.daily_scheduler.idle_seconds))}\n'
 
         #Create embed to send
         embed = discord.Embed(color=self.client.ayesha_blue)
