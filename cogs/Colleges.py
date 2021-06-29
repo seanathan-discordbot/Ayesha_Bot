@@ -14,6 +14,7 @@ import time
 # There will be brotherhoods, guilds, and later colleges for combat, economic, and political gain
 
 class Colleges(commands.Cog):
+    """Association Type for Influence"""
 
     def __init__(self, client):
         self.client = client
@@ -30,6 +31,9 @@ class Colleges(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.in_college)
     async def college(self, ctx):
+        """View your college. Colleges are a politically oriented association. Its members gain a passive amount of gravitas depending on its level. They also gain access to the `usurp` command.
+        `college help` will show all other commands related to this association type.
+        """
         info = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         getLeader = commands.UserConverter()
         leader = await getLeader.convert(ctx, str(info['Leader']))
@@ -56,6 +60,10 @@ class Colleges(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.not_in_guild)
     async def create(self, ctx, *, name : str):
+        """`name`: the name of your college
+
+        Found a college. This operation costs 15,000 gold.
+        """
         if len(name) > 32:
             await ctx.reply('Name max 32 characters')
             return
@@ -75,6 +83,7 @@ class Colleges(commands.Cog):
     @commands.check(Checks.in_college)
     @commands.check(Checks.is_not_guild_leader)
     async def leave(self, ctx):
+        """Leave your college."""
         await AssetCreation.leaveGuild(self.client.pg_con, ctx.author.id)
         await ctx.reply('You left your college.')
 
@@ -83,6 +92,10 @@ class Colleges(commands.Cog):
     @commands.check(Checks.is_guild_officer)
     @commands.check(Checks.guild_has_vacancy)
     async def invite(self, ctx, player : commands.MemberConverter):
+        """`player`: the player you want to invite
+
+        [OFFICER+] Invite a player to your college, provided that there is space available. 
+        """
         #Ensure target player has a character and is not in a guild
         if not await Checks.has_char(self.client.pg_con, player):
             await ctx.reply('This person does not have a character.')
@@ -139,6 +152,10 @@ class Colleges(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.in_college)
     async def contribute(self, ctx, donation : int):
+        """`donation`: the amount of money you want to give your college
+
+        Contribute money to the strength of your college. Every 1,000,000 gold contributed will level it up, strengthening its bonuses, up to level 10.
+        """
         #Make sure they have the money they're paying and that the guild is <lvl 10
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         level = await AssetCreation.getGuildLevel(self.client.pg_con, guild['ID'])
@@ -161,6 +178,7 @@ class Colleges(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.in_college)
     async def members(self, ctx):
+        """See a list of all your college's members, their rank, and some stats."""
         # Get the list of members, theoretically sorted by rank
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         members = await AssetCreation.getGuildMembers(self.client.pg_con, guild['ID'])
@@ -172,11 +190,12 @@ class Colleges(commands.Cog):
             iteration = 0
 
             while start < len(members) and iteration < 10:
-                attack, crit = await AssetCreation.getAttack(self.client.pg_con, members[start][0])
+                # attack, crit = await AssetCreation.getAttack(self.client.pg_con, members[start][0])
+                battle_stats = await AssetCreation.get_attack_crit_hp(self.client.pg_con, members[start][0])
                 level = await AssetCreation.getLevel(self.client.pg_con, members[start][0])
                 player = await self.client.fetch_user(members[start][0])
                 page.add_field(name=f'{player.name}: {members[start][1]} [{members[start][2]}]', 
-                    value=f'Level `{level}`, with `{attack}` attack and `{crit}` crit.', inline=False)
+                    value=f"Level `{level}`, with `{battle_stats['Attack']}` attack and `{battle_stats['Crit']}` crit.", inline=False)
                 start += 1
                 iteration += 1
 
@@ -190,11 +209,12 @@ class Colleges(commands.Cog):
                                        delete_message_after=True)
         await member_pages.start(ctx)
 
-    @college.command(description='Make a political play for power! Spend up to 10,000 gold to increase your chances of gaining gravitas!')
+    @college.command(description='Make a political play for power!')
     @commands.check(Checks.is_player)
     @commands.check(Checks.in_college)
     @cooldown(1, 14400, BucketType.user)
     async def usurp(self, ctx):
+        """Make a political play for power, gaining 10-20 gravitas, increased by 2/college level."""
         #Base 25% chance for success, 25% for failure. Raised by 2%/college level
         #Gain 10-20 gravitas, increased by 2/college level
         #Get player info
@@ -229,6 +249,10 @@ class Colleges(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)
     async def base(self, ctx, *, area : str):
+        """`area`: One of these locations: `Aramithea`, `Riverburn`, `Thenuille`
+        
+        [LEADER] Designate an area of the map as your college's headquarters..
+        """
         #Make sure input is valid.
         area = area.title()
         areas = ('Aramithea', 'Riverburn', 'Thenuille')
@@ -280,6 +304,10 @@ class Colleges(commands.Cog):
 
     @college.command(brief='<guild ID>', description='See info on another guild based on their ID')
     async def info(self, ctx, *, source : str):
+        """`source`: the association you want to view. If you know its ID, you can do `cl info id:<ID>`. If you want to search by name, simply do `cl info <name>`
+        
+        View another association. Will also show guilds and brotherhoods if requested.
+        """
         if source.lower().startswith("id:"):
             try:
                 info = await AssetCreation.getGuildByID(self.client.pg_con, int(source[3:]))
@@ -318,6 +346,10 @@ class Colleges(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_officer)
     async def description(self, ctx, *, desc : str):
+        """`desc`: The description you want to be displayed.
+
+        [OFFICER+] Change your college's description.
+        """
         if len(desc) > 256:
             await ctx.reply(f'Description max 256 characters. You gave {len(desc)}')
             return
@@ -330,6 +362,10 @@ class Colleges(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_officer)
     async def icon(self, ctx, *, url : str):
+        """`url`: a valid image URL
+        
+        [OFFICER+] Change your college's icon.
+        """
         if len(url) > 256:
             await ctx.reply('Icon URL max 256 characters. Please upload your image to imgur or tinurl for an appropriate link.')
             return
@@ -358,6 +394,7 @@ class Colleges(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)
     async def lock(self, ctx):
+        """[LEADER] Lock/unlock your college. If locked, people may only join by invite from the leader or officer."""
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         if guild['Join'] == 'open':
             await AssetCreation.lockGuild(self.client.pg_con, guild['ID'])
@@ -370,6 +407,10 @@ class Colleges(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.not_in_guild)
     async def join(self, ctx, guild_id : int):
+        """`guild_id`: the ID of the guild you want to join
+
+        Join any guild that is listed as open. You must use their ID, which can be found on the bottom of its page from `cl info`
+        """
         #See how recently they joined an association
         last_join = await AssetCreation.check_last_guild_join(self.client.pg_con, ctx.author.id)
         if last_join.total_seconds() < 86400:
@@ -398,6 +439,11 @@ class Colleges(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)        
     async def promote(self, ctx, player : commands.MemberConverter = None, rank : str = None):
+        """`player`: the player you want to promote
+        `rank`: `Officer` or `Adept`
+
+        [LEADER] Promote a member of your guild. Officers have limited administrative powers. Adepts have no powers.
+        """
         #Tell players what officers and adepts do if no input is given
         if player is None or rank is None:
             embed = discord.Embed(title='College Role Menu', color=self.client.ayesha_blue)
@@ -432,6 +478,10 @@ class Colleges(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)
     async def demote(self, ctx, player : commands.MemberConverter):
+        """`player`: the player you are demoting
+        
+        [LEADER] Demote one of your officers or adepts back to regular member.
+        """
         #Otherwise check if player is in guild -> also not the leader
         if ctx.author == player:
             await ctx.reply('I don\'t think so.')
@@ -455,6 +505,10 @@ class Colleges(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)
     async def transfer(self, ctx, player : commands.MemberConverter):
+        """`player`: the player you want to become new head of the college
+        
+        [LEADER] Relinquish control of your college to someone else.
+        """
         if ctx.author.id == player.id:
             return await ctx.reply('?')
 
@@ -479,6 +533,10 @@ class Colleges(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_officer)
     async def kick(self, ctx, player : commands.MemberConverter):
+        """`player`: the person you are removing from the college
+
+        Kick someone from your college, revoking their membership.
+        """
         #Make sure target has a char, in same guild, isn't an officer or leader
         if not await Checks.has_char(self.client.pg_con, player):
             await ctx.reply('This person does not have a character.')
@@ -504,6 +562,7 @@ class Colleges(commands.Cog):
     @commands.check(Checks.in_college)
     @commands.check(Checks.is_guild_leader)
     async def delete(self, ctx):
+        """[LEADER] Disband your college. You can only do this when no one else remains in your association."""
         #Make sure they're the only member remaining
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         if await AssetCreation.getGuildMemberCount(self.client.pg_con, guild['ID']) > 1:
@@ -540,8 +599,11 @@ class Colleges(commands.Cog):
 
     @college.command(description='Shows this command.')
     async def help(self, ctx):
+        """Get a list of all commands that college members can use."""
         def write(ctx, start, entries):
-            helpEmbed = discord.Embed(title=f'Ayesha Help: Colleges', description='Colleges are a politically oriented association. Its members gain a passive amount of gravitas depending on its level. They also gain access to the `usurp` command.', color=self.client.ayesha_blue)
+            helpEmbed = discord.Embed(title=f'Ayesha Help: Colleges', 
+                                      description='Colleges are a politically oriented association. Its members gain a passive amount of gravitas depending on its level. They also gain access to the `usurp` command.', 
+                                      color=self.client.ayesha_blue)
             helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
             
             iteration = 0
@@ -568,7 +630,7 @@ class Colleges(commands.Cog):
             return helpEmbed
 
         cmds, embeds = [], []
-        for command in self.client.get_command('brotherhood').walk_commands():
+        for command in self.client.get_command('college').walk_commands():
             cmds.append(command)
         for i in range(0, len(cmds), 5):
             embeds.append(write(ctx, i, cmds))

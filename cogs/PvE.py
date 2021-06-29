@@ -1,5 +1,6 @@
 import discord
 import asyncio
+from discord.asset import Asset
 
 from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
@@ -12,228 +13,278 @@ import math
 # List Level, Name, LowAtk, HighAtk, LowHP, HighHP, Special Abilities (if any)
 bounty_levels = {
     1 : {
+        'ID' : None,
         'Name' : 'Bortoise',
-        'LowATK' : 0,
-        'HighATK' : 0,
-        'LowHP' : 1,
-        'HighHP' : 1,
+        'Attack' : 1,
+        'HP' : 1,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
         'Effect' : None,
         'Image' : "https://i.imgur.com/C8inYxx.png"
     },
     2 : {
+        'ID' : None,
         'Name' : 'Tavern Drunkard',
-        'LowATK' : 30,
-        'HighATK' : 50,
-        'LowHP' : 50,
-        'HighHP' : 100,
+        'Attack' : 40,
+        'HP' : 75,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
         'Effect' : None,
         'Image' : None
     },
     3 : {
+        'ID' : None,
         'Name' : 'Thief',
-        'LowATK' : 80,
-        'HighATK' : 100,
-        'LowHP' : 50,
-        'HighHP' : 100,
+        'Attack' : 90,
+        'HP' : 75,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
         'Effect' : None,
         'Image' : None
     },
     4 : {
+        'ID' : None,
         'Name' : 'Wild Boar',
-        'LowATK' : 120,
-        'HighATK' : 150,
-        'LowHP' : 200,
-        'HighHP' : 250,
+        'Attack' : 135,
+        'HP' : 225,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
         'Effect' : None,
         'Image' : 'https://i.imgur.com/I1V9GAQ.png'
     },
-    5 : { 
-        'Name' : 'Sean', #SPECIAL: 50% INCREASED ATTACK
-        'LowATK' : 5,
-        'HighATK' : 10,
-        'LowHP' : 500,
-        'HighHP' : 500,
-        'Effect' : 'Players gain 50% attack when fighting this boss.',
+    5 : {
+        'ID' : None,
+        'Name' : 'Sean',
+        'Attack' : 8,
+        'HP' : 500,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
+        'Effect' : 'Players gain 50% attack when fighting this boss.', # apply_boss_game_begin
         'Image' : None
     },
     6 : {
+        'ID' : None,
         'Name' : 'Roadside Brigands',
-        'LowATK' : 110,
-        'HighATK' : 150,
-        'LowHP' : 800,
-        'HighHP' : 900,
+        'Attack' : 130,
+        'HP' : 950,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
         'Effect' : None,
         'Image' : None
     },
     7 : {
+        'ID' : None,
         'Name' : 'Verricosus',
-        'LowATK' : 130,
-        'HighATK' : 160,
-        'LowHP' : 900,
-        'HighHP' : 1000,
+        'Attack' : 145,
+        'HP' : 950,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
         'Effect' : None,
         'Image' : None
     },
     8 : {
-        'Name' : 'Eques Maledicens',
-        'LowATK' : 150,
-        'HighATK' : 175,
-        'LowHP' : 900,
-        'HighHP' : 1000,
+        'ID' : None,
+        'Name' : 'Corrupt Knight',
+        'Attack' : 162,
+        'HP' : 950,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
         'Effect' : None,
         'Image' : None
     },
     9 : {
+        'ID' : None,
         'Name' : 'Rabid Bear',
-        'LowATK' : 300,
-        'HighATK' : 350,
-        'LowHP' : 400,
-        'HighHP' : 500,
+        'Attack' : 325,
+        'HP' : 450,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
         'Effect' : None,
         'Image' : 'https://i.imgur.com/aW7gAqZ.png'
     },
     10 : {
-        'Name' : 'Maritimialan Shaman', #SPECIAL: ATTACK REDUCED BY 20%
-        'LowATK' : 190,
-        'HighATK' : 225,
-        'LowHP' : 750,
-        'HighHP' : 1000,
-        'Effect' : 'Players have 20% reduced attack when fighting this boss.',
+        'ID' : None,
+        'Name' : 'Maritimialan Shaman',
+        'Attack' : 210,
+        'HP' : 875,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
+        'Effect' : 'Players have 20% reduced attack when fighting this boss.', #apply_boss_game_begin
         'Image' : None
     },
     11 : {
+        'ID' : None,
         'Name' : 'Apprenticeship Loan Debt Collector',
-        'LowATK' : 200,
-        'HighATK' : 250,
-        'LowHP' : 1100,
-        'HighHP' : 1250,
+        'Attack' : 225,
+        'HP' : 1175,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
         'Effect' : None,
         'Image' : None
     },
     12 : {
-        'Name' : 'Maritimialan Blood Warrior',
-        'LowATK' : 300,
-        'HighATK' : 400,
-        'LowHP' : 700,
-        'HighHP' : 900,
+        'ID' : None,
+        'Name' : 'Maritimialan Blood Oathsworn',
+        'Attack' : 350,
+        'HP' : 800,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
         'Effect' : None,
         'Image' : None
     },
     13 : {
-        'Name' : 'Moonlight Wolf Pack', #SPECIAL: NO HEALING
-        'LowATK' : 250,
-        'HighATK' : 275,
-        'LowHP' : 1500,
-        'HighHP' : 1650,
-        'Effect' : 'Players cannot heal when fighting this boss.',
+        'ID' : None,
+        'Name' : 'Moonlight Wolf Pack',
+        'Attack' : 262,
+        'HP' : 1575,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
+        'Effect' : 'Players cannot heal when fighting this boss.', # apply_boss_turn_end
         'Image' : 'https://i.imgur.com/epRUIYs.jpg'
     },
     14 : {
-        'Name' : 'Cursed Huntress', #SPECIAL: CANNOT BE BLOCKED
-        'LowATK' : 320,
-        'HighATK' : 340,
-        'LowHP' : 900,
-        'HighHP' : 1100,
-        'Effect' : 'Players cannot block Cursed Huntress\' attacks.',
+        'ID' : None,
+        'Name' : 'Cursed Huntress',
+        'Attack' : 330,
+        'HP' : 1000,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
+        'Effect' : 'Players cannot block Cursed Huntress\' attacks.', # apply_boss_turn_end
         'Image' : None
     },
     15 : {
-        'Name' : 'Crumidian Warriors', 
-        'LowATK' : 280,
-        'HighATK' : 300,
-        'LowHP' : 1300,
-        'HighHP' : 1500,
+        'ID' : None,
+        'Name' : 'Crumidian Warriors',
+        'Attack' : 290,
+        'HP' : 1400,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
         'Effect' : None,
         'Image' : None
     },
     16 : {
-        'Name' : 'Naysayers of the Larry Almighty', #SPECIAL: -80% DAMAGE TAKEN IF PARRYING
-        'LowATK' : 450,
-        'HighATK' : 700,
-        'LowHP' : 1300,
-        'HighHP' : 1450,
-        'Effect' : 'Players take 80% reduced damage instead of 50% when parrying this boss\' attacks.',
+        'ID' : None,
+        'Name' : 'Naysayers of the Larry Almighty',
+        'Attack' : 575,
+        'HP' : 1375,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
+        'Effect' : 'Players take 75% reduced damage instead of 45% when parrying this boss\' attacks.', #apply_boss_parry
         'Image' : None
     },
     17 : {
-        'Name' : 'John', 
-        'LowATK' : 295,
-        'HighATK' : 310,
-        'LowHP' : 1300,
-        'HighHP' : 1450,
+        'ID' : None,
+        'Name' : 'John',
+        'Attack' : 302,
+        'HP' : 1375,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
         'Effect' : None,
         'Image' : 'https://i.imgur.com/XFIlLi0.png'
     },
     18 : {
-        'Name' : 'Osprey Imperial Assassin', 
-        'LowATK' : 305,
-        'HighATK' : 325,
-        'LowHP' : 1400,
-        'HighHP' : 1600,
+        'ID' : None,
+        'Name' : 'Osprey Imperial Assassin',
+        'Attack' : 310,
+        'HP' : 1500,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
         'Effect' : None,
         'Image' : None
     },
     19 : {
-        'Name' : 'Arquitenio', #SPECIAL: ATTACKS EVERY TURN
-        'LowATK' : 325,
-        'HighATK' : 350,
-        'LowHP' : 1400,
-        'HighHP' : 1750,
-        'Effect' : 'Aruitenio never misses. He attacks every turn.',
+        'ID' : None,
+        'Name' : 'Arquitenio',
+        'Attack' : 337,
+        'HP' : 1525,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
+        'Effect' : None,
         'Image' : None
     },
     20 : {
-        'Name' : 'Tomyris', 
-        'LowATK' : 340,
-        'HighATK' : 360,
-        'LowHP' : 1500,
-        'HighHP' : 2000,
+        'ID' : None,
+        'Name' : 'Tomyris',
+        'Attack' : 350,
+        'HP' : 1750,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
         'Effect' : None,
         'Image' : None
     },
     21 : {
-        'Name' : 'Lucius Porcius Magnus Dux', #SPECIAL: ENEMY HEALS 50 HP INSTEAD OF TAKING DAMAGE IF CRIT
-        'LowATK' : 360,
-        'HighATK' : 375,
-        'LowHP' : 1750,
-        'HighHP' : 2250,
-        'Effect' : 'L. Porcius Magnus heals 50 HP instead of taking damage when struck by a critical strike.',
+        'ID' : None,
+        'Name' : 'Lucius Porcius Magnus Dux',
+        'Attack' : 362,
+        'HP' : 2000,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
+        'Effect' : 'L. Porcius Magnus heals 50 HP instead of taking damage when struck by a critical strike.', #apply_boss_crit
         'Image' : None
     },
     22 : {
-        'Name' : 'Laidirix', #SPECIAL: REFLECTS 5% OF DAMAGE TAKEN
-        'LowATK' : 375,
-        'HighATK' : 395,
-        'LowHP' : 2000,
-        'HighHP' : 2500,
-        'Effect' : 'Laidirix reflects 5% of all damage taken.',
+        'ID' : None,
+        'Name' : 'Laidirix',
+        'Attack' : 385,
+        'HP' : 2250,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
+        'Effect' : 'Laidirix reflects 5% of all damage taken.', #apply_boss_turn_end
         'Image' : None
     },
     23 : {
-        'Name' : 'Sanguirix', #SPECIAL: DOUBLE ATTACK AT TURN 0
-        'LowATK' : 420,
-        'HighATK' : 460,
-        'LowHP' : 2000,
-        'HighHP' : 2500,
-        'Effect' : 'Sanguirix attacks twice at the beginning of the fight if you damage him.',
+        'ID' : None,
+        'Name' : 'Sanguirix',
+        'Attack' : 440,
+        'HP' : 2250,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
+        'Effect' : 'Sanguirix attacks twice at the beginning of the fight', #apply_boss_turn_end
         'Image' : None
     },
     24 : {
-        'Name' : 'Supreme Duck', 
-        'LowATK' : 480,
-        'HighATK' : 550,
-        'LowHP' : 2700,
-        'HighHP' : 3200,
+        'ID' : None,
+        'Name' : 'Supreme Ducc',
+        'Attack' : 515,
+        'HP' : 2950,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
         'Effect' : None,
         'Image' : 'https://i.imgur.com/hPFZte9.png'
     },
     25 : {
-        'Name' : 'Draconicus Rex', #SPECIAL: HEALS 100 HP EVERY TURN
-        'LowATK' : 500,
-        'HighATK' : 550,
-        'LowHP' : 4000,
-        'HighHP' : 4500,
-        'Effect' : 'The Draconicus Rex heals 100 HP every turn.',
+        'ID' : None,
+        'Name' : 'Draconicus Rex',
+        'Attack' : 525,
+        'HP' : 4250,
+        'Class' : 'Boss',
+        'Acolyte1' : AssetCreation.empty_acolyte_dict(),
+        'Acolyte2' : AssetCreation.empty_acolyte_dict(),
+        'Effect' : 'The Draconicus Rex heals 100 HP every turn.', #apply_boss_turn_end
         'Image' : None
     },
 }
@@ -270,179 +321,105 @@ gold_rewards = {
 }
 
 class PvE(commands.Cog):
+    """Basic gameplay in Ayesha"""
 
     def __init__(self, client):
         self.client = client
-        # self.players = {}
 
     #EVENTS
     @commands.Cog.listener() # needed to create event in cog
     async def on_ready(self): # YOU NEED SELF IN COGS
         print('PvE is ready.')
 
-    def getBossAction(self, level):
-        action = {'Action' : None, 'Damage' : None, 'DamageTaken' : 1}
-        actiondet = random.randint(1,10)
-        
-        if level == 19: #Arquitenio effect - always attack
-            actiondet = 1
+    #INVISIBLE
+    async def send_victory_embed(self, player : dict, boss : dict, bounty_level : int):
+        if player['HP'] < 1:
+            player['HP'] = 1 #To prevent weird calcs
 
-        if actiondet < 7:
-            action['Action'] = 'attacked' 
-            action['Damage'] = random.randint(bounty_levels[level]['LowATK'], bounty_levels[level]['HighATK'])
-        elif actiondet < 9:
-            action['Action'] = 'parried'
-            action['Damage'] = math.floor(random.randint(bounty_levels[level]['LowATK'], bounty_levels[level]['HighATK']) / 2)
-            action['DamageTaken'] = .5
-        else:
-            action['Action'] = 'blocked'
-            action['Damage'] = math.floor(random.randint(bounty_levels[level]['LowATK'], bounty_levels[level]['HighATK']) / 100)
-            action['DamageTaken'] = .05
-        return action
+        rewards = {
+            'xp' : int(2**(bounty_level/10) * ((bounty_level+10)**2) * ((player['HP']/1250) + .2)),
+            'gold' : random.randint(gold_rewards[bounty_level]['Min'], gold_rewards[bounty_level]['Max']),
+            'item' : None
+        }
+        rewards = AssetCreation.apply_acolytes_game_end(player, rewards, 'pve')
 
-    async def checkEndGame(self, ctx, message, level, hp, enemyhp, acolyte1, acolyte2):
-        if enemyhp <= 0: #give them a win in the event of a tie
-            vict, acolyte1, acolyte2 = await self.doVictory(ctx.author.id, level, hp, acolyte1, acolyte2)
-            await message.edit(embed=vict)
-            await AssetCreation.checkLevel(self.client.pg_con, ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
-            return True
-        elif hp <= 0: #loss
-            loss, acolyte1, acolyte2 = await self.doDefeat(ctx.author.id, level, enemyhp, acolyte1, acolyte2)
-            await message.edit(embed=loss)
-            await AssetCreation.checkLevel(self.client.pg_con, ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
-            return True
-        else:
-            return None
-
-    async def doVictory(self, player, level, hp, acolyte1, acolyte2):
-        getweapon = False
-        #Calculate chance of receiving a weapon: 25%
         if random.randint(1,4) == 1:
-            if level <= 8:
+            rewards['item'] = True
+
+            if bounty_level <= 8:
                 attack = random.randint(15, 40)
                 rarity = 'Common'
-                await AssetCreation.createItem(self.client.pg_con, player, attack, rarity)
-            elif level <= 16:
+                await AssetCreation.createItem(self.client.pg_con, player['ID'], attack, rarity)
+            elif bounty_level <= 16:
                 attack = random.randint(30, 70)
                 rarity = 'Uncommon'
-                await AssetCreation.createItem(self.client.pg_con, player, attack, rarity)
-            elif level <= 24:
+                await AssetCreation.createItem(self.client.pg_con, player['ID'], attack, rarity)
+            elif bounty_level <= 24:
                 attack = random.randint(45, 100)
                 rarity = 'Rare'
-                await AssetCreation.createItem(self.client.pg_con, player, attack, rarity)
+                await AssetCreation.createItem(self.client.pg_con, player['ID'], attack, rarity)
             else:
                 attack = random.randint(75, 120)
                 rarity = 'Epic'
-                await AssetCreation.createItem(self.client.pg_con, player, attack, rarity)
-            
-            getweapon = not getweapon
-        #Calculate gold, xp, acolyte xp rewards
-        if hp < 1:
-            hp = 1
-        gold = random.randint(gold_rewards[level]['Min'], gold_rewards[level]['Max'])
-        xp = math.floor(2**(level/10) * ((level+10)**2) * ((hp/1250) + .2))
-        try:
-            if acolyte1['Name'] == 'Sean' or acolyte2['Name'] == 'Sean':
-                xp = math.floor(xp * 1.1)
-            if acolyte1['Name'] == 'Spartacus' or acolyte2['Name'] == 'Spartacus':
-                gold += 200
-        except TypeError:
-            pass
-        acolyte_xp = math.ceil(xp / 10)
-        #Give rewards
-        acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(self.client.pg_con, player)
-        if acolyte1 is not None:
-            await AssetCreation.giveAcolyteXP(self.client.pg_con, acolyte_xp, acolyte1)
-        if acolyte2 is not None:
-            await AssetCreation.giveAcolyteXP(self.client.pg_con, acolyte_xp, acolyte2)
-        await AssetCreation.giveBountyRewards(self.client.pg_con, player, gold, xp, victory=True)
+                await AssetCreation.createItem(self.client.pg_con, player['ID'], attack, rarity)
 
-        #Return an embed to send
-        embed = discord.Embed(title=f"You defeated {bounty_levels[level]['Name']}!", color=self.client.ayesha_blue)
+        if player['Acolyte1']['ID'] is not None:
+            await AssetCreation.giveAcolyteXP(self.client.pg_con, int(rewards['xp'] / 10), player['Acolyte1']['ID'])
+        if player['Acolyte2']['ID'] is not None:
+            await AssetCreation.giveAcolyteXP(self.client.pg_con, int(rewards['xp'] / 10), player['Acolyte2']['ID'])
+
+        await AssetCreation.giveBountyRewards(self.client.pg_con, player['ID'], rewards['gold'], rewards['xp'], victory=True)
+
+        #Return an embed to send.
+        embed = discord.Embed(title=f"You defeated {boss['Name']}!", color=self.client.ayesha_blue)
         embed.set_thumbnail(url='https://i.imgur.com/MCAMH45.jpg')
-        if getweapon:
-            embed.add_field(name=f'You had {hp} hp remaining', 
-                            value=f'You received {gold} gold and {xp} xp from the battle.\nYou also gained an item. Check your `inventory` to see it!')
+        if rewards['item']:
+            embed.add_field(name=f"You had {player['HP']} hp remaining", 
+                            value=f"You received `{rewards['gold']}` gold and `{rewards['xp']}` xp from the battle.\nYou also gained an item. Check your `inventory` to see it!")
         else:
-            embed.add_field(name=f'You had {hp} hp remaining', 
-                            value=f'You received {gold} gold and {xp} xp from the battle.')
+            embed.add_field(name=f"You had {player['HP']} hp remaining", 
+                            value=f"You received `{rewards['gold']}` gold and `{rewards['xp']}` xp from the battle.")
 
-        if acolyte1 is not None and acolyte2 is not None:
-            return embed, acolyte1, acolyte2
-        elif acolyte1 is not None and acolyte2 is None:
-            return embed, acolyte1, None
-        elif acolyte1 is None and acolyte2 is not None:
-            return embed, acolyte1, acolyte2
-        else:
-            return embed, None, None
+        return embed
 
-    async def doDefeat(self, player, level, enemyhp, acolyte1, acolyte2):
-        #Calculate xp, acolyte xp rewards: xp greatly reduced
-        xp = 5 * level + 20
-        try:
-            if acolyte1['Name'] == 'Sean' or acolyte2['Name'] == 'Sean':
-                xp = math.floor(xp * 1.1)
-        except TypeError:
-            pass
-        acolyte_xp = math.ceil(xp / 10)
-        gold = 0
+    async def send_loss_embed(self, player : dict, boss : dict, bounty_level : int):
+        rewards = {
+            'xp' : 5 * bounty_level + 20,
+            'gold' : 0,
+            'item' : False
+        }
+        rewards = AssetCreation.apply_acolytes_game_end(player, rewards, 'pve')
 
-        acolyte1, acolyte2 = await AssetCreation.getAcolyteFromPlayer(self.client.pg_con, player)
-        if acolyte1 is not None:
-            await AssetCreation.giveAcolyteXP(self.client.pg_con, acolyte_xp, acolyte1)
-        if acolyte2 is not None:
-            await AssetCreation.giveAcolyteXP(self.client.pg_con, acolyte_xp, acolyte2)
-        await AssetCreation.giveBountyRewards(self.client.pg_con, player, gold, xp, victory=False)
+        if player['Acolyte1']['ID'] is not None:
+            await AssetCreation.giveAcolyteXP(self.client.pg_con, int(rewards['xp'] / 10), player['Acolyte1']['ID'])
+        if player['Acolyte2']['ID'] is not None:
+            await AssetCreation.giveAcolyteXP(self.client.pg_con, int(rewards['xp'] / 10), player['Acolyte2']['ID'])
 
-        #Return an embed to send
-        embed = discord.Embed(title=f"The {bounty_levels[level]['Name']} has shown its superiority", 
+        await AssetCreation.giveBountyRewards(self.client.pg_con, player['ID'], rewards['gold'], rewards['xp'], victory=False)
+
+        #Return an embed to send.
+        embed = discord.Embed(title=f"The {boss['Name']} has shown its superiority",
                               color=self.client.ayesha_blue)
-        embed.add_field(name='You fled the battlefield', 
-                        value=f'Boss HP: `{enemyhp}`\nYou received {xp} xp from the battle.')
-        # Also returns the acolytes to check their level
-        if acolyte1 is not None and acolyte2 is not None:
-            return embed, acolyte1, acolyte2
-        elif acolyte1 is not None and acolyte2 is None:
-            return embed, acolyte1, None
-        elif acolyte1 is None and acolyte2 is not None:
-            return embed, acolyte1, acolyte2
-        else:
-            return embed, None, None
-
-    def checkCrit(self, level, crit, damage, enemyhp, attack, acolyte1, acolyte2):
-        is_crit = random.choices(['Normal', 'Crit'], [100-crit, crit])
-        if is_crit[0] == 'Crit':
-            if level == 21: #Magnus special prevents crits
-                damage = 0
-                enemyhp += 50
-            else:
-                damage = int(damage * 1.5)
-
-            try:
-                if acolyte1['Name'] == 'Aulus' or acolyte2['Name'] == 'Aulus': #Aulus gives crit bonuses
-                    attack += 50
-            except TypeError:
-                pass
-
-        try:
-            if acolyte1['Name'] == 'Paterius' or acolyte2['Name'] == 'Paterius': #Doesn't need a crit, but placed here for brevity
-                damage += 15
-        except TypeError:
-            pass
-
-        return crit, is_crit[0], damage, enemyhp, attack
+        embed.add_field(name='You fled the battlefield.',
+                        value=f"Boss HP: `{boss['HP']}`\nYou received `{rewards['xp']}` xp from the battle.")
+        
+        return embed
 
     def showBounties(self):
         embeds = []
         for i in range(1,26):
             embed = discord.Embed(title=f"Level {i}: {bounty_levels[i]['Name']}", color=self.client.ayesha_blue)
-            embed.add_field(name='Attack Range', 
-                            value=f"{bounty_levels[i]['LowATK']} - {bounty_levels[i]['HighATK']}")
-            embed.add_field(name='HP Range', 
-                            value=f"{bounty_levels[i]['LowHP']} - {bounty_levels[i]['HighHP']}")
+            embed.add_field(name='Attack Stat', 
+                            value=f"{bounty_levels[i]['Attack']}")
+            embed.add_field(name='HP', 
+                            value=f"{bounty_levels[i]['HP']}")
             if bounty_levels[i]['Effect'] is not None:
                 embed.add_field(name='Special Effect', 
                                 value=f"{bounty_levels[i]['Effect']}", inline=False)
+
+            if bounty_levels[i]['Image'] is not None:
+                embed.set_image(url=bounty_levels[i]['Image'])
+
             embeds.append(embed)
         return embeds
 
@@ -452,6 +429,10 @@ class PvE(commands.Cog):
     @cooldown(1, 10, type=BucketType.user)
     @commands.max_concurrency(1, per=BucketType.user, wait=False)
     async def bounty(self, ctx, level : int = 0):
+        """`level`: the level of the PvE you want to fight. Leave blank to see a menu of bosses.
+
+        Fight an enemy for rewards, gaining xp, gold, and possibly an item.
+        """
         if level == 0:
             levels = self.showBounties()
             pages = menus.MenuPages(source=PageSourceMaker.PageMaker(levels), 
@@ -465,292 +446,170 @@ class PvE(commands.Cog):
             await ctx.reply('Please supply a valid level.')
             ctx.command.reset_cooldown(ctx)
             return
-        #Get the player's info and load stats
-        attack, crit, hp, playerjob, acolyte1, acolyte2 = await AssetCreation.getAttack(self.client.pg_con, 
-                                                                                        ctx.author.id, 
-                                                                                        returnothers=True)
-        if acolyte1 is not None:
-            acolyte1 = await AssetCreation.getAcolyteByID(self.client.pg_con, acolyte1)
-        if acolyte2 is not None:
-            acolyte2 = await AssetCreation.getAcolyteByID(self.client.pg_con, acolyte2)
 
-        if await AssetCreation.check_for_comptroller_bonus(self.client.pg_con, ctx.author.id, 'combat'):
-            #See if this player is eligible for comptroller's bonus
-            comp_bonus = await AssetCreation.get_comptroller_bonus(self.client.pg_con)
-            attack += 5 + (5 * comp_bonus['Level'])
-            crit += 1 + comp_bonus['Level']
-        
-        if level == 5: #Sean
-            attack = math.floor(attack * 1.5)
-        if level == 10: #Maritimialian Shaman
-            attack = math.floor(attack * (4/5))
-        enemyhp = random.randint(bounty_levels[level]['LowHP'], bounty_levels[level]['HighHP'])
+        # GET PLAYER INFO AND LOAD THEIR STATS
+        player1 = await AssetCreation.get_player_battle_info(self.client.pg_con, ctx.author.id)
+        boss = bounty_levels[level].copy()
 
-        strategy = await AssetCreation.getStrategy(self.client.pg_con, ctx.author.id)
-
-        # Create the embed
-        embed = discord.Embed(title=f"{bounty_levels[level]['Name']} attacks!", 
-                              color=self.client.ayesha_blue)
-        embed.add_field(name='Attack', value=f'{attack}') #field 0
-        embed.add_field(name='Crit Rate', value=f'{crit}%') #field 1
-        embed.add_field(name='HP', value=f'{hp}') #field 2
-        embed.add_field(name=f'Enemy HP: `{enemyhp}`', 
-                        value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', 
+        # CREATE THE EMBED
+        embed = discord.Embed(title=f"{boss['Name']} attacks!",
+                              color = self.client.ayesha_blue)
+        embed.add_field(name='Attack', value=f"{player1['Attack']}") #field 0
+        embed.add_field(name='Crit Rate', value=f"{player1['Crit']}") #field 1
+        embed.add_field(name='HP', value=f"{player1['HP']}") #field 2
+        embed.add_field(name=f"Enemy HP: `{boss['HP']}`",
+                        value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide',
                         inline=False) #field 3
         embed.add_field(name='You get initiative', value='Turn `0`') #field 4
-        if bounty_levels[level]['Image'] is not None:
-            embed.set_thumbnail(url=bounty_levels[level]['Image'])
+        if boss['Image'] is not None:
+            embed.set_thumbnail(url=boss['Image'])
+
         message = await ctx.reply(embed=embed)
 
-        readReactions = True
-        turnCounter = 0
+        # BEGIN THE BATTLE
+        turn_counter = 0
 
-        while readReactions:
-            reaction = random.randint(1,100)
+        player1, boss = AssetCreation.apply_boss_game_begin(player1, boss)
 
-            if reaction <= strategy['attack']:
-                #Do Calcs
-                bossaction = self.getBossAction(level)
-                damage = math.floor(random.randint(attack, attack+10) * bossaction['DamageTaken'])
+        while True: #This should be broken eventually and never loop infinitely
+            player1['Action'] = random.choices(['attacked', 'blocked', 'parried', 'healed', 'bided'],
+                                            [player1['Strategy']['attack'],
+                                             player1['Strategy']['block'],
+                                             player1['Strategy']['parry'],
+                                             player1['Strategy']['heal'],
+                                             player1['Strategy']['bide']])[0]
+            boss_action = 'attacked'
 
-                #Critical Strike handling - implement bonuses for having certain acolytes
-                crit, is_crit, damage, enemyhp, attack = self.checkCrit(level, 
-                                                                        crit, 
-                                                                        damage, 
-                                                                        enemyhp, 
-                                                                        attack, 
-                                                                        acolyte1, 
-                                                                        acolyte2)
-                if is_crit == 'Crit': #Implement Ayesha
-                    try:
-                        if acolyte1['Name'] == 'Ayesha' or acolyte2['Name'] == 'Ayesha':
-                            hp += int(attack * .2)
-                    except TypeError:
-                        pass
+            #Calculate changes according to the player actions
 
-                enemyhp = enemyhp - damage
-                if level == 22: #Laidirix reflects damage
-                    hp = hp - (bossaction['Damage'] + math.floor(damage / 20))
-                else:
-                    if level == 23 and turnCounter == 0: #Sanguirix
-                        bossaction['Damage'] *= 2
-                    hp = hp - bossaction['Damage']
-                if level == 25:
-                    enemyhp += 100
-                turnCounter += 1
+            player1['Damage'] = 0
+            player1['Heal'] = 0
+            boss['Damage'] = 0
+            boss['Heal'] = 0
 
-                #Check to see if hp falls below 0
-                doEnd = await self.checkEndGame(ctx, message, level, hp, enemyhp, acolyte1, acolyte2)
-                if doEnd:
-                    break
+            if player1['Action'] == 'attacked':
+                player1['Damage'] = random.randint(int(player1['Attack'] * .9), int(player1['Attack'] * 1.1))
+                player1 = AssetCreation.apply_acolytes_with_damage(player1)
 
-                #Send new embed if game continues
-                embed.set_field_at(0, name='Attack', value=f'{attack}')
-                embed.set_field_at(2, name='HP', value=f'{hp}')
-                embed.set_field_at(3, name=f'Enemy HP: `{enemyhp}`', 
-                                   value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', 
-                                   inline=False)
-                if is_crit == 'Normal':
-                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', 
-                                       value=f"You hit for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {bossaction['Damage']} damage.", 
-                                       inline=False)
-                else:
-                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', 
-                                       value=f"You critically striked for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {bossaction['Damage']} damage.", 
-                                       inline=False)
-                await message.edit(embed=embed)
+                boss['Damage'] = random.randint(int(boss['Attack'] * .9), int(boss['Attack'] * 1.1))
+                
+                if random.randint(1,100) < player1['Crit']:
+                    #Calculate damage
+                    player1['Action'] = 'critically ' + player1['Action']
+                    player1['Damage'] = int(player1['Damage'] * 1.5)
+                    
+                    #Apply acolyte effects that activate on crit
+                    player1, boss = AssetCreation.apply_acolytes_on_crit(player1, boss)
+                    player1, boss = AssetCreation.apply_boss_crit(player1, boss)
 
-            elif reaction <= strategy['attack'] + strategy['block']:
-                #Do Calcs
-                bossaction = self.getBossAction(level)
-                damage = math.floor((random.randint(attack, attack+10)/10) * bossaction['DamageTaken'])
+            elif player1['Action'] == 'blocked':
+                player1['Damage'] = random.randint(int(player1['Attack'] / 20), int(player1['Attack'] / 10))
+                player1 = AssetCreation.apply_acolytes_with_damage(player1)
 
-                #Critical Strike handling - implement bonuses for having certain acolytes
-                crit, is_crit, damage, enemyhp, attack = self.checkCrit(level, 
-                                                                        crit, 
-                                                                        damage, 
-                                                                        enemyhp, 
-                                                                        attack, 
-                                                                        acolyte1, 
-                                                                        acolyte2)
+                boss['Damage'] = random.randint(0, int(boss['Attack'] / 10))
+                
+                if random.randint(1,100) < player1['Crit']:
+                    #Calculate damage
+                    player1['Action'] = 'critically ' + player1['Action']
+                    player1['Damage'] = int(player1['Damage'] * 1.5)
+                    
+                    #Apply acolyte effects that activate on crit
+                    player1, boss = AssetCreation.apply_acolytes_on_crit(player1, boss)
+                    player1, boss = AssetCreation.apply_boss_crit(player1, boss)
 
-                enemyhp = enemyhp - damage
-                if level == 22: #Laidirix
-                    your_damage = math.floor((bossaction['Damage'] / 20) + (damage / 20))
-                else:
-                    if level == 23 and turnCounter == 0: #Sanguirix
-                        bossaction['Damage'] *= 2
-                    if level == 14:
-                        your_damage = bossaction['Damage']
-                    else:
-                        your_damage = math.floor(bossaction['Damage'] / 20)
-                hp = hp - your_damage
-                if level == 25:
-                    enemyhp += 100
-                turnCounter += 1
+            elif player1['Action'] == 'parried':
+                player1['Damage'] = random.randint(int(player1['Attack'] * .4), int(player1['Attack'] * .6))
+                player1 = AssetCreation.apply_acolytes_with_damage(player1)
 
-                #Check to see if hp falls below 0
-                doEnd = await self.checkEndGame(ctx, message, level, hp, enemyhp, acolyte1, acolyte2)
-                if doEnd:
-                    break
+                boss['Damage'] = random.randint(int(boss['Attack'] * .35), int(boss['Attack'] * .55))
+                
+                if random.randint(1,100) < player1['Crit']:
+                    #Calculate damage
+                    player1['Action'] = 'critically ' + player1['Action']
+                    player1['Damage'] = int(player1['Damage'] * 1.5)
+                    
+                    #Apply acolyte effects that activate on crit
+                    player1, boss = AssetCreation.apply_acolytes_on_crit(player1, boss)
+                    player1, boss = AssetCreation.apply_boss_crit(player1, boss)
 
-                #Send new embed
-                embed.set_field_at(0, name='Attack', value=f'{attack}')
-                embed.set_field_at(2, name='HP', value=f'{hp}')
-                embed.set_field_at(3, name=f'Enemy HP: `{enemyhp}`', 
-                                   value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', 
-                                   inline=False)
-                if is_crit == 'Normal':
-                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', 
-                                          value=f"You blocked and dealt {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", 
-                                          inline=False)
-                else:
-                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', 
-                                       value=f"You critically striked for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", 
-                                       inline=False)
-                await message.edit(embed=embed)
+                player1, boss = AssetCreation.apply_boss_parry(player1, boss)
 
-            elif reaction <= strategy['attack'] + strategy['block'] + strategy['parry']:
-                #Do Calcs
-                bossaction = self.getBossAction(level)
-                damage = math.floor((random.randint(attack, attack+10) * bossaction['DamageTaken'])/2)
+            elif player1['Action'] == 'healed':
+                player1['Damage'] = 0
+                player1 = AssetCreation.apply_acolytes_with_damage(player1)
+                player1['Heal'] = random.randint(100,200)
 
-                #Critical Strike handling - implement bonuses for having certain acolytes
-                crit, is_crit, damage, enemyhp, attack = self.checkCrit(level, 
-                                                                        crit, 
-                                                                        damage, 
-                                                                        enemyhp, 
-                                                                        attack, 
-                                                                        acolyte1, 
-                                                                        acolyte2)
-                if is_crit == 'Crit': #Implement Ayesha
-                    try:
-                        if acolyte1['Name'] == 'Ayesha' or acolyte2['Name'] == 'Ayesha':
-                            hp += int(attack * .2)
-                    except TypeError:
-                        pass
-
-                enemyhp = enemyhp - damage
-
-                #Calculate player damage
-                your_damage = bossaction['Damage']
-                if level == 22: #Laidirix
-                    your_damage = math.floor(bossaction['Damage']/2 + damage/20)
-                if level == 23 and turnCounter == 0: #Sanguirix
-                    pass
-                else:
-                    your_damage = math.floor(bossaction['Damage']/2)
-                if level == 16:
-                    your_damage = math.floor(your_damage / 5)
-                hp = hp - your_damage
-
-                if level == 25:
-                    enemyhp += 100
-                turnCounter += 1
-
-                #Check to see if hp falls below 0
-                doEnd = await self.checkEndGame(ctx, message, level, hp, enemyhp, acolyte1, acolyte2)
-                if doEnd:
-                    break
-
-                #Send new embed
-                embed.set_field_at(0, name='Attack', value=f'{attack}')
-                embed.set_field_at(2, name='HP', value=f'{hp}')
-                embed.set_field_at(3, name=f'Enemy HP: `{enemyhp}`', 
-                                   value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', 
-                                   inline=False)
-                if is_crit == 'Normal':
-                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', 
-                                       value=f"You parried for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", 
-                                       inline=False)
-                else:
-                    embed.set_field_at(4, name=f'Turn `{turnCounter}`', 
-                                       value=f"You critically striked for {damage} damage. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", 
-                                       inline=False)
-                await message.edit(embed=embed)
-
-            elif reaction <= strategy['attack'] + strategy['block'] + strategy['parry'] + strategy['heal']:
-                bossaction = self.getBossAction(level)
-                hp = hp - bossaction['Damage']
-                heal = math.floor((1500 - hp) / 8)
-                if playerjob == 'Butcher':
-                    heal = heal * 2
-                if level == 13: #Moonlight Wolf Pack
-                    heal = 0
-                hp = hp + heal
-                if level == 25:
-                    enemyhp += 100
-                turnCounter += 1
-
-                #Check to see if hp falls below 0
-                doEnd = await self.checkEndGame(ctx, message, level, hp, enemyhp, acolyte1, acolyte2)
-                if doEnd:
-                    break
-
-                #Send new embed
-                embed.set_field_at(0, name='Attack', value=f'{attack}')
-                embed.set_field_at(2, name='HP', value=f'{hp}')
-                embed.set_field_at(3, name=f'Enemy HP: `{enemyhp}`', 
-                                   value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', 
-                                   inline=False)
-                embed.set_field_at(4, name=f'Turn `{turnCounter}`', 
-                                   value=f"You healed {heal} hp. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {bossaction['Damage']} damage.", 
-                                   inline=False)
-                await message.edit(embed=embed)
+                boss['Damage'] = random.randint(int(boss['Attack'] * .65), int(boss['Attack'] * .9))
 
             else:
-                #Do Calcs
-                bossaction = self.getBossAction(level)
-                your_damage = math.floor(bossaction['Damage'] * (3/4))
-                hp = hp - your_damage
-                attack = math.floor(attack * (1.1))
-                if level == 25:
-                    enemyhp += 100
-                turnCounter += 1
+                player1['Damage'] = 0
+                player1 = AssetCreation.apply_acolytes_with_damage(player1)
+                player1['Heal'] = random.randint(25,75)
+                player1['Attack'] = int(player1['Attack'] * 1.25)
 
-                #Check to see if hp falls below 0
-                doEnd = await self.checkEndGame(ctx, message, level, hp, enemyhp, acolyte1, acolyte2)
-                if doEnd:
-                    break
+                boss['Damage'] = random.randint(int(boss['Attack'] * .65), int(boss['Attack'] * .9))
 
-                #Send new embed
-                embed.set_field_at(0, name='Attack', value=f'{attack}')
-                embed.set_field_at(2, name='HP', value=f'{hp}')
-                embed.set_field_at(3, name=f'Enemy HP: `{enemyhp}`', 
-                                   value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide', 
-                                   inline=False)
-                embed.set_field_at(4, name=f'Turn `{turnCounter}`', 
-                                   value=f"You bided your time and boosted your attack. {bounty_levels[level]['Name']} {bossaction['Action']} and dealt {your_damage} damage.", 
-                                   inline=False)
+            player1, boss = AssetCreation.apply_acolytes_on_turn_end(player1, boss, turn_counter)
+            player1, boss = AssetCreation.apply_boss_turn_end(player1, boss, turn_counter)
+
+            #Calculate actual combat changes
+            player1['HP'] += player1['Heal'] - boss['Damage']
+            boss['HP'] += boss['Heal'] - player1['Damage']
+
+            #Check to see if HP falls below 0
+            if boss['HP'] <= 0: #Give player win in event of a tie
+                embed = await self.send_victory_embed(player1, boss, level)
                 await message.edit(embed=embed)
+                if player1['Acolyte1']['ID'] is None and player1['Acolyte2']['ID'] is None:
+                    await AssetCreation.checkLevel(self.client.pg_con, ctx, ctx.author.id)
+                elif player1['Acolyte1']['ID'] is not None and player1['Acolyte2']['ID'] is None:
+                    await AssetCreation.checkLevel(self.client.pg_con, ctx, ctx.author.id, aco1=player1['Acolyte1']['ID'])
+                elif player1['Acolyte1']['ID'] is None and player1['Acolyte2']['ID'] is not None:
+                    await AssetCreation.checkLevel(self.client.pg_con, ctx, ctx.author.id, aco2=player1['Acolyte2']['ID'])
+                else:
+                    await AssetCreation.checkLevel(self.client.pg_con, ctx, ctx.author.id, aco1=player1['Acolyte1']['ID'], aco2=player1['Acolyte2']['ID'])
+                return
 
-            #Add Ajar's Effect
-            try:
-                if acolyte1['Name'] == 'Ajar' or acolyte2['Name'] == 'Ajar':
-                    attack += 20
-                    hp -= 50
-            except TypeError:
-                pass
+            elif player1['HP'] <= 0:
+                embed = await self.send_loss_embed(player1, boss, level)
+                await message.edit(embed=embed)
+                if player1['Acolyte1']['ID'] is None and player1['Acolyte2']['ID'] is None:
+                    await AssetCreation.checkLevel(self.client.pg_con, ctx, ctx.author.id)
+                elif player1['Acolyte1']['ID'] is not None and player1['Acolyte2']['ID'] is None:
+                    await AssetCreation.checkLevel(self.client.pg_con, ctx, ctx.author.id, aco1=player1['Acolyte1']['ID'])
+                elif player1['Acolyte1']['ID'] is None and player1['Acolyte2']['ID'] is not None:
+                    await AssetCreation.checkLevel(self.client.pg_con, ctx, ctx.author.id, aco2=player1['Acolyte2']['ID'])
+                else:
+                    await AssetCreation.checkLevel(self.client.pg_con, ctx, ctx.author.id, aco1=player1['Acolyte1']['ID'], aco2=player1['Acolyte2']['ID'])
+                return
 
-            if turnCounter == 4: #Add Onion's Effect
-                try:
-                    if acolyte1['Name'] == 'Onion' or acolyte2['Name'] == 'Onion':
-                        crit *= 2
-                except TypeError:
-                    pass      
+            turn_counter += 1
+            if turn_counter >= 51:
+                #Return finished embed
+                embed = await self.send_loss_embed(player1, boss, level)
+                await message.edit(embed=embed)
+                break
 
-            if turnCounter == 51: #50 turn limit
-                loss = await self.doDefeat(ctx.author.id, level, enemyhp, acolyte1, acolyte2)
-                await message.edit(embed=loss[0])
-                break                
+            #Send new embed
+            embed.set_field_at(0, name='Attack', value=f"{player1['Attack']}")
+            embed.set_field_at(1, name='Crit Rate', value=f"{player1['Crit']}")
+            embed.set_field_at(2, name='HP', value=f"{player1['HP']}")
+            embed.set_field_at(3, name=f"Enemy HP: `{boss['HP']}`", 
+                               value=f'🗡️ Attack , \N{SHIELD} Block, \N{CROSSED SWORDS} Parry, \u2764 Heal, \u23F1 Bide',
+                               inline=False)
+            embed.set_field_at(4, name=f"Turn `{turn_counter}`",
+                               value=f"You {player1['Action']}, dealing {player1['Damage']} damage and healing {player1['Heal']}.\n{boss['Name']} {boss_action} and dealt {boss['Damage']} damage, healing for {boss['Heal']}.")
+            
+            await message.edit(embed=embed)
 
-            await asyncio.sleep(2.0)
+            await asyncio.sleep(2)
 
     @commands.command(aliases=['strat', 'st'], 
                       brief='<attack> <block> <parry> <heal> <bide>', 
                       description='Set the action weighting when fighting bosses. Do this command without any arguments for more info.')
     @commands.check(Checks.is_player)
     async def strategy(self, ctx, attack : int = None, block : int = None, parry : int = None, heal : int = None, bide : int = None):
+        """Set the action weighting when fighting bosses. Do this command without any arguments for more info."""
         #Explain command if nothing input
         if bide is None:
             with open(Links.tutorial, "r") as f:

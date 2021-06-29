@@ -8,6 +8,7 @@ from datetime import datetime
 from Utilities import Checks
 
 class Error_Handler(commands.Cog):
+    """Quick error handler that needs improvement"""
     def __init__(self,client):
         self.client = client
 

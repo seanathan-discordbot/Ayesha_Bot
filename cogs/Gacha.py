@@ -19,6 +19,7 @@ one_star=[l[98]]
 five_star=[l[99]]
 
 class Gacha(commands.Cog):
+    """Roll for weapons and acolytes"""
     def __init__(self,client):
         self.client=client
 
@@ -42,6 +43,10 @@ class Gacha(commands.Cog):
                       description='Spend 1 rubidic to get a random acolyte or weapon!')
     @commands.check(Checks.is_player)
     async def roll(self, ctx, rolls : int = 1):
+        """`rolls`: 1-10. The amount of times you want to roll at once
+
+        Spend 1 rubidic to get a random acolyte or weapon.
+        """
         #Make sure they have rubidics
         if rolls > 10:
             return await ctx.reply('You can only roll up to 10 times at once!')
@@ -184,6 +189,10 @@ class Gacha(commands.Cog):
                       description='Spend 100,000 gold to get a random acolyte or weapon! This gives inferior drops to the the `roll` command.')
     @commands.check(Checks.is_player)
     async def goldroll(self, ctx, rolls : int = 1):
+        """`rolls`: 1-10. The amount of times you want to roll at once
+
+        Spend 100,000 gold to get a random acolyte or weapon. This gives inferior drops in comparison to selling rubidics.
+        """
         #Make sure they have enough gold
         if rolls > 10:
             return await ctx.reply('You can only roll up to 10 times at once!')
@@ -314,12 +323,14 @@ class Gacha(commands.Cog):
                       description='See how many rubidics you have and how many more summons are needed until receiving guaranteed 5*')
     @commands.check(Checks.is_player)
     async def rubidics(self, ctx):
+        """See how many rubidics are in your possession."""
         info = await AssetCreation.getRubidics(self.client.pg_con, ctx.author.id)
         await ctx.reply(f"You have **{info['rubidic']}** rubidics.\nYou will get a 5⭐ acolyte in **{80-info['pitycounter']}** summons.")
 
     @commands.group(description='Exchange extra gold for some stuff!', invoke_without_command=True, case_insensitive=True)
     @commands.check(Checks.is_player)
     async def shop(self, ctx):
+        """Exchange some extra gold for some other stuff."""
         shop = discord.Embed(title='Gold Shop', 
                              description='Exchange your gold for some items!', 
                              color=self.client.ayesha_blue)
@@ -340,6 +351,11 @@ class Gacha(commands.Cog):
     @shop.command(brief='<material> <amount>', description='Purchase a resource. Each resource costs 200 gold.')
     @commands.check(Checks.is_player)
     async def material(self, ctx, material : str, amount : int):
+        """`material`: the material you want. Valid resources can be found with `pack`
+        `amount`: the amount of materials you want
+
+        Purchase a resource. Each unit is 200 gold.
+        """
         #Make sure the material and amount is a valid amount
         material = material.lower()
         mats = ('fur', 'bone', 'iron', 'silver', 'wood', 'wheat', 'oat', 'reeds', 'pine', 'moss', 'cacao')
@@ -374,6 +390,7 @@ class Gacha(commands.Cog):
     @shop.command(description='Get a new epic weapon! Costs 500,000 gold.')
     @commands.check(Checks.is_player)
     async def epic(self, ctx):
+        """Purchase an epic weapon for 500,000 gold."""
         #Make sure player has enough gold for this transaction
         player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
         subtotal = 500000
@@ -407,6 +424,7 @@ class Gacha(commands.Cog):
     @shop.command(description='Get a new rare weapon! Costs 50,000 gold.')
     @commands.check(Checks.is_player)
     async def rare(self, ctx):
+        """Purchase a rare weapon for 50,000 gold."""
         #Make sure player has enough gold for this transaction
         player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
         subtotal = 50000
@@ -440,6 +458,7 @@ class Gacha(commands.Cog):
     @shop.command(description='Get a rubidic. 1 rubidic for 10,000,000 gold.')
     @commands.check(Checks.is_player)
     async def rubidic(self, ctx, amount : int):
+        """Purchase a rubidic for 10,000,000 gold."""
         #Make sure player has enough gold for this transaction
         if amount < 1:
             await ctx.reply('Lol')
@@ -470,6 +489,11 @@ class Gacha(commands.Cog):
     @shop.command(brief='<material> <amount>', description='Sell your materials for 20 gold each.')
     @commands.check(Checks.is_player)
     async def sell(self, ctx, material : str, amount : int):
+        """`material`: the material you want to sell. Valid resources can be found with `pack`
+        `amount`: the amount of materials you want to sell
+
+        Sell a resource for 20 gold apiece.
+        """
         #Make sure they have the mats
         material = material.lower()
         mats = ('fur', 'bone', 'iron', 'silver', 'wood', 'wheat', 'oat', 'reeds', 'pine', 'moss', 'cacao')

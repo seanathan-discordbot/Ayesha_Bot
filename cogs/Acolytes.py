@@ -8,6 +8,7 @@ import json
 import math
 
 class Acolytes(commands.Cog):
+    """Commands involving party members"""
 
     def __init__(self, client):
         self.client = client
@@ -45,6 +46,9 @@ class Acolytes(commands.Cog):
     @commands.command(aliases=['acolytes'], description='View your acolytes')
     @commands.check(Checks.is_player)
     async def tavern(self, ctx):
+        """View a list of all the acolytes you own.
+        Each acolyte has an ID number listed next to them, with which you can reference them in other commands.
+        """
         inv = await AssetCreation.getAllAcolytesFromPlayer(self.client.pg_con, ctx.author.id)
 
         invpages = []
@@ -63,6 +67,11 @@ class Acolytes(commands.Cog):
                       description='Add an acolyte to your party')
     @commands.check(Checks.is_player)
     async def recruit(self, ctx, instance_id : int, slot : int):
+        """`instance_id` : the ID of the acolyte, listed next to their name in `tavern`
+        `slot`: 1 or 2, which place of your team they will take
+
+        Add an acolyte to your party.
+        """
         if slot < 1 or slot > 2:
             return await ctx.reply('You can only place an acolyte in slots 1 or 2 of your party.')
 
@@ -107,6 +116,10 @@ class Acolytes(commands.Cog):
     @commands.command(brief='<slot : int>', description='Dismiss an acolyte from the slot in your party.')
     @commands.check(Checks.is_player)
     async def dismiss(self, ctx, slot : int):
+        """`slot`: the slot of your party you want to empty
+
+        Dismiss an acolyte from the named slot in your party.
+        """
         if slot < 1 or slot > 2:
             await ctx.reply('Please input a valid slot (1 or 2).')
             return
@@ -136,6 +149,11 @@ class Acolytes(commands.Cog):
                       description='Train your acolyte, giving it xp and potentially levelling it up! Each training session with your acolyte costs 50 of its upgrade material and 250 gold.')
     @commands.check(Checks.is_player)
     async def train(self, ctx, instance_id : int, iterations : int = 1):
+        """`instance_id`: the ID of the acolyte, listed next to their name in `tavern`
+        `iterations`: the amount of times you want to train your acolyte
+
+        Train your acolyte, giving it xp and potentially levelling it up! Each training session with your acolyte costs 50 of its upgrade material and 250 gold.
+        """
         if not await AssetCreation.verifyAcolyteOwnership(self.client.pg_con, instance_id, ctx.author.id):
             await ctx.reply('This acolyte isn\'t in your tavern.')
             return
@@ -169,6 +187,10 @@ class Acolytes(commands.Cog):
 
     @commands.command(brief='<name>', description='Learn more about each of your acolytes!')
     async def acolyte(self, ctx, *, name):
+        """`name`: the name of the acolyte you want to see
+
+        Learn more about an acolyte, viewing their game-related info and backstory.
+        """
         with open(Links.acolyte_list, "r") as f:
             info = json.load(f)
 
@@ -196,6 +218,7 @@ class Acolytes(commands.Cog):
 
     @commands.command(aliases=['al'], description='See a list of all acolytes attainable ingame.')
     async def acolytelist(self, ctx):
+        """See the list of all acolytes attainable ingame."""
         with open(Links.acolyte_list, "r") as f:
             info = json.load(f)
 
@@ -220,12 +243,16 @@ class Acolytes(commands.Cog):
     @commands.command(brief='<acolyte ID>', description='Check your acolyte\'s xp and level.')
     @commands.check(Checks.is_player)
     async def acolytexp(self, ctx, instance_id : int):
+        """`instance_id` : the ID of the acolyte, listed next to their name in `tavern`
+
+        Check your acolyte's xp and level.
+        """
         if not await AssetCreation.verifyAcolyteOwnership(self.client.pg_con, instance_id, ctx.author.id):
             await ctx.reply('This acolyte isn\'t in your tavern.')
             return
 
         info = await AssetCreation.getAcolyteXP(self.client.pg_con, instance_id)
-        tonext = math.floor(3000000 * math.cos(((info['lvl']+1)/64)+3.14) + 3000000) - info['xp']
+        tonext = int(300 * ((info['lvl']+1)**2) - info['xp'])
 
         embed = discord.Embed(color=self.client.ayesha_blue)
         embed.add_field(name='Level', value=f"{info['lvl']}")

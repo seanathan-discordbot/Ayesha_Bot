@@ -18,6 +18,7 @@ raid_bosses = (
 )
 
 class Raid(commands.Cog):
+    """Join a cooperative raid against a powerful enemy"""
 
     def __init__(self, client):
         self.client = client
@@ -42,6 +43,7 @@ class Raid(commands.Cog):
                     description='See the current raid info. Do `raid attack` to join any active raid.')
     @commands.check(Checks.is_player)
     async def raid(self, ctx):
+        """See the current raid info. Do `raid attack` to join any active raid."""
         if self.raid_info['Active']:
             await ctx.reply(f"A raid is currently being fought against {self.raid_info['Enemy']}. Do `{ctx.prefix}raid attack` to join the campaign!\n{self.raid_info['Message'].jump_url}")
 
@@ -50,7 +52,10 @@ class Raid(commands.Cog):
 
     @raid.command(brief='<hp>', description='Spawn a raid.')
     @commands.check(Checks.is_admin)
-    async def spawn(self, ctx, hp : int):   
+    async def spawn(self, ctx, hp : int):
+        """`hp`: the hp of the raid you are spawning
+        
+        [ADMIN] Spawn a raid."""   
         #See if a raid can be spawned
         if self.raid_info['Active']:
             return await ctx.reply('A raid is currently running.', delete_after=5.0)
@@ -74,21 +79,23 @@ class Raid(commands.Cog):
     @commands.check(Checks.is_player)
     @cooldown(1, 900, BucketType.user) #15 minute cooldown
     async def attack(self, ctx):
+        """Attack the current raid boss."""
         if not self.raid_info['Active']:
             ctx.command.reset_cooldown(ctx)
             return await ctx.reply(f'No raid is currently being fought. Wait for one to start in {self.client.announcement_channel.mention}!')
 
-        attack, crit = await AssetCreation.getAttack(self.client.pg_con, ctx.author.id)
+        # attack, crit = await AssetCreation.getAttack(self.client.pg_con, ctx.author.id)
+        combat_info = await AssetCreation.get_attack_crit_hp(self.client.pg_con, ctx.author.id)
 
-        if random.randint(1,100) > crit:
-            attack *= 2
+        if random.randint(1,100) > combat_info['Crit']:
+            combat_info['Attack'] *= 2
 
-        damage = random.randint(int(attack / 2), int(attack * 1.25))
+        damage = random.randint(int(combat_info['Attack'] / 2), int(combat_info['Attack'] * 1.25))
         self.raid_info['HP'] -= damage
         await AssetCreation.log_raid_attack(self.client.pg_con, ctx.author.id, damage)
         total_damage = await AssetCreation.get_player_raid_damage(self.client.pg_con, ctx.author.id)
         await ctx.reply(f"Your attack dealt {damage} damage to the {self.raid_info['Enemy']}.")
-        await self.client.announcement_channel.send(f"{ctx.author.mention} dealt **{damage}** damage to the **{self.raid_info['Enemy']}**, for a total of **{total_damage}** this campaign!")
+        await self.client.announcement_channel.send(f"{ctx.author.name}#{ctx.author.discriminator} dealt **{damage}** damage to the **{self.raid_info['Enemy']}**, for a total of **{total_damage}** this campaign!")
 
         if self.raid_info['HP'] < 0:
             self.raid_info['HP'] = 999999 #Just in case of concurrency issues
@@ -98,7 +105,7 @@ class Raid(commands.Cog):
                                                        rarity='Legendary',
                                                        crit=random.randint(5,20),
                                                        returnstats=True)
-            await self.raid_info['Message'].reply(f"{ctx.author.mention} dealt the finishing blow against {self.raid_info['Enemy']}. As the enemy fled, they received *{item_info['Name']}*, a legendary {item_info['Type']} (ATK: {item_info['Attack']} CRIT: {item_info['Crit']})\nEvery other participant received a small gold payment proportional to their damage dealt.")
+            await self.raid_info['Message'].reply(f"{ctx.author.name}#{ctx.author.discriminator} dealt the finishing blow against {self.raid_info['Enemy']}. As the enemy fled, they received *{item_info['Name']}*, a legendary {item_info['Type']} (ATK: {item_info['Attack']} CRIT: {item_info['Crit']})\nEvery other participant received a small gold payment proportional to their damage dealt.")
             self.raid_info = {
                 'Active' : False,
                 'Enemy' : None,
@@ -110,6 +117,7 @@ class Raid(commands.Cog):
     @raid.command(description='Secret admin raid powers!')
     @commands.check(Checks.is_admin)
     async def secret(self, ctx):
+        """A secret ;)"""
         await ctx.reply(self.raid_info)
 
 def setup(client):

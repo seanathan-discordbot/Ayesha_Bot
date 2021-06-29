@@ -32,9 +32,23 @@ WeaponValues = (
 # 13. Mace
 
 class Items(commands.Cog):
+    """View and manipulate inventory"""
 
     def __init__(self, client):
         self.client = client
+        self.client.weapontypes = ('Spear',
+                                   'Sword',
+                                   'Dagger',
+                                   'Bow',
+                                   'Trebuchet',
+                                   'Gauntlets',
+                                   'Staff',
+                                   'Greatsword',
+                                   'Axe',
+                                   'Sling',
+                                   'Javelin',
+                                   'Falx',
+                                   'Mace')
 
     #EVENTS
     @commands.Cog.listener() # needed to create event in cog
@@ -63,13 +77,113 @@ class Items(commands.Cog):
         return embed
     
     #COMMANDS
+    # @commands.command(aliases=['i', 'inv'], description='View your inventory of items')
+    # @commands.check(Checks.is_player)
+    # async def inventory(self, ctx, sort = None):
+    #     """`sort`: the way you want to sort your items. Sort by `Rarity` or `Crit`. Sorts by Attack by default.
+        
+    #     View your inventory of items. Each item has an ID listed next to its name that can be referenced for related commands.
+    #     """
+    #     invpages = []
+    #     inv = await AssetCreation.getAllItemsFromPlayer(self.client.pg_con, ctx.author.id, sort)
+    #     for i in range(0, len(inv), 5): #list 5 entries at a time
+    #         invpages.append(self.write(i, inv, ctx.author.display_name)) # Write will create the embeds
+    #     if len(invpages) == 0:
+    #         await ctx.reply('Your inventory is empty!')
+    #     else:
+    #         inventory = menus.MenuPages(source=PageSourceMaker.PageMaker(invpages), 
+    #                                     clear_reactions_after=True, 
+    #                                     delete_message_after=True)
+    #         await inventory.start(ctx)
+    
     @commands.command(aliases=['i', 'inv'], description='View your inventory of items')
     @commands.check(Checks.is_player)
-    async def inventory(self, ctx, sort = None):
+    async def inventory(self, ctx, *, query = ''):
+        """`query`: the way you want to sort your items. Put a weapontype, rarity, and order by attack or crit.
+
+        View your inventory of items. Each item has an ID listed netx to its name that can be referenced for related commands.
+        You can also sort specifically by weapontype, rarity, and order by attack or crit. Simply add the things you want to sort by in the command to get a smaller inventory.
+        For example, to get all common swords in your inventory, do `%inventory common sword`. You can also do `%inventory crit` to sort all your weapons by crit.
+        """
+        #Create a list of all the queries for individual filtering
+        sort = [term.title() for term in query.split()]
+
+        #These functions will see how the items are sorted
+        def filter_weapontypes(query):
+            weapontypes = self.client.weapontypes
+            if query in weapontypes:
+                return True
+            else:
+                return False
+            
+        def filter_rarity(query):
+            rarities = ['Common','Uncommon','Rare','Epic','Legendary']
+            if query in rarities:
+                return True
+            else:
+                return False
+
+        def filter_metric(query):
+            stats = ['Attack','Crit']
+            if query in stats:
+                return True
+            else:
+                return False
+
+        filtered_type = filter(filter_weapontypes, sort)
+        filtered_rarity = filter(filter_rarity, sort)
+        filtered_stat = filter(filter_metric, sort)
+
+        try:
+            weapontype = list(filtered_type)[0]
+        except IndexError:
+            weapontype = None
+
+        try:
+            rarity = list(filtered_rarity)[0]
+        except IndexError:
+            rarity = None
+
+        try:
+            stat = list(filtered_stat)[0]
+        except IndexError:
+            stat = 'attack'
+
+        #Retrieve the player's inventory based off the queries, but put equipped item first always
+        inventory = []
+        equipped_item = await self.client.pg_con.fetchrow('SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 AND is_equipped = True', ctx.author.id)
+        if equipped_item is not None:
+            inventory.append(equipped_item)
+
+        psql = 'SELECT item_id, weapontype, attack, crit, weapon_name, rarity, is_equipped FROM items WHERE owner_id = $1 AND is_equipped = False '
+
+        if stat == 'attack':
+            psql2 = ' ORDER BY attack DESC'
+        else:
+            psql2 = ' ORDER BY crit DESC'
+
+        if weapontype is not None and rarity is not None:
+            psql += 'AND weapontype = $2 AND rarity = $3 ' + psql2
+            inv = await self.client.pg_con.fetch(psql, ctx.author.id, weapontype, rarity)
+
+        elif weapontype is None and rarity is not None:
+            psql += 'AND rarity = $2 ' + psql2
+            inv = await self.client.pg_con.fetch(psql, ctx.author.id, rarity)
+
+        elif weapontype is not None and rarity is None:
+            psql += 'AND weapontype = $2 ' + psql2
+            inv = await self.client.pg_con.fetch(psql, ctx.author.id, weapontype)
+
+        else:
+            psql += psql2
+            inv = await self.client.pg_con.fetch(psql, ctx.author.id)
+
+        for item in inv:
+            inventory.append(item)
+
         invpages = []
-        inv = await AssetCreation.getAllItemsFromPlayer(self.client.pg_con, ctx.author.id, sort)
         for i in range(0, len(inv), 5): #list 5 entries at a time
-            invpages.append(self.write(i, inv, ctx.author.display_name)) # Write will create the embeds
+            invpages.append(self.write(i, inventory, ctx.author.display_name)) # Write will create the embeds
         if len(invpages) == 0:
             await ctx.reply('Your inventory is empty!')
         else:
@@ -83,6 +197,10 @@ class Items(commands.Cog):
                       description='Equip an item from your inventory using its ID')
     @commands.check(Checks.is_player)
     async def equip(self, ctx, item_id : int):
+        """`item_id`: the ID of the weapon; can be found from `inventory`
+
+        Equip an item from your inventory using its ID.
+        """
         # Make sure that 1. item exists 2. they own this item
         item_is_valid = await AssetCreation.verifyItemOwnership(self.client.pg_con, item_id, ctx.author.id)
         if not item_is_valid:
@@ -110,6 +228,7 @@ class Items(commands.Cog):
     @commands.command(description='Unequip your item')
     @commands.check(Checks.is_player)
     async def unequip(self, ctx):
+        """Unequip your currently equipped item."""
         await AssetCreation.unequipItem(self.client.pg_con, ctx.author.id)
         await ctx.reply('Unequipped your item.')
 
@@ -117,6 +236,11 @@ class Items(commands.Cog):
                       description='Merge an item into another to boost its ATK by 1. The fodder item must be of the same weapontype and have at least 15 less ATK than the buffed item. Merging items costs `10,000` gold.')
     @commands.check(Checks.is_player)
     async def merge(self, ctx, buff_item : int, fodder : int):
+        """`buff_item`: the item you want strengthened
+        `fodder`: the item you are destroying to strengthen the other weapon
+
+        Merge an item into another to boost its ATK by 1. The fodder item must be of the same weapontype and have at least 15 less ATK than the buffed item. Merging items costs 10,000 gold.
+        """
         #Make sure player owns both items and that the fodder is NOT equipped
         if not await AssetCreation.verifyItemOwnership(self.client.pg_con, buff_item, ctx.author.id):
             return await ctx.reply(f'You do not own an item with ID `{buff_item}`.')
@@ -156,6 +280,10 @@ class Items(commands.Cog):
     @commands.command(brief='<item_id : int>', description='Sell an item for a random price.')
     @commands.check(Checks.is_player)
     async def sell(self, ctx, item_id : int):
+        """`item_id`: the ID of the weapon; can be found from `inventory`
+
+        Sell an item for a random price.
+        """
         #Make sure item exists and author owns it
         item_is_valid = await AssetCreation.verifyItemOwnership(self.client.pg_con, item_id, ctx.author.id)
         if not item_is_valid:
@@ -210,6 +338,10 @@ class Items(commands.Cog):
     @commands.command(brief='<items>', description='Sell multiple items for random prices.')
     @commands.check(Checks.is_player)
     async def sellmultiple(self, ctx, *, items : str):
+        """`items`: the IDs of the items being sold, separated by spaces
+
+        Sell multiple items for random prices.
+        """
         itemlist = items.split()
         errors = ''
         total = 0
@@ -278,6 +410,10 @@ class Items(commands.Cog):
     @commands.command(brief='<rarity>', description='Sell all the items in your inventory of the stated rarity.')
     @commands.check(Checks.is_player)
     async def sellall(self, ctx, rarity : str):
+        """`rarity`: the rarity of the items you want to sell.
+
+        Sell all items in your inventory of the stated rarity.
+        """
         #Ensure that a valid rarity is input
         rarities = ('Common', 'Uncommon', 'Rare', 'Epic', 'Legendary')
         rarity = rarity.title()
@@ -293,6 +429,12 @@ class Items(commands.Cog):
     @commands.command(brief='<player> <item_id : int> <price : int>', description='Sell an item to someone')
     @commands.check(Checks.is_player)
     async def offer(self, ctx, player : commands.MemberConverter, item_id : int, price : int):
+        """`player`: the player you want to offer the item to
+        `item_id`: the ID of the weapon; can be found from `inventory`
+        `price`: the rate you are selling the weapon for
+
+        Sell an item to someone.
+        """
         #Make sure second player is also a player
         if player.id == ctx.author.id:
             await ctx.reply('Dude...no.')
@@ -364,6 +506,11 @@ class Items(commands.Cog):
     @commands.command(brief='<gold> <player>', description='Give some gold to the target player.')
     @commands.check(Checks.is_player)
     async def give(self, ctx, gold : int, player : commands.MemberConverter):
+        """`gold`: the amount of gold you want to give
+        `player`: the player you are giving gold to
+
+        Give some gold to the target player.
+        """
         #Make sure second player is also a player
         if player.id == ctx.author.id:
             await ctx.reply('Dude...no.')
@@ -389,6 +536,11 @@ class Items(commands.Cog):
     @commands.command(brief='<item ID> <new name>', description='Name your weapon anything you want!')
     @commands.check(Checks.is_player)
     async def weaponname(self, ctx, item_id : int, *, weaponname : str):
+        """`item_id`: the ID of the weapon; can be found from `inventory`
+        `weaponname`: the name of the weapon
+
+        Name your weapon anything you want (within utf-8 encoding)!
+        """
         if len(weaponname) > 20:
             await ctx.reply('Name can only be 20 characters or less.')
             return

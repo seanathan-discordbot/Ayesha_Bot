@@ -10,6 +10,7 @@ import random
 import math
 
 class PvP(commands.Cog):
+    """Challenge your friends to battle!"""
 
     def __init__(self, client):
         self.client = client
@@ -20,62 +21,76 @@ class PvP(commands.Cog):
         print('PvP is ready.')
 
     #INVISIBLE
-    def getAction(self, strategy):
-        reaction = random.randint(1,100)
-        
-        if reaction <= strategy['attack']:
-            return 'attacked'
-        elif reaction <= strategy['attack'] + strategy['block']:
-            return 'blocked'
-        elif reaction <= strategy['attack'] + strategy['block'] + strategy['parry']:
-            return 'parried'
-        elif reaction <= strategy['attack'] + strategy['block'] + strategy['parry'] + strategy['heal']:
-            return 'recovered'
+
+    def calc_damage(self, player, opponent):
+        """Randomly choose a player's action for that turn, calculating their damage, damage taken multiplier, and crit success.
+        Input and return both players[dict]. Will only calculate action for FIRST player passed.
+        """
+        if player['Action'] == 'attacked':
+            player['Damage'] = random.randint(int(player['Attack']*.9), int(player['Attack']*1.1))
+            player = AssetCreation.apply_acolytes_with_damage(player)
+
+            player['Taken'] = 1
+
+            if random.randint(1,100) < player['Crit']:
+                player, opponent = self.check_for_crit(player, opponent)
+
+        elif player['Action'] == 'blocked':
+            player['Damage'] = random.randint(int(player['Attack'] / 20), int(player['Attack'] / 10))
+            player = AssetCreation.apply_acolytes_with_damage(player)
+
+            player['Taken'] = random.randint(0,10) / 100
+
+            if random.randint(1,100) < player['Crit']:
+                player, opponent = self.check_for_crit(player, opponent)
+
+        elif player['Action'] == 'parried':
+            player['Damage'] = random.randint(int(player['Attack']*.4), int(player['Attack']*.6))
+            player = AssetCreation.apply_acolytes_with_damage(player)
+
+            player['Taken'] = random.randint(35, 55) / 100
+
+            if random.randint(1,100) < player['Crit']:
+                player, opponent = self.check_for_crit(player, opponent)
+
+        elif player['Action'] == 'healed':
+            player['Damage'] = 0
+            player = AssetCreation.apply_acolytes_with_damage(player)
+            player['Heal'] = random.randint(100,200)
+
+            player['Taken'] = random.randint(65, 90) / 100
+
         else:
-            return 'bided their time'
+            player['Damage'] = 0
+            player = AssetCreation.apply_acolytes_with_damage(player)
+            player['Heal'] = random.randint(25,75)
+            player['Attack'] = int(player['Attack'] * 1.25)
 
-    def calcDamage(self, action, attack):
-        dealt = attack + random.randint(1,10)
-        taken = 1
+            player['Taken'] = random.randint(65, 90) / 100
 
-        if action == 'blocked':
-            dealt *= .1
-            taken *= .05
+        return player, opponent
 
-        elif action == 'parried':
-            dealt *= .5
-            taken *= .5
+    def check_for_crit(self, player, opponent):
+        """Calculates crit damage and applies acolyte effects.
+        Input and return both players[dict]. Will only calculate action for FIRST player passed.
+        """
+        player['Action'] = 'critically ' + player['Action']
+        player['Damage'] = int(player['Damage'] * 1.5)
 
-        elif action == 'recovered' or action == 'bided their time':
-            dealt = 0
-            taken *= .875
+        player, opponent = AssetCreation.apply_acolytes_on_crit(player, opponent)
 
-        return dealt, taken
+        return player, opponent
 
-    def checkCrit(self, crit, damage, attack, acolyte1, acolyte2):
-        is_crit = random.choices(['Normal', 'Crit'], [100-crit, crit])
-        if is_crit[0] == 'Crit':
-            damage = int(damage * 1.5)
-
-            try:
-                if acolyte1['Name'] == 'Aulus' or acolyte2['Name'] == 'Aulus': #Aulus gives crit bonuses
-                    attack += 50
-            except TypeError:
-                pass
-
-        try:
-            if acolyte1['Name'] == 'Paterius' or acolyte2['Name'] == 'Paterius': #Doesn't need a crit, but placed here for brevity
-                damage += 15
-        except TypeError:
-            pass
-
-        return is_crit[0], damage, attack
 
     #COMMANDS
     @commands.command(aliases=['pvp'], brief='<player>', description='Challenge another player to battle you!')
     @commands.check(Checks.is_player)
     @cooldown(1, 30, BucketType.user)
     async def battle(self, ctx, opponent : commands.MemberConverter):
+        """`opponent`: the person you want to fight
+
+        Challenge another player to battle you.
+        """
         #Make sure target is a player
         if not await Checks.has_char(self.client.pg_con, opponent):
             await ctx.reply('This person does not have a character')
@@ -118,28 +133,8 @@ class PvP(commands.Cog):
                 return
 
         #Load each player's stats and strategy
-        player1 = {}
-        player1['ID'] = ctx.author.id
-        player1['Attack'], player1['Crit'], player1['HP'], player1['Role'], player1['Acolyte1'], player1['Acolyte2'] = await AssetCreation.getAttack(self.client.pg_con, ctx.author.id, returnothers=True)
-        player1['Strategy'] = await AssetCreation.getStrategy(self.client.pg_con, ctx.author.id)
-
-        player2 = {}
-        player2['ID'] = opponent.id
-        player2['Attack'], player2['Crit'], player2['HP'], player2['Role'], player2['Acolyte1'], player2['Acolyte2'] = await AssetCreation.getAttack(self.client.pg_con, opponent.id, returnothers=True)
-        player2['Strategy'] = await AssetCreation.getStrategy(self.client.pg_con, opponent.id)
-
-        if player1['Acolyte1'] is not None:
-            player1['Acolyte1'] = await AssetCreation.getAcolyteByID(self.client.pg_con, player1['Acolyte1'])
-
-        if player1['Acolyte2'] is not None:
-            player1['Acolyte2'] = await AssetCreation.getAcolyteByID(self.client.pg_con, player1['Acolyte2'])
-
-        if player2['Acolyte1'] is not None:
-            player2['Acolyte1'] = await AssetCreation.getAcolyteByID(self.client.pg_con, player2['Acolyte1'])
-
-        if player2['Acolyte2'] is not None:
-            player2['Acolyte2'] = await AssetCreation.getAcolyteByID(self.client.pg_con, player2['Acolyte2'])
-
+        player1 = await AssetCreation.get_player_battle_info(self.client.pg_con, ctx.author.id)
+        player2 = await AssetCreation.get_player_battle_info(self.client.pg_con, opponent.id)
 
         #Determine an action; Loop until hp hits 0
         battle_turns = []
@@ -147,69 +142,44 @@ class PvP(commands.Cog):
         loser = None
 
         while len(battle_turns) < 50:
-            player1_action = self.getAction(player1['Strategy'])
-            player2_action = self.getAction(player2['Strategy'])
+            player1['Damage'] = 0
+            player1['Taken'] = 1
+            player1['Heal'] = 0
+            player2['Damage'] = 0
+            player2['Taken'] = 1
+            player2['Heal'] = 0
 
-            #Calculate damage and HP
-            player1_dealt, player1_taken = self.calcDamage(player1_action, player1['Attack'])
-            player2_dealt, player2_taken = self.calcDamage(player2_action, player2['Attack'])              
 
-            player1_crit, player1_dealt, player1['Attack'] = self.checkCrit(player1['Crit'], 
-                                                                            player1_dealt, 
-                                                                            player1['Attack'], 
-                                                                            player1['Acolyte1'], 
-                                                                            player1['Acolyte2'])
-            player2_crit, player2_dealt, player2['Attack'] = self.checkCrit(player2['Crit'], 
-                                                                            player2_dealt, 
-                                                                            player2['Attack'], 
-                                                                            player2['Acolyte1'], 
-                                                                            player2['Acolyte2'])
+            player1['Action'] = random.choices(['attacked', 'blocked', 'parried', 'healed', 'bided'],
+                                            [player1['Strategy']['attack'],
+                                            player1['Strategy']['block'],
+                                            player1['Strategy']['parry'],
+                                            player1['Strategy']['heal'],
+                                            player1['Strategy']['bide']])[0]
+            player2['Action'] = random.choices(['attacked', 'blocked', 'parried', 'healed', 'bided'],
+                                            [player2['Strategy']['attack'],
+                                            player2['Strategy']['block'],
+                                            player2['Strategy']['parry'],
+                                            player2['Strategy']['heal'],
+                                            player2['Strategy']['bide']])[0]
 
-            if player1_crit == 'Crit':
-                try:
-                    if player1['Acolyte1']['Name'] == 'Ayesha' or player1['Acolyte2']['Name'] == 'Ayesha':
-                        player1['HP'] += int(player1['Attack'] * .2)
-                except TypeError:
-                    pass
-            if player2_crit == 'Crit':
-                try:
-                    if player2['Acolyte1']['Name'] == 'Ayesha' or player2['Acolyte2']['Name'] == 'Ayesha':
-                        player2['HP'] += int(player2['Attack'] * .2)
-                except TypeError:
-                    pass
+            #Determine action, calculate the damage done
+            player1, player2 = self.calc_damage(player1, player2)
+            player2, player1 = self.calc_damage(player2, player1)  
 
-            player1['HP'] -= int(player2_dealt * player1_taken)
-            player2['HP'] -= int(player1_dealt * player2_taken)
+            p1taken = int(player2['Damage'] * player1['Taken'])
+            p2taken = int(player1['Damage'] * player2['Taken'])
+            player1['HP'] = int(player1['HP'] + player1['Heal'] - p1taken)
+            player2['HP'] = int(player2['HP'] + player2['Heal'] - p2taken)
 
-            #Add Ajar's Effect
-            try:
-                if player1['Acolyte1']['Name'] == 'Ajar' or player1['Acolyte2']['Name'] == 'Ajar':
-                    player1['Attack'] += 20
-                    player1['HP'] -= 50
-                if player2['Acolyte1']['Name'] == 'Ajar' or player2['Acolyte2']['Name'] == 'Ajar':
-                    player2['Attack'] += 20
-                    player2['HP'] -= 50
-            except TypeError:
-                pass
-
-            if len(battle_turns) == 4: #Add Onion's Effect
-                try:
-                    if player1['Acolyte1']['Name'] == 'Onion' or player1['Acolyte2']['Name'] == 'Onion':
-                        player1['Crit'] *= 2
-                    if player2['Acolyte1']['Name'] == 'Onion' or player2['Acolyte2']['Name'] == 'Onion':
-                        player2['Crit'] *= 2
-                except TypeError:
-                    pass    
+            player1, player2 = AssetCreation.apply_acolytes_on_turn_end(player1, player2, len(battle_turns))
 
             #Output information
-            if player1_crit == 'Crit' and player2_crit =='Crit':
-                battle_turns.append([len(battle_turns), f'{ctx.author.mention} critically {player1_action}.\n{opponent.mention} critically {player2_action}.'])
-            elif player1_crit == 'Crit' and player2_crit == 'Normal':
-                battle_turns.append([len(battle_turns), f'{ctx.author.mention} critically {player1_action}.\n{opponent.mention} {player2_action}.'])
-            elif player1_crit == 'Normal' and player2_crit == 'Crit':
-                battle_turns.append([len(battle_turns), f'{ctx.author.mention} {player1_action}.\n{opponent.mention} critically {player2_action}.'])             
-            else:
-                battle_turns.append([len(battle_turns), f'{ctx.author.mention} {player1_action}.\n{opponent.mention} {player2_action}.'])
+
+            fmt = f"{ctx.author.mention} {player1['Action']} (Damage: `{p2taken}` | Heal: `{player1['Heal']}`).\n"
+            fmt += f"{opponent.mention} {player2['Action']} (Damage: `{p1taken}` | Heal: `{player2['Heal']}`)."
+
+            battle_turns.append([len(battle_turns), fmt])
 
             #Check to see if anyone won
             if player1['HP'] <= 0 and player2['HP'] <= 0: #Then call it a tie
@@ -244,7 +214,7 @@ class PvP(commands.Cog):
                         value=f"ATK: `{player1['Attack']}` | HP: `{player1['HP']}`")
         embed.add_field(name=f'{opponent.display_name}', 
                         value=f"ATK: `{player2['Attack']}` | HP: `{player2['HP']}`")
-        for turn in battle_turns[-5:]:
+        for turn in battle_turns[-5:]: #Only print last 5 turns to satisfy character restraints
             embed.add_field(name=f'Turn {turn[0]}', value=f'{turn[1]}', inline=False)
 
         await ctx.reply(embed=embed)
@@ -254,12 +224,16 @@ class PvP(commands.Cog):
     @commands.check(Checks.is_player)
     @cooldown(1, 300, type=BucketType.user)
     async def tournament(self, ctx, reward : int = 0):
+        """`reward`: the amount of gold you want to give to the winner of this tournament.
+
+        Start a single-elimination PvP tournament between 2 or more players!
+        """
         async def get_player_info(user_id : int):
-            """Returns a dict containing a player's ID, name, ATK, and Crit."""
-            player = {}
+            """Returns a dict containing a player's ID, name, Attack, and Crit."""
+            player = await AssetCreation.get_attack_crit_hp(self.client.pg_con, user_id)
             player['ID'] = user_id
             player['Name'] = await AssetCreation.getPlayerName(self.client.pg_con, user_id)
-            player['ATK'], player['Crit'] = await AssetCreation.getAttack(self.client.pg_con, user_id)
+            # player['ATK'], player['Crit'] = await AssetCreation.getAttack(self.client.pg_con, user_id)
 
             return player
 
@@ -288,7 +262,7 @@ class PvP(commands.Cog):
                 except IndexError: #In case there are an odd amount of players
                     fake_player = {
                         'Name' : 'another contestant',
-                        'ATK' : 0,
+                        'Attack' : 0,
                         'Crit' : 0
                     }
                     match = (
@@ -316,8 +290,8 @@ class PvP(commands.Cog):
                 return player2, player1
             
             #If no victory occurs, then base it off proportion of ATK
-            victory_number = random.randint(0, player1['ATK'] + player2['ATK'])
-            if victory_number < player1['ATK']:
+            victory_number = random.randint(0, player1['Attack'] + player2['Attack'])
+            if victory_number < player1['Attack']:
                 return player1, player2
             else:
                 return player2, player1
@@ -348,7 +322,7 @@ class PvP(commands.Cog):
                     await ctx.send(f'{user.display_name} joined {ctx.author.display_name}\'s tournament.')
 
             try:
-                reaction, user = await self.client.wait_for('reaction_add', timeout=10.0)
+                reaction, user = await self.client.wait_for('reaction_add', timeout=25.0)
             except asyncio.TimeoutError:
                 await join_message.delete()
                 break

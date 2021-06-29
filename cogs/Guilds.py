@@ -14,7 +14,7 @@ import time
 # There will be brotherhoods, guilds, and later colleges for combat, economic, and political gain
 
 class Guilds(commands.Cog):
-
+    """Association Type for Wealth"""
     def __init__(self, client):
         self.client = client
 
@@ -27,6 +27,9 @@ class Guilds(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.in_guild)
     async def guild(self, ctx):
+        """View your guild. Guilds are a financially-oriented association. Its members gain more money from selling items. They also gain access to the `invest` command.
+        `guild help` will show all other commands related to this association type.
+        """
         info = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         getLeader = commands.UserConverter()
         leader = await getLeader.convert(ctx, str(info['Leader']))
@@ -53,6 +56,10 @@ class Guilds(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.not_in_guild)
     async def create(self, ctx, *, name : str):
+        """`name`: the name of your guild
+
+        Found a guild. This operation costs 15,000 gold.
+        """
         if len(name) > 32:
             await ctx.reply('Name max 32 characters')
             return
@@ -72,6 +79,7 @@ class Guilds(commands.Cog):
     @commands.check(Checks.in_guild)
     @commands.check(Checks.is_not_guild_leader)
     async def leave(self, ctx):
+        """Leave your guild."""
         bank_info = await AssetCreation.get_guild_account(self.client.pg_con, ctx.author.id)
         if bank_info is not None:
             gold_payment = await AssetCreation.close_guild_account(self.client.pg_con)
@@ -85,6 +93,10 @@ class Guilds(commands.Cog):
     @commands.check(Checks.is_guild_officer)
     @commands.check(Checks.guild_has_vacancy)
     async def invite(self, ctx, player : commands.MemberConverter):
+        """`player`: the player you want to invite
+
+        [OFFICER+] Invite a player to your guild, provided that there is space available. 
+        """
         #Ensure target player has a character and is not in a guild
         if not await Checks.has_char(self.client.pg_con, player):
             await ctx.reply('This person does not have a character.')
@@ -141,6 +153,10 @@ class Guilds(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.in_guild)
     async def contribute(self, ctx, donation : int):
+        """`donation`: the amount of money you want to give your guild
+
+        Contribute money to the strength of your guild. Every 1,000,000 gold contributed will level it up, strengthening its bonuses, up to level 10.
+        """
         #Make sure they have the money they're paying and that the guild is <lvl 10
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         level = await AssetCreation.getGuildLevel(self.client.pg_con, guild['ID'])
@@ -163,6 +179,7 @@ class Guilds(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.in_guild)
     async def members(self, ctx):
+        """See a list of all your guild's members, their rank, and some stats."""
         # Get the list of members, theoretically sorted by rank
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         members = await AssetCreation.getGuildMembers(self.client.pg_con, guild['ID'])
@@ -174,11 +191,12 @@ class Guilds(commands.Cog):
             iteration = 0
 
             while start < len(members) and iteration < 10:
-                attack, crit = await AssetCreation.getAttack(self.client.pg_con, members[start][0])
+                # attack, crit = await AssetCreation.getAttack(self.client.pg_con, members[start][0])
+                battle_stats = await AssetCreation.get_attack_crit_hp(self.client.pg_con, members[start][0])
                 level = await AssetCreation.getLevel(self.client.pg_con, members[start][0])
                 player = await self.client.fetch_user(members[start][0])
                 page.add_field(name=f'{player.name}: {members[start][1]} [{members[start][2]}]', 
-                    value=f'Level `{level}`, with `{attack}` attack and `{crit}` crit.', inline=False)
+                    value=f"Level `{level}`, with `{battle_stats['Attack']}` attack and `{battle_stats['Crit']}` crit.", inline=False)
                 start += 1
                 iteration += 1
 
@@ -198,6 +216,7 @@ class Guilds(commands.Cog):
     @commands.check(Checks.in_guild)
     @cooldown(1, 7200, BucketType.user)
     async def invest(self, ctx, capital : int):
+        """Invest in a project at a random location and gain/lose some money."""
         #Ensure they have enough money to invest
         if await AssetCreation.getGold(self.client.pg_con, ctx.author.id) < capital:
             await ctx.reply('You don\'t have enough money to invest that much.')
@@ -235,6 +254,7 @@ class Guilds(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.in_guild)
     async def account(self, ctx):
+        """See your guild bank account. The capacity of your account increases as your guild level increases."""
         bank_info = await AssetCreation.get_guild_account(self.client.pg_con, ctx.author.id)
 
         if bank_info is None:
@@ -252,6 +272,10 @@ class Guilds(commands.Cog):
     @commands.check(Checks.in_guild)
     @commands.check(Checks.not_has_bank_account)
     async def open(self, ctx, initial_deposit : int = 0):
+        """`initial_deposit`: the amount of gold you want to deposit, if you want to
+
+        Open a bank account within your guild and store an amount of money in it.
+        """
         #Check for invalid input
         if initial_deposit < 0:
             return await ctx.reply('The bank cannot complete this deposit.')
@@ -273,6 +297,10 @@ class Guilds(commands.Cog):
     @commands.check(Checks.in_guild)
     @commands.check(Checks.has_bank_account)
     async def deposit(self, ctx, deposit : int):
+        """`deposit`: the amount of gold you are depositing
+
+        Store some gold into your bank account.
+        """
         #Check for invalid input
         if deposit < 0:
             return await ctx.reply(f'Please use `{ctx.prefix}guild account withdraw` instead.')
@@ -296,6 +324,10 @@ class Guilds(commands.Cog):
     @commands.check(Checks.in_guild)
     @commands.check(Checks.has_bank_account)
     async def withdraw(self, ctx, withdrawal : int):
+        """`withdrawl`: the amount of gold you want to take out of your account
+
+        Withdraw some of the money from your guild bank account.
+        """
         #Check for invalid input
         if withdrawal < 0:
             return await ctx.reply(f"Please use `{ctx.prefix}guild account deposit` instead.")
@@ -315,6 +347,10 @@ class Guilds(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)
     async def base(self, ctx, *, area : str):
+        """`area`: One of these locations: `Aramithea`, `Riverburn`, `Thenuille`
+        
+        [LEADER] Designate an area of the map as your guild's headquarters.
+        """
         #Make sure input is valid.
         area = area.title()
         areas = ('Aramithea', 'Riverburn', 'Thenuille')
@@ -366,6 +402,10 @@ class Guilds(commands.Cog):
 
     @guild.command(brief='<guild ID>', description='See info on another guild based on their ID')
     async def info(self, ctx, *, source : str):
+        """`source`: the association you want to view. If you know its ID, you can do `bh info id:<ID>`. If you want to search by name, simply do `guild info <name>`
+        
+        View another association. Will also show brotherhoods and colleges if requested.
+        """
         if source.lower().startswith("id:"):
             try:
                 info = await AssetCreation.getGuildByID(self.client.pg_con, int(source[3:]))
@@ -404,6 +444,10 @@ class Guilds(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_officer)
     async def description(self, ctx, *, desc : str):
+        """`desc`: The description you want to be displayed.
+
+        [OFFICER+] Change your guild's description.
+        """
         if len(desc) > 256:
             await ctx.reply(f'Description max 256 characters. You gave {len(desc)}')
             return
@@ -416,6 +460,10 @@ class Guilds(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_officer)
     async def icon(self, ctx, *, url : str):
+        """`url`: a valid image URL
+        
+        [OFFICER+] Change your guild's icon.
+        """
         if len(url) > 256:
             await ctx.reply('Icon URL max 256 characters. Please upload your image to imgur or tinurl for an appropriate link.')
             return
@@ -444,6 +492,7 @@ class Guilds(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)
     async def lock(self, ctx):
+        """[LEADER] Lock/unlock your guild. If locked, people may only join by invite from the leader or officer."""
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         if guild['Join'] == 'open':
             await AssetCreation.lockGuild(self.client.pg_con, guild['ID'])
@@ -456,6 +505,10 @@ class Guilds(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.not_in_guild)
     async def join(self, ctx, guild_id : int):
+        """`guild_id`: the ID of the guild you want to join
+
+        Join any guild that is listed as open. You must use their ID, which can be found on the bottom of its page from `bh info`
+        """
         #See how recently they joined an association
         last_join = await AssetCreation.check_last_guild_join(self.client.pg_con, ctx.author.id)
         if last_join.total_seconds() < 86400:
@@ -484,6 +537,11 @@ class Guilds(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)        
     async def promote(self, ctx, player : commands.MemberConverter = None, rank : str = None):
+        """`player`: the player you want to promote
+        `rank`: `Officer` or `Adept`
+
+        [LEADER] Promote a member of your guild. Officers have limited administrative powers. Adepts have no powers.
+        """
         #Tell players what officers and adepts do if no input is given
         if player is None or rank is None:
             embed = discord.Embed(title='Brotherhood Role Menu', color=self.client.ayesha_blue)
@@ -518,6 +576,10 @@ class Guilds(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)
     async def demote(self, ctx, player : commands.MemberConverter):
+        """`player`: the player you are demoting
+        
+        [LEADER] Demote one of your officers or adepts back to regular member.
+        """
         #Otherwise check if player is in guild -> also not the leader
         if ctx.author == player:
             await ctx.reply('I don\'t think so.')
@@ -541,6 +603,10 @@ class Guilds(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)
     async def transfer(self, ctx, player : commands.MemberConverter):
+        """`player`: the player you want to become new head of the guild
+        
+        [LEADER] Relinquish control of your brotherhood to someone else.
+        """
         if ctx.author.id == player.id:
             await ctx.reply('?')
             return
@@ -566,6 +632,10 @@ class Guilds(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_officer)
     async def kick(self, ctx, player : commands.MemberConverter):
+        """`player`: the person you are removing from the guild
+
+        Kick someone from your guild, revoking their membership.
+        """
         #Make sure target has a char, in same guild, isn't an officer or leader
         if not await Checks.has_char(self.client.pg_con, player):
             await ctx.reply('This person does not have a character.')
@@ -591,6 +661,7 @@ class Guilds(commands.Cog):
     @commands.check(Checks.in_guild)
     @commands.check(Checks.is_guild_leader)
     async def delete(self, ctx):
+        """[LEADER] Disband your brotherhood. You can only do this when no one else remains in your association."""
         #Make sure they're the only member remaining
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         if await AssetCreation.getGuildMemberCount(self.client.pg_con, guild['ID']) > 1:
@@ -627,6 +698,7 @@ class Guilds(commands.Cog):
 
     @guild.command(description='Shows this command.')
     async def help(self, ctx):
+        """Get a list of all commands that guild members can use."""
         def write(ctx, start, entries):
             helpEmbed = discord.Embed(title=f'Ayesha Help: Guilds', description='Guilds are a financially-oriented association. Its members gain more money from selling items. They also gain access to the `invest` command.', color=self.client.ayesha_blue)
             helpEmbed.set_thumbnail(url=ctx.author.avatar_url)

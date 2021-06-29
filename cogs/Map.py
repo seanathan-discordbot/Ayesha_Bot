@@ -12,6 +12,7 @@ import schedule
 bh_areas = ('Mythic Forest', 'Fernheim', 'Sunset Prairie', 'Thanderlans', 'Glakelys', 'Russe', 'Croire', 'Crumidia', 'Kucre')
 
 class Map(commands.Cog):
+    """Special commands for the mayor and comptroller"""
     def __init__(self,client):
         self.client=client
 
@@ -91,11 +92,13 @@ class Map(commands.Cog):
     #COMMANDS
     @commands.command(description='See the map!')
     async def map(self, ctx):
+        """See the game map."""
         map_file = discord.File(Links.map_file)
         await ctx.reply(file=map_file)
 
     @commands.command(aliases=['te','territory'], description='See who controls the outlying areas of the `map`.')
     async def territories(self, ctx):
+        """See which brotherhoods are currently in control of the outlying areas of the map."""
         control = []
         for area in bh_areas:
             guild_id = await AssetCreation.get_area_controller(self.client.pg_con, area)
@@ -126,6 +129,7 @@ class Map(commands.Cog):
     @commands.command(description='Display whomever holds the offices of Mayor and Comptroller this week.')
     @commands.check(Checks.is_player)
     async def offices(self, ctx):
+        """Display whomever holds the offices of Mayor and Comptroller this week."""
         officeholders = await AssetCreation.get_officeholders(self.client.pg_con)
         mayor = await self.client.fetch_user(officeholders['Mayor_ID'])
         comptroller = await self.client.fetch_user(officeholders['Comptroller_ID'])
@@ -144,6 +148,10 @@ class Map(commands.Cog):
     @commands.check(Checks.is_mayor)
     @cooldown(1, 43200, type=BucketType.user)
     async def settax(self, ctx, tax_rate : float):
+        """`tax_rate`: a percentage from 0-9.99
+        
+        [MAYOR] Set the tax rate over Aramithea, earning a small percentage of all taxes collected over their term. The tax rate must be within the range of 0 - 9.99%.
+        """
         #Check for valid input
         tax_rate = round(tax_rate, 2)
 
@@ -159,14 +167,16 @@ class Map(commands.Cog):
 
     @commands.command(aliases=['taxes'], description='See the current tax rate!')
     async def tax(self, ctx):
+        """See the current tax rate."""
         tax_info = await AssetCreation.get_tax_info(self.client.pg_con)
         await ctx.reply(f"The current tax rate is `{tax_info['tax_rate']}%`, set by Mayor `{tax_info['user_name']}` on `{tax_info['setdate'].date()}`\nThe mayor has collected `{tax_info['Total_Collection']}` gold so far this term.")
 
     @commands.group(invoke_without_command=True, 
                     case_insensitive=True, 
-                    description='See your college.')
+                    description='Invest')
     @commands.check(Checks.is_comptroller)
     async def invest(self, ctx):
+        """[COMPTROLLER] Learn how the invest command works. For more info just do `invest`."""
         with open(Links.tutorial, "r") as f:
             tutorial = f.readlines()
 
@@ -186,6 +196,10 @@ class Map(commands.Cog):
     @invest.command(name='set', brief = 'type: combat/sales/travel', description='Select a bonus for your guild. Effect lasts until the end of your term and cannot be changed.')
     @commands.check(Checks.is_comptroller)
     async def _set(self, ctx, bonus : str):
+        """`bonus`: combat/sales/travel
+        
+        [COMPTROLLER] Select a bonus for your guild. Effect lasts until the end of your term and cannot be changed. Do `invest` for more info.
+        """
         if bonus.lower() not in ('combat', 'sales', 'travel'):
             return await ctx.reply('The valid bonuses are `combat`, `sales`, and `travel`.')
 
@@ -199,6 +213,10 @@ class Map(commands.Cog):
     @invest.command(brief='<money : int>', description='Enhance your bonus, 100,000 a level, up to 10 levels.')
     @commands.check(Checks.is_comptroller)
     async def enhance(self, ctx, money : int):
+        """`money`: the money being contributed to the enhancement
+        
+        Enhance the comptroller bonus, for 100,000 gold a level, for up to 10 levels.
+        """
         #Check for valid input
         if money < 0:
             return await ctx.reply('Bruh.')

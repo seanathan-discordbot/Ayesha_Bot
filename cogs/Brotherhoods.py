@@ -15,6 +15,7 @@ from datetime import datetime
 # There will be brotherhoods, guilds, and later colleges for combat, economic, and political gain
 
 class Brotherhoods(commands.Cog):
+    """Association Type for Combat"""
 
     def __init__(self, client):
         self.client = client
@@ -32,6 +33,9 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.in_brotherhood)
     async def brotherhood(self, ctx):
+        """View your brotherhood. Brotherhoods are a pvp-oriented association. Its members gain an ATK and CRIT bonus depending on its level. They also gain access to the `steal` command.
+        `brotherhood help` will show all other commands related to this association type.
+        """
         info = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         getLeader = commands.UserConverter()
         leader = await getLeader.convert(ctx, str(info['Leader']))
@@ -58,6 +62,10 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.not_in_guild)
     async def create(self, ctx, *, name : str):
+        """`name`: the name of your brotherhood
+
+        Found a brotherhood. This operation costs 15,000 gold.
+        """
         if len(name) > 32:
             return await ctx.reply('Name max 32 characters')
         # Make sure they have the money and an open name
@@ -78,6 +86,10 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.is_guild_officer)
     @commands.check(Checks.guild_has_vacancy)
     async def invite(self, ctx, player : commands.MemberConverter):
+        """`player`: the player you want to invite
+
+        [OFFICER+] Invite a player to your brotherhood, provided that there is space available. 
+        """
         #Ensure target player has a character and is not in a guild
         if not await Checks.has_char(self.client.pg_con, player):
             return await ctx.reply('This person does not have a character.')
@@ -131,6 +143,7 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.in_brotherhood)
     @commands.check(Checks.is_not_guild_leader)
     async def leave(self, ctx):
+        """Leave your brotherhood."""
         await AssetCreation.leaveGuild(self.client.pg_con, ctx.author.id)
         await ctx.reply('You left your brotherhood.')
 
@@ -140,6 +153,10 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.in_brotherhood)
     async def contribute(self, ctx, donation : int):
+        """`donation`: the amount of money you want to give your brotherhood
+
+        Contribute money to the strength of your brotherhood. Every 1,000,000 gold contributed will level it up, strengthening its bonuses, up to level 10.
+        """
         #Make sure they have the money they're paying and that the guild is <lvl 10
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         level = await AssetCreation.getGuildLevel(self.client.pg_con, guild['ID'])
@@ -162,6 +179,7 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.in_brotherhood)
     async def members(self, ctx):
+        """See a list of all your brotherhood's members, their rank, and some stats."""
         # Get the list of members, theoretically sorted by rank
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         members = await AssetCreation.getGuildMembers(self.client.pg_con, guild['ID'])
@@ -173,11 +191,12 @@ class Brotherhoods(commands.Cog):
             iteration = 0
 
             while start < len(members) and iteration < 10:
-                attack, crit = await AssetCreation.getAttack(self.client.pg_con, members[start][0])
+                # attack, crit = await AssetCreation.getAttack(self.client.pg_con, members[start][0])
+                battle_stats = await AssetCreation.get_attack_crit_hp(self.client.pg_con, members[start][0])
                 level = await AssetCreation.getLevel(self.client.pg_con, members[start][0])
                 player = await self.client.fetch_user(members[start][0])
                 page.add_field(name=f'{player.name}: {members[start][1]} [{members[start][2]}]', 
-                    value=f'Level `{level}`, with `{attack}` attack and `{crit}` crit.', inline=False)
+                    value=f"Level `{level}`, with `{battle_stats['Attack']}` attack and `{battle_stats['Crit']}` crit.", inline=False)
                 start += 1
                 iteration += 1
 
@@ -196,6 +215,7 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.in_brotherhood)
     @cooldown(1, 1800, BucketType.user)
     async def steal(self, ctx):
+        """Steal up to 5% of a random player's gold. The probability of stealing is about your brotherhood's level * 5% + 20%."""
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         level = await AssetCreation.getGuildLevel(self.client.pg_con, guild['ID'])
         if random.randint(0,100) >= 20 + level*5: #Then failure
@@ -234,6 +254,10 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.in_brotherhood)
     @commands.check(Checks.is_guild_leader)
     async def base(self, ctx, *, area : str):
+        """`area`: One of these locations: `Mythic Forest`, `Fernheim`, `Sunset Prairie`, `Thanderlans`, `Glakelys`, `Russe`, `Croire`, `Crumidia`, `Kucre`
+        
+        [LEADER] Designate an area of the map as your brotherhood's headquarters. You may contest this territory with rival brotherhoods with `bh attack`.
+        """
         #Make sure input is valid.
         area = area.title()
         areas = ('Mythic Forest', 'Fernheim', 'Sunset Prairie', 'Thanderlans', 'Glakelys', 'Russe', 'Croire', 'Crumidia', 'Kucre')
@@ -291,6 +315,10 @@ class Brotherhoods(commands.Cog):
     @brotherhood.command(aliases=['guildinfo', 'bhinfo'], brief='<guild ID>', 
                          description='See info on another guild based on their ID')
     async def info(self, ctx, *, source : str):
+        """`source`: the association you want to view. If you know its ID, you can do `bh info id:<ID>`. If you want to search by name, simply do `bh info <name>`
+        
+        View another association. Will also show guilds and colleges if requested.
+        """
         if source.lower().startswith("id:"):
             try:
                 info = await AssetCreation.getGuildByID(self.client.pg_con, int(source[3:]))
@@ -331,6 +359,10 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_officer)
     async def description(self, ctx, *, desc : str):
+        """`desc`: The description you want to be displayed.
+
+        [OFFICER+] Change your brotherhood's description.
+        """
         if len(desc) > 256:
             return await ctx.reply(f'Description max 256 characters. You gave {len(desc)}')
         # Get guild and change description
@@ -343,6 +375,10 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_officer)
     async def icon(self, ctx, *, url : str):
+        """`url`: a valid image URL
+        
+        [OFFICER+] Change your brotherhood's icon.
+        """
         if len(url) > 256:
             return await ctx.reply('Icon URL max 256 characters. Please upload your image to imgur or tinurl for an appropriate link.')
 
@@ -370,6 +406,7 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)
     async def lock(self, ctx):
+        """[LEADER] Lock/unlock your guild. If locked, people may only join by invite from the leader or officer."""
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         if guild['Join'] == 'open':
             await AssetCreation.lockGuild(self.client.pg_con, guild['ID'])
@@ -382,6 +419,10 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.not_in_guild)
     async def join(self, ctx, guild_id : int):
+        """`guild_id`: the ID of the guild you want to join
+
+        Join any guild that is listed as open. You must use their ID, which can be found on the bottom of its page from `bh info`
+        """
         #See how recently they joined an association
         last_join = await AssetCreation.check_last_guild_join(self.client.pg_con, ctx.author.id)
         if last_join.total_seconds() < 86400:
@@ -411,6 +452,11 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)        
     async def promote(self, ctx, player : commands.MemberConverter = None, rank : str = None):
+        """`player`: the player you want to promote
+        `rank`: `Officer` or `Adept`
+
+        [LEADER] Promote a member of your guild. Officers have limited administrative powers. Adepts have no powers.
+        """
         #Tell players what officers and adepts do if no input is given
         if player is None or rank is None:
             embed = discord.Embed(title='Brotherhood Role Menu', color=self.client.ayesha_blue)
@@ -445,6 +491,10 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)
     async def demote(self, ctx, player : commands.MemberConverter):
+        """`player`: the player you are demoting
+        
+        [LEADER] Demote one of your officers or adepts back to regular member.
+        """
         #Otherwise check if player is in guild -> also not the leader
         if ctx.author == player:
             await ctx.reply('I don\'t think so.')
@@ -468,6 +518,10 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_leader)
     async def transfer(self, ctx, player : commands.MemberConverter):
+        """`player`: the player you want to become new head of the brotherhood
+        
+        [LEADER] Relinquish control of your brotherhood to someone else.
+        """
         if ctx.author.id == player.id:
             await ctx.reply('?')
             return
@@ -492,6 +546,10 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_guild_officer)
     async def kick(self, ctx, player : commands.MemberConverter):
+        """`player`: the person you are removing from the brotherhood
+
+        Kick someone from your brotherhood, revoking their membership.
+        """
         #Make sure target has a char, in same guild, isn't an officer or leader
         if not await Checks.has_char(self.client.pg_con, player):
             await ctx.reply('This person does not have a character.')
@@ -517,18 +575,22 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.is_player)
     @commands.check(Checks.in_brotherhood)
     async def champions(self, ctx):
+        """View your brotherhood's champions. 
+        Your brotherhood can have up to 3 champions. These strong players battle for territory control with `bh attack`.
+        """
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         champions = await AssetCreation.get_brotherhood_champions(self.client.pg_con, guild['ID'])
 
         for i in range(0,3):
             if champions[i] is not None:
                 name = await AssetCreation.getPlayerName(self.client.pg_con, champions[i])
-                attack, crit = await AssetCreation.getAttack(self.client.pg_con, champions[i])
+                # attack, crit = await AssetCreation.getAttack(self.client.pg_con, champions[i])
+                battle_stats = await AssetCreation.get_attack_crit_hp(self.client.pg_con, champions[i])
                 
                 champions[i] = {
                     'Name' : name,
-                    'ATK' : attack,
-                    'Crit' : crit
+                    'ATK' : battle_stats['Attack'],
+                    'Crit' : battle_stats['Crit']
                 }
 
         embed = discord.Embed(title=f"{guild['Name']}'s Champions",
@@ -551,6 +613,12 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.in_brotherhood)
     @commands.check(Checks.is_guild_officer)
     async def champion(self, ctx, player : commands.MemberConverter, slot : int):
+        """`player`: the player you are declaring champion
+        `slot`: 1-3, the slot in battle they are occupying
+        
+        [OFFICER+] Assign someone to be a champion of your brotherhood
+        Your brotherhood can have up to 3 champions. These strong players battle for territory control with `bh attack`.
+        """
         #Make sure this person has a char, is in the guild, and isn't already a champion
         if slot < 1 or slot > 3:
             return await ctx.reply('Please insert your champion into slots 1, 2, or 3.')
@@ -578,6 +646,10 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.in_brotherhood)
     @commands.check(Checks.is_guild_officer)
     async def unchampion(self, ctx, slot : int):
+        """`slot`: the slot that you want to empty
+
+        [OFFICER+] Remove someone as champion
+        """
         if slot < 1 or slot > 3:
             return await ctx.reply('Slots are limited to 1, 2, and 3.')
         
@@ -591,6 +663,10 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.in_brotherhood)
     @commands.check(Checks.is_guild_officer)
     async def attack(self, ctx):
+        """[OFFICER+] Challenge the current owner's of your brotherhood's territory to a battle.
+        Your brotherhood's champions (`bh champions`) will fight the champions of the incumbent brotherhood. The victor will become the new controller of the region.
+        The controller of a territory will give its members bonuses from `mine`, `forage`, and `hunt`. Only one attack per territory is allowed every few hours.
+        """
         def simulate_battle(player1, player2):
             """Simulate a battle between two players based solely off ATK and Crit.
             Each side has a small chance to land a "crit" (based off crit) and win.
@@ -654,23 +730,25 @@ class Brotherhoods(commands.Cog):
         for i in range(0,3): #Replace their IDs with a dict containing battle info
             if attacker[i] is not None:
                 name = await AssetCreation.getPlayerName(self.client.pg_con, attacker[i])
-                attack, crit = await AssetCreation.getAttack(self.client.pg_con, attacker[i])
+                # attack, crit = await AssetCreation.getAttack(self.client.pg_con, attacker[i])
+                battle_stats = await AssetCreation.get_attack_crit_hp(self.client.pg_con, attacker[i])
                 
                 attacker[i] = {
                     'ID' : attacker[i],
                     'Name' : name,
-                    'ATK' : attack,
-                    'Crit' : crit
+                    'ATK' : battle_stats['Attack'],
+                    'Crit' : battle_stats['Crit']
                 }
             if defender[i] is not None:
                 name = await AssetCreation.getPlayerName(self.client.pg_con, defender[i])
-                attack, crit = await AssetCreation.getAttack(self.client.pg_con, defender[i])
+                # attack, crit = await AssetCreation.getAttack(self.client.pg_con, defender[i])
+                battle_stats = await AssetCreation.get_attack_crit_hp(self.client.pg_con, defender[i])
                 
                 defender[i] = {
                     'ID' : defender[i],
                     'Name' : name,
-                    'ATK' : attack,
-                    'Crit' : crit
+                    'ATK' : battle_stats['Attack'],
+                    'Crit' : battle_stats['Crit']
                 }
 
         for i in range(1,3): #Sort the teams so that the first slot is always a person (and not empty)
@@ -739,6 +817,7 @@ class Brotherhoods(commands.Cog):
     @commands.check(Checks.in_brotherhood)
     @commands.check(Checks.is_guild_leader)
     async def delete(self, ctx):
+        """[LEADER] Disband your brotherhood. You can only do this when no one else remains in your association."""
         #Make sure they're the only member remaining
         guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
         if await AssetCreation.getGuildMemberCount(self.client.pg_con, guild['ID']) > 1:
@@ -775,6 +854,7 @@ class Brotherhoods(commands.Cog):
 
     @brotherhood.command(description='Shows this command.')
     async def help(self, ctx):
+        """Get a list of all commands that brotherhood members can use."""
         def write(ctx, start, entries):
             helpEmbed = discord.Embed(title=f'Ayesha Help: Brotherhoods', 
                                       description='Brotherhoods are a pvp-oriented association. Its members gain an ATK and CRIT bonus depending on its level. They also gain access to the `steal` command.', 
