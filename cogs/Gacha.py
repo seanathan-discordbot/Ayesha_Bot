@@ -345,6 +345,8 @@ class Gacha(commands.Cog):
                        inline=False)
         shop.add_field(name='Rubidic', 
                        value='Do `shop rubidic` to buy this!\nReceive 1 rubidic for 10,000,000 gold.')
+        shop.add_field(name='Sell',
+                       value='Do `shop sell` to sell your excess materials.')
         await ctx.reply(embed=shop)
 
 
@@ -509,7 +511,10 @@ class Gacha(commands.Cog):
             return await ctx.reply(f'You only have up to {mat_amount} {material} to sell.')
 
         #Delete mats and give gold
-        subtotal = amount * 20
+        if await AssetCreation.getClass(self.client.pg_con, ctx.author.id):
+            subtotal = amount * 30
+        else:
+            subtotal = amount * 20
         cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal)
         payout = cost_info['subtotal'] - cost_info['tax_amount']
 
