@@ -423,7 +423,7 @@ class PvE(commands.Cog):
             embeds.append(embed)
         return embeds
 
-    async def apply_crit(self, player : dict, opponent : dict):
+    def apply_crit(self, player : dict, opponent : dict):
         """Perform the effects of a critical strike."""                
         if random.randint(1,100) < player['Crit']:
             #Calculate damage
