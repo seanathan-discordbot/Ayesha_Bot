@@ -243,7 +243,7 @@ class Brotherhoods(commands.Cog):
             stolen_amount = math.floor(victim_gold / 20)
             role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
             if role == 'Engineer':
-                stolen_amount = math.floor(victim_gold / 12)
+                stolen_amount = math.floor(victim_gold / 10)
             await AssetCreation.giveGold(self.client.pg_con, stolen_amount, ctx.author.id)
             await AssetCreation.giveGold(self.client.pg_con, 0 - stolen_amount, victim)
         

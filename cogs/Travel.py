@@ -480,7 +480,13 @@ class Travel(commands.Cog):
             iron = random.randint(25,35)
             silver = random.randint(2,8)
 
-        #Modify rewards given player's weapontype
+        #Modify rewards given player's class and weapontype
+        role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
+        if role == 'Blacksmith':
+            gold *= 2
+            iron *= 2
+            silver *= 2
+
         if await AssetCreation.check_for_map_control_bonus(self.client.pg_con, ctx.author.id):
             gold = int(gold * 1.5)
             iron = int(iron * 1.5)
@@ -626,7 +632,7 @@ class Travel(commands.Cog):
     async def upgrade(self, ctx, item_id : int = None):
         """`item_id`: the ID of the item you are upgrading
 
-        Upgrade the ATK stat of a weapon. The cost of upgrading is `3*(ATK+1)` iron and `20*(ATK+1)` gold.
+        Upgrade the ATK stat of a weapon. The cost of upgrading is `3*(ATK+1)` iron and `20*(ATK+1)` gold. This cost is halved if you are a blacksmith.
         Weapons of a rarity can also only be upgraded to a certain value:\n**Common:** 50\n**Uncommon:** 75\n**Rare:** 100\n**Epic:** 125\n**Legendary:** 160
         """
         if item_id is None:
@@ -681,9 +687,14 @@ class Travel(commands.Cog):
                 return
 
         #Ensure they have the ore and gold to upgrade this weapon
-        #Upgrade costs: 3 * (ATK + 1) iron; 20 * (ATK + 1) gold
-        iron_cost = 3 * (item['Attack'] + 1)
-        gold_cost = 20 * (item['Attack'] + 1)
+        #Upgrade costs: 3 * (ATK + 1) iron; 20 * (ATK + 1) gold; halved if blacksmith
+        role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
+        if role == 'Blacksmith':
+            iron_cost = int(1.5 * (item['Attack'] + 1))
+            gold_cost = 10 * (item['Attack'] + 1)
+        else:
+            iron_cost = 3 * (item['Attack'] + 1)
+            gold_cost = 20 * (item['Attack'] + 1)
 
         gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
         iron = await AssetCreation.getPlayerMat(self.client.pg_con, 'iron', ctx.author.id)

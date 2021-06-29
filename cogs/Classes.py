@@ -34,16 +34,7 @@ origins = {
 occ = enumerate(occupations)
 occ = list(occ)
 
-# 0. Soldier - 15% bonus to character attack - implemented
-# 1. Blacksmith - 10% bonus to weapon attack - implemented
-# 2. Farmer - increased resources from labor commands
-# 3. Hunter - double hunting rewards - implemented
-# 4. Merchant - increased income from selling items - implemented
-# 5. Traveler - triple travelling gold, double forage rewards - implemented
-# 6. Leatherworker - increased HP (or DEF if added) - implemented
-# 7. Butcher - increased healing effectiveness - implemented
 # 8. Engineer - buff steal/invest slightly - implemented
-# 9. Scribe - increased crit rate - implemented
 
 ori = enumerate(origins)
 ori = list(ori)
@@ -53,6 +44,36 @@ class Classes(commands.Cog):
 
     def __init__(self, client):
         self.client = client
+        self.client.classes = ('Soldier', # 20% bonus to character ATK; 1 gravitas daily
+                                    # Command: 50% more damage from raid attack
+                                    # Weapon Bonus: Spear, Sword [CODE FOUND IN AssetCreation.get_attack_crit_hp()]
+                               'Blacksmith', # Double gold and materials from mine; Half cost from upgrading weapons
+                                    # Command: smith - passively gain gold and weapons
+                                    # Weapon Bonus: Greatsword, Gauntlets
+                               'Farmer', # 4 gravitas daily
+                                    # Command: farm - passively gain gold and gravitas
+                                    # Weapon Bonus: Sling, Falx
+                               'Hunter', # Double gold and materials from hunt
+                                    # Command: raise - have a pet that gets you other things
+                                    # Weapon Bonus: Bow, Javelin
+                               'Merchant', # 50% increase gold from selling
+                                    # Command: sail - passively gain gold and gravitas
+                                    # Weapon Bonus: Dagger, Mace
+                               'Traveler', # Triple gold from traveling, double materials from forage
+                                    # Command: wander - passively gain any attainable item
+                                    # Weapon Bonus: Staff, Javelin
+                               'Leatherworker', # 250 more hp
+                                    # Command: weave - passively gain gold and gravitas
+                                    # Weapon Bonus: Mace, Axe
+                               'Butcher', # heal double (pve and pvp)
+                                    # Command: 
+                                    # Weapon Bonus: Axe, Dagger
+                               'Engineer', # Associations: Steal 10% of gold instead of 5, 25% buff to guild invest, gain 5 gravitas from cl usurp
+                                    # Command:
+                                    # Weapon Bonus: Trebuchet, Falx
+                               'Scribe') # 10 Crit; 1 gravitas daily
+                                    # Command: 
+                                    # Weapon Bonus: Sword, Dagger
 
     #EVENTS
     @commands.Cog.listener() # needed to create event in cog
