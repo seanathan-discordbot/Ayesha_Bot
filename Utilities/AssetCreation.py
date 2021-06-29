@@ -1534,6 +1534,19 @@ async def get_acolyte_attack(pool, user_id : int):
     """Return a tuple containing the attack and crit of requested acolyte"""
     acolyte1, acolyte2 = await getAcolyteFromPlayer(pool, user_id)
 
+class_weapon_bonuses = {
+    'Soldier' : ('Spear', 'Sword'),
+    'Blacksmith' : ('Greatsword', 'Gauntlets'),
+    'Farmer' : ('Sling', 'Falx'),
+    'Hunter' : ('Bow', 'Javelin'),
+    'Merchant' : ('Dagger', 'Mace'),
+    'Traveler' : ('Staff', 'Javelin'),
+    'Leatherworker' : ('Mace', 'Axe'),
+    'Butcher' : ('Axe', 'Dagger'),
+    'Engineer' : ('Trebuchet', 'Falx'),
+    'Scribe' : ('Sword', 'Dagger')
+}
+
 async def get_attack_crit_hp(pool, user_id : int):
     """Return the dict containing the named variables.
     Dict: ATK, Crit, HP
@@ -1546,14 +1559,19 @@ async def get_attack_crit_hp(pool, user_id : int):
     crit = 5
     hp = 500
 
+    player_class = await getClass(pool, user_id)
+
     #Level Attack: Level / 2. Pretend each prestige is 100 levels.
     level_attack = int((await getPrestige(pool, user_id) * 50) + (await getLevel(pool, user_id) / 2))
 
-    #Weapon Attack is the currently equipped weapon
+    #Weapon Attack is the currently equipped weapon, with a +20 bonus depending on class
     try:
         player_item = await getItem(pool, await getEquippedItem(pool, user_id))
         weapon_attack = player_item['Attack']
         crit += player_item['Crit']
+
+        if player_item['Type'] in class_weapon_bonuses[player_class]:
+            weapon_attack += 20
     except TypeError:
         pass
 
@@ -1591,7 +1609,6 @@ async def get_attack_crit_hp(pool, user_id : int):
 
     # -- ADD UP BONUSES FROM ALL POSSIBLE SOURCES --    
     #Class Attack Bonus
-    player_class = await getClass(pool, user_id)
     if player_class == 'Soldier':
         attack = int(attack * 1.2)
     elif player_class == 'Scribe':
@@ -1618,6 +1635,8 @@ async def get_player_battle_info(pool, user_id : int):
         the player's crit rate
     HP: int
         the player's HP 
+    Max_HP: int
+        player's max HP, which is base HP * 1.5
     Class: str
         the player's class
     Acolyte1: dict
@@ -1646,6 +1665,7 @@ async def get_player_battle_info(pool, user_id : int):
         'Attack' : base_info['Attack'],
         'Crit' : base_info['Crit'],
         'HP' : base_info['HP'],
+        'Max_HP' : int(base_info['HP'] * 1.5),
         'Class' : await getClass(pool, user_id),
         'Acolyte1' : acolyte1_info,
         'Acolyte2' : acolyte2_info,
