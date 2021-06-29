@@ -229,12 +229,12 @@ class Guilds(commands.Cog):
 
         #Get a random multplier of the money
         multplier = random.randint(40,150) / 100.0
-        capital_gain = math.floor(capital * multplier)
+        capital_gain = int(capital * multplier)
 
         #Class bonus
         role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
         if role == 'Engineer':
-            capital_gain = math.floor(capital_gain * 1.25)
+            capital_gain = int(capital_gain * 1.25)
 
         #Choose a random project and location
         projects = ('a museum', 'a church', 'a residence', 'a fishing company', 

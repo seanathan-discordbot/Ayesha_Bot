@@ -90,13 +90,18 @@ class Raid(commands.Cog):
         if random.randint(1,100) > combat_info['Crit']:
             combat_info['Attack'] *= 2
 
+        # Calculate damage and give 50% bonus for soldiers
         damage = random.randint(int(combat_info['Attack'] / 2), int(combat_info['Attack'] * 1.25))
+        if await AssetCreation.getClass(self.client.pg_con, ctx.author.id) == 'Soldier':
+            damage = int(damage * 1.5)
+
         self.raid_info['HP'] -= damage
         await AssetCreation.log_raid_attack(self.client.pg_con, ctx.author.id, damage)
         total_damage = await AssetCreation.get_player_raid_damage(self.client.pg_con, ctx.author.id)
         await ctx.reply(f"Your attack dealt {damage} damage to the {self.raid_info['Enemy']}.")
         await self.client.announcement_channel.send(f"{ctx.author.name}#{ctx.author.discriminator} dealt **{damage}** damage to the **{self.raid_info['Enemy']}**, for a total of **{total_damage}** this campaign!")
 
+        #Do end of raid if applicable
         if self.raid_info['HP'] < 0:
             self.raid_info['HP'] = 999999 #Just in case of concurrency issues
             item_info = await AssetCreation.createItem(self.client.pg_con, 

@@ -552,9 +552,15 @@ class PvE(commands.Cog):
             player1, boss = AssetCreation.apply_acolytes_on_turn_end(player1, boss, turn_counter)
             player1, boss = AssetCreation.apply_boss_turn_end(player1, boss, turn_counter)
 
+            if player1['Class'] == 'Butcher':
+                player1['Heal'] *= 2
+
             #Calculate actual combat changes
             player1['HP'] += player1['Heal'] - boss['Damage']
             boss['HP'] += boss['Heal'] - player1['Damage']
+
+            if player1['HP'] > player1['Max_HP']:
+                player1['HP'] = player1['Max_HP']
 
             #Check to see if HP falls below 0
             if boss['HP'] <= 0: #Give player win in event of a tie

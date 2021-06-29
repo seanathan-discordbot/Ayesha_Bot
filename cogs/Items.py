@@ -23,7 +23,7 @@ WeaponValues = (
 # 4. Bow
 # 5. Trebuchet
 # 6. Gauntlets
-# 7. Staff
+# 7. Staff -tr
 # 8. Greatsword
 # 9. Axe
 # 10. Sling

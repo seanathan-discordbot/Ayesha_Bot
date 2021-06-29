@@ -227,6 +227,12 @@ class Colleges(commands.Cog):
         chance += level * 2
         if chance < 25: #Failure
             gravitas_loss = random.randint(10,20)
+
+            #Class bonus
+            role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
+            if role == 'Engineer':
+                gravitas_loss += 5
+
             current_gravitas = await AssetCreation.get_gravitas(self.client.pg_con, ctx.author.id)
             if gravitas_loss > current_gravitas:
                 gravitas_loss = current_gravitas
@@ -237,10 +243,20 @@ class Colleges(commands.Cog):
         elif chance > 75: #Success
             gravitas_gain = random.randint(0,3)
 
+            #Class bonus
+            role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
+            if role == 'Engineer':
+                gravitas_gain += 5
+
             await AssetCreation.give_gravitas(self.client.pg_con, ctx.author.id, gravitas_gain)
             await ctx.reply(f'Your political play has fallen on deaf ears! You gained {gravitas_gain} gravitas.')
         else:
             gravitas_gain = random.randint(10,20) + (level * 2)
+
+            #Class bonus
+            role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
+            if role == 'Engineer':
+                gravitas_gain += 5
 
             await AssetCreation.give_gravitas(self.client.pg_con, ctx.author.id, gravitas_gain)
             await ctx.reply(f'Your maneuver was received with raucous applause from the people of {location}! You gained {gravitas_gain} gravitas from such a well-mannered speech.')
