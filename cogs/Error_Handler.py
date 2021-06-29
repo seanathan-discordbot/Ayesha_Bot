@@ -17,29 +17,44 @@ class Error_Handler(commands.Cog):
     async def on_ready(self): # YOU NEED SELF IN COGS
         print('Error Handler is ready.')
 
+    def write_help_for_command(self, command : commands.Command):
+        """Return a dict containing the help output of a command.
+        Dict: 'name': str including parent, name, and parameters
+              'help': str containing description and aliases
+        """
+        if command.parent is None:
+            parent = ''
+        else:
+            parent = command.parent.name + ' '
+
+        if len(command.aliases) == 0:
+            aliases = ''
+        else:
+            aliases = '**Aliases: **'
+            for alias in command.aliases:
+                aliases += f'`{alias}` '
+
+        if len(command.signature) == 0:
+            params = ''
+        else:
+            params = f'`{command.signature}`'
+
+        return {
+            'name' : f'{parent}{command.name} {params}',
+            'help' : f'{command.help}\n{aliases}'
+        }
+
     #----- ERROR HANDLER -----
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.MissingRequiredArgument) or isinstance(error, commands.BadArgument):
             ctx.command.reset_cooldown(ctx)
-            embed = discord.Embed(title=f'You forgot an argument', 
+            command_info = self.write_help_for_command(ctx.command)
+            embed = discord.Embed(title='You forgot an argument', 
                                   color=self.client.ayesha_blue)
-            if ctx.command.brief and ctx.command.aliases:
-                embed.add_field(name=f'{ctx.command.name} `{ctx.command.brief}`', 
-                                value=f'Aliases: `{ctx.command.aliases}`\n{ctx.command.description}', 
-                                inline=False)
-            elif ctx.command.brief and not ctx.command.aliases:
-                embed.add_field(name=f'{ctx.command.name} `{ctx.command.brief}`', 
-                                value=f'{ctx.command.description}', 
-                                inline=False)
-            elif not ctx.command.brief and ctx.command.aliases:
-                embed.add_field(name=f'{ctx.command.name}', 
-                                value=f'Aliases: `{ctx.command.aliases}`\n{ctx.command.description}', 
-                                inline=False)
-            else:
-                embed.add_field(name=f'{ctx.command.name}', 
-                                value=f'{ctx.command.description}', 
-                                inline=False)
+            embed.add_field(name=command_info['name'],
+                            value=command_info['help'])
+            embed.set_thumbnail(url=ctx.author.avatar_url)
             await ctx.reply(embed=embed)
 
         # --- ALL commands.CheckFailure MANMADE SUBCLASSES COVERED HERE
