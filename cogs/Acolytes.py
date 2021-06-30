@@ -57,6 +57,7 @@ class Acolytes(commands.Cog):
         if len(invpages) == 0:
             await ctx.reply('Your tavern is empty!')
         else:
+            invpages = PageSourceMaker.PageMaker.number_pages(invpages)
             tavern = menus.MenuPages(source=PageSourceMaker.PageMaker(invpages), 
                                      clear_reactions_after=True, 
                                      delete_message_after=True)
@@ -235,6 +236,7 @@ class Acolytes(commands.Cog):
                             value=f"Rarity: {info[acolyte]['Rarity']}\u2B50\nUpgrade Material: {info[acolyte]['Mat'].title()}")
             acolyte_embeds.append(embed)
 
+        acolyte_embeds = PageSourceMaker.PageMaker.number_pages(acolyte_embeds)
         acolist = menus.MenuPages(source=PageSourceMaker.PageMaker(acolyte_embeds), 
                                  clear_reactions_after=True, 
                                  delete_message_after=True)

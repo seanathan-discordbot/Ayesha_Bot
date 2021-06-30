@@ -5,6 +5,7 @@ from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 from Utilities import Checks, AssetCreation, PageSourceMaker
+from Utilities.PageSourceMaker import PageMaker
 
 import time
 
@@ -102,7 +103,8 @@ class Classes(commands.Cog):
                                 value=f'{occupations[job]}')
                 entries.append(embed)
 
-            tavern = menus.MenuPages(source=PageSourceMaker.PageMaker(entries), 
+            entries = PageSourceMaker.PageMaker.number_pages(entries)
+            tavern = menus.MenuPages(source=PageMaker(entries), 
                                      clear_reactions_after=True, 
                                      delete_message_after=True)
             await tavern.start(ctx)
@@ -135,7 +137,8 @@ class Classes(commands.Cog):
                                 value=f'{origins[place]}')
                 entries.append(embed)   
 
-            tavern = menus.MenuPages(source=PageSourceMaker.PageMaker(entries), 
+            entries = PageSourceMaker.PageMaker.number_pages(entries)
+            tavern = menus.MenuPages(source=PageMaker(entries), 
                                      clear_reactions_after=True, 
                                      delete_message_after=True)
             await tavern.start(ctx)
@@ -319,7 +322,7 @@ class Classes(commands.Cog):
         await AssetCreation.farm_crop(self.client.pg_con, ctx.author.id, 'lavender')
         await ctx.reply(f'You have begun farming **lavender**. You will gain rewards for up to a week, but can end this farming session at any time by doing `{ctx.prefix}farm cultivate`.')
 
-    @farm.command(aliases=['c'])
+    @farm.command(aliases=['c','grow'])
     @commands.check(Checks.is_player)
     async def cultivate(self, ctx):
         """Claim your farm rewards."""
@@ -364,79 +367,12 @@ class Classes(commands.Cog):
     @farm.command()
     async def help(self, ctx):
         """View the list of farmer exclusive commands."""
-        def write_help_embed(ctx, start, entries):
-            """Return a help embed for up to 5 commands in the given list.
-            
-            Parameters
-            ----------
-            ctx: commands.Context
-                the context of the command invocation
-            start: int
-                the index of the first value in entries being written
-            entries: list
-                a list of commands
-            cog: str
-                the name of the cog for which help is being sought
-
-            Returns
-            -------
-            helpEmbed: discord.Embed
-                an embed to be displayed to the user
-            """
-            helpEmbed = discord.Embed(title=f'Ayesha Help: Farm')
-            helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
-            
-            iteration = 0
-            while start < len(entries) and iteration < 5: #Will loop until 5 entries are processed or there's nothing left in the queue
-                command_info = write_help_for_command(entries[start])
-                helpEmbed.add_field(name=command_info['name'],
-                                    value=command_info['help'],
-                                    inline=False)
-
-                iteration += 1
-                start +=1 
-                
-            return helpEmbed
-
-        def write_help_for_command(command : commands.Command):
-            """Return a dict containing the help output of a command.
-            Dict: 'name': str including parent, name, and parameters
-                'help': str containing description and aliases
-            """
-            if command.parent is None:
-                parent = ''
-            else:
-                parent = command.parent.name + ' '
-
-            if len(command.aliases) == 0:
-                aliases = ''
-            else:
-                aliases = '**Aliases: **'
-                for alias in command.aliases:
-                    aliases += f'`{alias}` '
-
-            if len(command.signature) == 0:
-                params = ''
-            else:
-                params = f'`{command.signature}`'
-
-            return {
-                'name' : f'{parent}{command.name} {params}',
-                'help' : f'{command.help}\n{aliases}'
-            }
-
-        cmds, embeds = [], []
-        for command in self.client.get_command('farm').walk_commands():
-            cmds.append(command)
-        for i in range(0, len(cmds), 5):
-            embeds.append(write_help_embed(ctx, i, cmds))
-
-        helper = menus.MenuPages(source=PageSourceMaker.PageMaker(embeds), 
+        helper = menus.MenuPages(source=PageMaker(PageMaker.paginate_help(ctx=ctx,
+                                                                          command='farm',
+                                                                          help_for='Farm')), 
                                  clear_reactions_after=True, 
                                  delete_message_after=True)
         await helper.start(ctx)
-
-
 
 def setup(client):
     client.add_cog(Classes(client))

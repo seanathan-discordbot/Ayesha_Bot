@@ -88,7 +88,7 @@ class Raid(commands.Cog):
         combat_info = await AssetCreation.get_attack_crit_hp(self.client.pg_con, ctx.author.id)
 
         if random.randint(1,100) > combat_info['Crit']:
-            combat_info['Attack'] *= 2
+            combat_info['Attack'] *= 1.5
 
         # Calculate damage and give 50% bonus for soldiers
         damage = random.randint(int(combat_info['Attack'] / 2), int(combat_info['Attack'] * 1.25))
