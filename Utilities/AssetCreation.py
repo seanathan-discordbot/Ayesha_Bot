@@ -1636,7 +1636,7 @@ async def get_player_battle_info(pool, user_id : int):
     HP: int
         the player's HP 
     Max_HP: int
-        player's max HP, which is base HP * 1.5
+        player's max HP, which is base HP * 2
     Class: str
         the player's class
     Acolyte1: dict
@@ -1665,7 +1665,7 @@ async def get_player_battle_info(pool, user_id : int):
         'Attack' : base_info['Attack'],
         'Crit' : base_info['Crit'],
         'HP' : base_info['HP'],
-        'Max_HP' : int(base_info['HP'] * 1.5),
+        'Max_HP' : base_info['HP'] * 2,
         'Class' : await getClass(pool, user_id),
         'Acolyte1' : acolyte1_info,
         'Acolyte2' : acolyte2_info,
@@ -1794,3 +1794,66 @@ def apply_boss_crit(player, boss):
         boss['Heal'] += 50
 
     return player, boss
+
+async def get_player_estate(pool, user_id : int):
+    """Return a record of the player's class estate and creates one if it does not exist.
+    asyncpg.Record: user_id, occupation (class), user_name (player's name), prestige
+                    lvl (level), name (estate's name), type (crop type if applicable)
+                    adventure (int time.time())
+    """
+    async with pool.acquire() as conn:
+        await conn.execute("""INSERT INTO class_estate (user_id)
+                                VALUES ($1)
+                                ON CONFLICT (user_id)
+                                DO NOTHING""", 
+                                user_id)
+
+        return await conn.fetchrow("""SELECT class_estate.user_id, 
+                                              players.occupation, 
+                                              players.user_name,
+                                              players.prestige,
+                                              players.lvl,
+                                              class_estate.name, 
+                                              class_estate.type,
+                                              class_estate.adventure
+                                        FROM class_estate
+                                        INNER JOIN players
+                                            ON class_estate.user_id = players.user_id
+                                        WHERE class_estate.user_id = $1""",
+                                        user_id)
+
+async def delete_player_estate(pool, user_id : int):
+    """Delete the specified player's class estate."""
+    async with pool.acquire() as conn:
+        await conn.execute('DELETE FROM class_estate WHERE user_id = $1', user_id)
+        await pool.release(conn)
+
+async def farm_crop(pool, user_id : int, crop : str):
+    """Begin farming a crop (Farmer Class Estate). Valid crops are alfalfa and lavender."""
+    async with pool.acquire() as conn:
+        await conn.execute("""INSERT INTO class_estate (user_id, type, adventure)
+                                VALUES ($1, $2, $3)
+                                ON CONFLICT (user_id)
+                                DO UPDATE SET type = $2, adventure = $3""",
+                                user_id, crop, time.time())
+        await pool.release(conn)
+
+async def nullify_class_estate(pool, user_id):
+    """Nullify the type and adventure of the type and adventure fields."""
+    async with pool.acquire() as conn:
+        await conn.execute("""INSERT INTO class_estate (user_id)
+                                VALUES ($1)
+                                ON CONFLICT (user_id)
+                                DO UPDATE SET type = NULL, adventure = NULL""",
+                                user_id)
+        await pool.release(conn)
+
+async def rename_estate(pool, user_id, name):
+    """Rename the player's estate."""
+    async with pool.acquire() as conn:
+        await conn.execute("""INSERT INTO class_estate (user_id, name)
+                                VALUES ($1, $2)
+                                ON CONFLICT (user_id)
+                                DO UPDATE SET name = $2""",
+                                user_id, name)
+        await pool.release(conn)
