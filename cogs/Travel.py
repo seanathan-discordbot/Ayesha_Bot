@@ -119,33 +119,33 @@ class Travel(commands.Cog):
 
         #Calculate xp, gold, and materials based off elapsed time (in hours)
         if elapsed_time < 3600: #Less than 1 hour, ~100 gold/hr, no gravitas
-            gold = math.floor(hours * 100)
+            gold = int(hours * 100)
             mats = random.randint(10,20)
             gravitas = 0
             gravitas_decay = .01
         elif elapsed_time < 10800: #1-3 hrs, ~175 gold/hr, 30 mats/hr, no gravitas
-            gold = math.floor(hours * 175)
-            mats = math.floor(hours * 30)
+            gold = int(hours * 175)
+            mats = int(hours * 30)
             gravitas = 0
             gravitas_decay = .05
         elif elapsed_time < 43200: #3-12 hrs, ~200 gold/hr, 45 mats/hr, 1/3 gravitas/hr
-            gold = math.floor(hours * 265)
-            mats = math.floor(hours * 45)
-            gravitas = math.floor(hours / 3)
+            gold = int(hours * 265)
+            mats = int(hours * 45)
+            gravitas = int(hours / 3)
             gravitas_decay = .1
         elif elapsed_time < 259200: #12hrs - 3 days, ~300 gold/hr, 70 mats/hr, 1/2 gravitas/hr
-            gold = math.floor(hours * 375)
-            mats = math.floor(hours * 70)
-            gravitas = math.floor(hours / 2)
+            gold = int(hours * 375)
+            mats = int(hours * 70)
+            gravitas = int(hours / 2)
             gravitas_decay = .15
         else: #Up to 7 days, ~500 gold/hr, 100 mats/hr, 1 gravitas/hr
-            gold = math.floor(hours * 500)
-            mats = math.floor(hours * 100)
-            gravitas = math.floor(hours)
+            gold = int(hours * 500)
+            mats = int(hours * 100)
+            gravitas = int(hours)
             gravitas_decay = .2
         
-        xp = math.floor(gold / 4 + 50)
-        acolyte_xp = math.floor(xp / 10)
+        xp = int(gold / 4 + 50)
+        acolyte_xp = int(xp / 10)
 
         #Give those materials
         await AssetCreation.giveGold(self.client.pg_con, gold, ctx.author.id)
@@ -182,7 +182,7 @@ class Travel(commands.Cog):
             await AssetCreation.giveMat(self.client.pg_con, 'cacao', mats, ctx.author.id)
         else: #then theyre in the city - only time gravitas is gained as a result of expeditions
             resource = random.choice(['fur', 'bone'])
-            mats = math.floor(mats / 2)
+            mats = int(mats / 2)
             await AssetCreation.giveMat(self.client.pg_con, resource, mats, ctx.author.id)
             await AssetCreation.give_gravitas(self.client.pg_con, ctx.author.id, gravitas)
             city_expedition = True
@@ -233,7 +233,7 @@ class Travel(commands.Cog):
             output = f'You returned from your expedition and received `{gold}` gold, `{xp}` xp, and `{mats}` {resource}.\nUnfortunately, you lost `{gravitas_decay}` gravitas while in the wild.'
 
         if got_acolyte:
-            output += f"You also befriened a new acolyte: **{new_acolyte}**! Check the `{ctx.prefix}tavern` to recruit them!"
+            output += f"\nDuring your trip you befriended a new acolyte: **{new_acolyte}**! Check the `{ctx.prefix}tavern` to recruit them!"
 
         await ctx.reply(output)
 
@@ -317,11 +317,11 @@ class Travel(commands.Cog):
 
         current = int(time.time())
         if current >= adv['adventure']: #Then enough time has passed and the adv is complete
-            low_bound = math.floor((location_dict[adv['destination']]['CD']**1.5)/2500)
-            high_bound = math.floor((location_dict[adv['destination']]['CD']**1.6)/5000)
+            low_bound = int((location_dict[adv['destination']]['CD']**1.5)/2500)
+            high_bound = int((location_dict[adv['destination']]['CD']**1.6)/5000)
             gold = random.randint(low_bound, high_bound)
             xp = random.randint(low_bound, high_bound)
-            acolyte_xp = math.floor(xp / 10)
+            acolyte_xp = int(xp / 10)
             getWeapon = random.randint(1,10)
             if getWeapon == 1:
                 await AssetCreation.createItem(self.client.pg_con, ctx.author.id, random.randint(15, 40), "Common")
@@ -369,11 +369,11 @@ class Travel(commands.Cog):
 
         current = int(time.time())
         if current >= adv['adventure']: #Then enough time has passed and the adv is complete
-            low_bound = math.floor((location_dict[adv['destination']]['CD']**1.5)/2500)
-            high_bound = math.floor((location_dict[adv['destination']]['CD']**1.6)/5000)
+            low_bound = int((location_dict[adv['destination']]['CD']**1.5)/2500)
+            high_bound = int((location_dict[adv['destination']]['CD']**1.6)/5000)
             gold = random.randint(low_bound, high_bound)
             xp = random.randint(low_bound, high_bound)
-            acolyte_xp = math.floor(xp / 10)
+            acolyte_xp = int(xp / 10)
             getWeapon = random.randint(1,10)
             if getWeapon == 1:
                 await AssetCreation.createItem(self.client.pg_con, ctx.author.id, random.randint(15, 40), "Common")
