@@ -5,9 +5,9 @@ from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 from Utilities import Checks, AssetCreation, PageSourceMaker
+from Utilities.PageSourceMaker import PageMaker
 
 import random
-import math
 import aiohttp
 import time
 from datetime import datetime
@@ -205,6 +205,7 @@ class Brotherhoods(commands.Cog):
         for i in range(0, len(members), 10):
             member_list.append(await write(i, members))
 
+        member_list = PageSourceMaker.PageMaker.number_pages(member_list)
         member_pages = menus.MenuPages(source=PageSourceMaker.PageMaker(member_list), 
                                        clear_reactions_after=True, 
                                        delete_message_after=True)
@@ -240,10 +241,10 @@ class Brotherhoods(commands.Cog):
             await AssetCreation.giveGold(self.client.pg_con, 50, ctx.author.id)
             stolen_amount = 50
         else:
-            stolen_amount = math.floor(victim_gold / 20)
+            stolen_amount = int(victim_gold / 20)
             role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
             if role == 'Engineer':
-                stolen_amount = math.floor(victim_gold / 10)
+                stolen_amount = int(victim_gold / 10)
             await AssetCreation.giveGold(self.client.pg_con, stolen_amount, ctx.author.id)
             await AssetCreation.giveGold(self.client.pg_con, 0 - stolen_amount, victim)
         
@@ -855,42 +856,11 @@ class Brotherhoods(commands.Cog):
     @brotherhood.command(description='Shows this command.')
     async def help(self, ctx):
         """Get a list of all commands that brotherhood members can use."""
-        def write(ctx, start, entries):
-            helpEmbed = discord.Embed(title=f'Ayesha Help: Brotherhoods', 
-                                      description='Brotherhoods are a pvp-oriented association. Its members gain an ATK and CRIT bonus depending on its level. They also gain access to the `steal` command.', 
-                                      color=self.client.ayesha_blue)
-            helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
-            
-            iteration = 0
-            while start < len(entries) and iteration < 5: #Will loop until 5 entries are processed or there's nothing left in the queue
-                if entries[start].brief and entries[start].aliases:
-                    helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', 
-                                        value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', 
-                                        inline=False)
-                elif entries[start].brief and not entries[start].aliases:
-                    helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', 
-                                        value=f'{entries[start].description}', 
-                                        inline=False)
-                elif not entries[start].brief and entries[start].aliases:
-                    helpEmbed.add_field(name=f'{entries[start].name}', 
-                                        value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', 
-                                        inline=False)
-                else:
-                    helpEmbed.add_field(name=f'{entries[start].name}', 
-                                        value=f'{entries[start].description}', 
-                                        inline=False)
-                iteration += 1
-                start +=1 
-                
-            return helpEmbed
-
-        cmds, embeds = [], []
-        for command in self.client.get_command('brotherhood').walk_commands():
-            cmds.append(command)
-        for i in range(0, len(cmds), 5):
-            embeds.append(write(ctx, i, cmds))
-
-        helper = menus.MenuPages(source=PageSourceMaker.PageMaker(embeds), 
+        desc = 'Brotherhoods are a pvp-oriented association. Its members gain an ATK and CRIT bonus depending on its level. They also gain access to the `steal` command.'
+        helper = menus.MenuPages(source=PageMaker(PageMaker.paginate_help(ctx=ctx,
+                                                                          command='brotherhood',
+                                                                          help_for='Brotherhoods',
+                                                                          description=desc)), 
                                  clear_reactions_after=True, 
                                  delete_message_after=True)
         await helper.start(ctx)

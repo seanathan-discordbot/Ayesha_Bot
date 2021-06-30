@@ -452,6 +452,7 @@ class PvE(commands.Cog):
         """
         if level == 0:
             levels = self.showBounties()
+            levels = PageSourceMaker.PageMaker.number_pages(levels)
             pages = menus.MenuPages(source=PageSourceMaker.PageMaker(levels), 
                                     clear_reactions_after=True, 
                                     delete_message_after=True)

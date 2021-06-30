@@ -5,9 +5,9 @@ from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 from Utilities import Checks, AssetCreation, PageSourceMaker
+from Utilities.PageSourceMaker import PageMaker
 
 import random
-import math
 import aiohttp
 import time
 
@@ -204,6 +204,7 @@ class Colleges(commands.Cog):
         for i in range(0, len(members), 10):
             member_list.append(await write(i, members))
 
+        member_list = PageSourceMaker.PageMaker.number_pages(member_list)
         member_pages = menus.MenuPages(source=PageSourceMaker.PageMaker(member_list), 
                                        clear_reactions_after=True, 
                                        delete_message_after=True)
@@ -616,42 +617,11 @@ class Colleges(commands.Cog):
     @college.command(description='Shows this command.')
     async def help(self, ctx):
         """Get a list of all commands that college members can use."""
-        def write(ctx, start, entries):
-            helpEmbed = discord.Embed(title=f'Ayesha Help: Colleges', 
-                                      description='Colleges are a politically oriented association. Its members gain a passive amount of gravitas depending on its level. They also gain access to the `usurp` command.', 
-                                      color=self.client.ayesha_blue)
-            helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
-            
-            iteration = 0
-            while start < len(entries) and iteration < 5: #Will loop until 5 entries are processed or there's nothing left in the queue
-                if entries[start].brief and entries[start].aliases:
-                    helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', 
-                                        value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', 
-                                        inline=False)
-                elif entries[start].brief and not entries[start].aliases:
-                    helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', 
-                                        value=f'{entries[start].description}', 
-                                        inline=False)
-                elif not entries[start].brief and entries[start].aliases:
-                    helpEmbed.add_field(name=f'{entries[start].name}', 
-                                        value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', 
-                                        inline=False)
-                else:
-                    helpEmbed.add_field(name=f'{entries[start].name}', 
-                                        value=f'{entries[start].description}', 
-                                        inline=False)
-                iteration += 1
-                start +=1 
-                
-            return helpEmbed
-
-        cmds, embeds = [], []
-        for command in self.client.get_command('college').walk_commands():
-            cmds.append(command)
-        for i in range(0, len(cmds), 5):
-            embeds.append(write(ctx, i, cmds))
-
-        helper = menus.MenuPages(source=PageSourceMaker.PageMaker(embeds), 
+        desc = 'Colleges are a politically oriented association. Its members gain a passive amount of gravitas depending on its level. They also gain access to the `usurp` command.'
+        helper = menus.MenuPages(source=PageMaker(PageMaker.paginate_help(ctx=ctx,
+                                                                          command='college',
+                                                                          help_for='Colleges',
+                                                                          description=desc)), 
                                  clear_reactions_after=True, 
                                  delete_message_after=True)
         await helper.start(ctx)

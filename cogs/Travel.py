@@ -249,6 +249,7 @@ class Travel(commands.Cog):
         """
         if destination is None:
             locations = self.write()
+            locations = PageSourceMaker.PageMaker.number_pages(locations)
             travel_pages = menus.MenuPages(source=PageSourceMaker.PageMaker(locations), 
                                            clear_reactions_after=True, 
                                            delete_message_after=True)

@@ -77,25 +77,6 @@ class Items(commands.Cog):
         return embed
     
     #COMMANDS
-    # @commands.command(aliases=['i', 'inv'], description='View your inventory of items')
-    # @commands.check(Checks.is_player)
-    # async def inventory(self, ctx, sort = None):
-    #     """`sort`: the way you want to sort your items. Sort by `Rarity` or `Crit`. Sorts by Attack by default.
-        
-    #     View your inventory of items. Each item has an ID listed next to its name that can be referenced for related commands.
-    #     """
-    #     invpages = []
-    #     inv = await AssetCreation.getAllItemsFromPlayer(self.client.pg_con, ctx.author.id, sort)
-    #     for i in range(0, len(inv), 5): #list 5 entries at a time
-    #         invpages.append(self.write(i, inv, ctx.author.display_name)) # Write will create the embeds
-    #     if len(invpages) == 0:
-    #         await ctx.reply('Your inventory is empty!')
-    #     else:
-    #         inventory = menus.MenuPages(source=PageSourceMaker.PageMaker(invpages), 
-    #                                     clear_reactions_after=True, 
-    #                                     delete_message_after=True)
-    #         await inventory.start(ctx)
-    
     @commands.command(aliases=['i', 'inv'], description='View your inventory of items')
     @commands.check(Checks.is_player)
     async def inventory(self, ctx, *, query = ''):
@@ -187,6 +168,7 @@ class Items(commands.Cog):
         if len(invpages) == 0:
             await ctx.reply('Your inventory is empty!')
         else:
+            invpages = PageSourceMaker.PageMaker.number_pages(invpages)
             inventory = menus.MenuPages(source=PageSourceMaker.PageMaker(invpages), 
                                         clear_reactions_after=True, 
                                         delete_message_after=True)
