@@ -1,5 +1,6 @@
 import discord
 import asyncio
+from discord.asset import Asset
 
 from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
@@ -9,8 +10,7 @@ from Utilities import Links, Checks, AssetCreation, PageSourceMaker
 import random
 import math
 import time
-
-import aiohttp
+import json
 
 location_dict = {
     'Aramithea' : {
@@ -196,15 +196,49 @@ class Travel(commands.Cog):
 
         await AssetCreation.setAdventure(self.client.pg_con, None, None, ctx.author.id)
 
+        # Traveler's may also gain an acolyte if their expedition is in the top length bracket 
+        got_acolyte = False
+        if elapsed_time > 259200 and random.randint(1,2) == 1 and await AssetCreation.getClass(self.client.pg_con, ctx.author.id):
+            got_acolyte = True
+            
+            with open(Links.acolyte_list) as f:
+                acolyte_dict = json.load(f)
+
+            weights = [] #Calculate weights based off rarity
+            for acolyte in acolyte_dict:
+                if acolyte_dict[acolyte]['Rarity'] == 5:
+                    weights.append(1)
+                elif acolyte_dict[acolyte]['Rarity'] == 4:
+                    weights.append(5)
+                elif acolyte_dict[acolyte]['Rarity'] == 3:
+                    weights.append(19)
+                elif acolyte_dict[acolyte]['Rarity'] == 2:
+                    weights.append(20)
+                else:
+                    weights.append(1)
+                
+            new_acolyte = random.choices(list(acolyte_dict), weights)[0] #Only gives their name
+
+            is_duplicate = await AssetCreation.checkDuplicate(self.client.pg_con, ctx.author.id, new_acolyte)
+
+            if is_duplicate is not None:
+                await AssetCreation.addAcolyteDuplicate(self.client.pg_con, is_duplicate['instance_id'])
+            else:
+                await AssetCreation.createAcolyte(self.client.pg_con, ctx.author.id, new_acolyte)
+
+
         #Send results of player
         if elapsed_time >= 43200 and city_expedition:
-            await ctx.reply(f'You returned from your urban expedition and received `{gold}` gold, `{xp}` xp, and `{mats}` {resource}.\nYou also gained `{gravitas}` gravitas while campaigning.')
+            output = f'You returned from your urban expedition and received `{gold}` gold, `{xp}` xp, and `{mats}` {resource}.\nYou also gained `{gravitas}` gravitas while campaigning.'
         else:
-            await ctx.reply(f'You returned from your expedition and received `{gold}` gold, `{xp}` xp, and `{mats}` {resource}.\nUnfortunately, you lost `{gravitas_decay}` gravitas while in the wild.')
+            output = f'You returned from your expedition and received `{gold}` gold, `{xp}` xp, and `{mats}` {resource}.\nUnfortunately, you lost `{gravitas_decay}` gravitas while in the wild.'
+
+        if got_acolyte:
+            output += f"You also befriened a new acolyte: **{new_acolyte}**! Check the `{ctx.prefix}tavern` to recruit them!"
+
+        await ctx.reply(output)
 
         await AssetCreation.checkLevel(self.client.pg_con, ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
-
-        return
 
     #COMMANDS
     @commands.command(brief='<destination>', description='Travel to another area of the map, unlocking a different subset of commands.')
