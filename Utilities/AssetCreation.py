@@ -1572,7 +1572,7 @@ async def get_attack_crit_hp(pool, user_id : int):
 
         if player_item['Type'] in class_weapon_bonuses[player_class]:
             weapon_attack += 20
-    except TypeError:
+    except (TypeError, KeyError): #no item equipped
         pass
 
     #Acolytes affect all three stats
