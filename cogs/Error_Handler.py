@@ -92,6 +92,9 @@ class Error_Handler(commands.Cog):
         if isinstance(error, Checks.HasBankAccount):
             await ctx.reply(f'You already have a guild bank account! Do `{ctx.prefix}guild account` to view it!')
 
+        if isinstance(error, Checks.IncorrectOccupation):
+            await ctx.reply(error.message)
+
         # --- OTHER ---
 
         if isinstance(error, commands.MaxConcurrencyReached):

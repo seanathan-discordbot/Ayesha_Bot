@@ -396,7 +396,7 @@ class Colleges(commands.Cog):
                 if img in file_types:
                     pass
                 else:
-                    await ctx.reply('This is an invalid URL.')
+                    return await ctx.reply('This is an invalid URL.')
 
         except aiohttp.InvalidURL:
             await ctx.reply('This is an invalid URL.')
