@@ -1799,7 +1799,7 @@ async def get_player_estate(pool, user_id : int):
     """Return a record of the player's class estate and creates one if it does not exist.
     asyncpg.Record: user_id, occupation (class), user_name (player's name), prestige
                     lvl (level), name (estate's name), type (crop type if applicable)
-                    adventure (int time.time())
+                    adventure (int time.time()), image (url)
     """
     async with pool.acquire() as conn:
         await conn.execute("""INSERT INTO class_estate (user_id)
@@ -1815,7 +1815,8 @@ async def get_player_estate(pool, user_id : int):
                                               players.lvl,
                                               class_estate.name, 
                                               class_estate.type,
-                                              class_estate.adventure
+                                              class_estate.adventure,
+                                              class_estate.image
                                         FROM class_estate
                                         INNER JOIN players
                                             ON class_estate.user_id = players.user_id
@@ -1838,6 +1839,16 @@ async def farm_crop(pool, user_id : int, crop : str):
                                 user_id, crop, time.time())
         await pool.release(conn)
 
+async def begin_estate_session(pool, user_id : int):
+    """Begin working (NON-FARMER CLASSES estate)."""
+    async with pool.acquire() as conn:
+        await conn.execute("""INSERT INTO class_estate (user_id, adventure)
+                                VALUES ($1, $2)
+                                ON CONFLICT (user_id)
+                                DO UPDATE SET adventure = $2""",
+                                user_id, time.time())
+        await pool.release(conn)
+
 async def nullify_class_estate(pool, user_id):
     """Nullify the type and adventure of the type and adventure fields."""
     async with pool.acquire() as conn:
@@ -1856,4 +1867,14 @@ async def rename_estate(pool, user_id, name):
                                 ON CONFLICT (user_id)
                                 DO UPDATE SET name = $2""",
                                 user_id, name)
+        await pool.release(conn)
+
+async def change_estate_image(pool, user_id : int, url : str):
+    """Set a player's class estate image."""
+    async with pool.acquire() as conn:
+        await conn.execute("""INSERT INTO class_estate (user_id, image)
+                                VALUES ($1, $2)
+                                ON CONFLICT (user_id)
+                                DO UPDATE SET image = $2""",
+                                user_id, url)
         await pool.release(conn)
