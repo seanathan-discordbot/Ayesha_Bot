@@ -236,7 +236,7 @@ async def sellAllItems(pool, user_id : int, rarity : str):
         #Calculate taxes and perform the transaction
         subtotal = random.randint(Weaponvalues[rarity][0], Weaponvalues[rarity][1]) * amount
         subtotal = (subtotal * sale_bonus)
-        cost_info = await calc_cost_with_tax_rate(pool, subtotal)
+        cost_info = await calc_cost_with_tax_rate(pool, subtotal, getOrigin(pool, user_id))
         tax = cost_info['tax_amount']
         payout = subtotal - cost_info['tax_amount']
 
@@ -938,6 +938,11 @@ async def getClass(pool, user_id : int):
     except TypeError:
         return None
 
+async def getOrigin(pool, user_id : int):
+    """Returns the origin of the given player (Optional[str])."""
+    async with pool.acquire() as conn:
+        return await conn.fetchval('SELECT origin FROM players WHERE user_id = $1', user_id)
+
 async def getPlayerCount(pool):
     """Returns the amount of player's in the database (int)."""
     async with pool.acquire() as conn:
@@ -1268,12 +1273,16 @@ async def set_tax_rate(pool, tax_rate : float, setby : int):
         await conn.execute('INSERT INTO tax_rates (tax_rate, setby) VALUES ($1, $2)', tax_rate, setby)
         await pool.release(conn)
 
-async def calc_cost_with_tax_rate(pool, subtotal):
+async def calc_cost_with_tax_rate(pool, subtotal, player_origin):
     """Calculate the new price of something with tax rate included.
     Returns a dict with 'subtotal' (input), 'total', 'tax_rate', 'tax_amount'.
     """
     tax_rate = await get_tax_rate(pool)
-    tax_amount = int(subtotal * tax_rate / 100)
+
+    if player_origin == 'Sunset':
+        tax_amount = int((subtotal * tax_rate / 100) * .95)
+    else:
+        tax_amount = int(subtotal * tax_rate / 100)
 
     return {
         'subtotal' : subtotal,
@@ -1534,6 +1543,19 @@ async def get_acolyte_attack(pool, user_id : int):
     """Return a tuple containing the attack and crit of requested acolyte"""
     acolyte1, acolyte2 = await getAcolyteFromPlayer(pool, user_id)
 
+class_weapon_bonuses = {
+    'Soldier' : ('Spear', 'Sword'),
+    'Blacksmith' : ('Greatsword', 'Gauntlets'),
+    'Farmer' : ('Sling', 'Falx'),
+    'Hunter' : ('Bow', 'Javelin'),
+    'Merchant' : ('Dagger', 'Mace'),
+    'Traveler' : ('Staff', 'Javelin'),
+    'Leatherworker' : ('Mace', 'Axe'),
+    'Butcher' : ('Axe', 'Dagger'),
+    'Engineer' : ('Trebuchet', 'Falx'),
+    'Scribe' : ('Sword', 'Dagger')
+}
+
 async def get_attack_crit_hp(pool, user_id : int):
     """Return the dict containing the named variables.
     Dict: ATK, Crit, HP
@@ -1541,21 +1563,46 @@ async def get_attack_crit_hp(pool, user_id : int):
     # -- GET THE GROSS TOTALS FOR STATS FROM ALL SOURCES -- 
     level_attack = 0
     weapon_attack = 0
+    origin_attack = 0
     acolyte_attack = 0
     brotherhood_attack = 0
     crit = 5
     hp = 500
 
+    player_class = await getClass(pool, user_id)
+
     #Level Attack: Level / 2. Pretend each prestige is 100 levels.
     level_attack = int((await getPrestige(pool, user_id) * 50) + (await getLevel(pool, user_id) / 2))
 
-    #Weapon Attack is the currently equipped weapon
+    #Weapon Attack is the currently equipped weapon, with a +20 bonus depending on class
     try:
         player_item = await getItem(pool, await getEquippedItem(pool, user_id))
         weapon_attack = player_item['Attack']
         crit += player_item['Crit']
-    except TypeError:
+
+        if player_item['Type'] in class_weapon_bonuses[player_class]:
+            weapon_attack += 20
+    except (TypeError, KeyError): #no item equipped
         pass
+
+    #Origin Attack is a small bonus for some origins. SOME MIGHT AFFECT HP AND CRIT
+    player_origin = await getOrigin(pool, user_id)
+    if player_origin is not None:
+        if player_origin == 'Riverburn':
+            origin_attack += 5
+        elif player_origin == 'Thenuille':
+            hp += 25
+        elif player_origin == 'Mythic Forest':
+            crit += 2
+        elif player_origin == 'Lunaris':
+            hp += 50
+        elif player_origin == 'Crumidia':
+            origin_attack += 10
+        elif player_origin == 'Maritimiala':
+            crit += 4
+        elif player_origin == 'Glakelys':
+            origin_attack += 5
+            hp += 25
 
     #Acolytes affect all three stats
     acolyte1, acolyte2 = await getAcolyteFromPlayer(pool, user_id)
@@ -1587,11 +1634,10 @@ async def get_attack_crit_hp(pool, user_id : int):
         brotherhood_attack += 5 + (5 * comp_bonus['Level'])
         crit += 1 + comp_bonus['Level']
 
-    attack = level_attack + weapon_attack + acolyte_attack + brotherhood_attack
+    attack = level_attack + weapon_attack + origin_attack + acolyte_attack + brotherhood_attack
 
     # -- ADD UP BONUSES FROM ALL POSSIBLE SOURCES --    
     #Class Attack Bonus
-    player_class = await getClass(pool, user_id)
     if player_class == 'Soldier':
         attack = int(attack * 1.2)
     elif player_class == 'Scribe':
@@ -1618,6 +1664,8 @@ async def get_player_battle_info(pool, user_id : int):
         the player's crit rate
     HP: int
         the player's HP 
+    Max_HP: int
+        player's max HP, which is base HP * 2
     Class: str
         the player's class
     Acolyte1: dict
@@ -1646,6 +1694,7 @@ async def get_player_battle_info(pool, user_id : int):
         'Attack' : base_info['Attack'],
         'Crit' : base_info['Crit'],
         'HP' : base_info['HP'],
+        'Max_HP' : base_info['HP'] * 2,
         'Class' : await getClass(pool, user_id),
         'Acolyte1' : acolyte1_info,
         'Acolyte2' : acolyte2_info,
@@ -1774,3 +1823,87 @@ def apply_boss_crit(player, boss):
         boss['Heal'] += 50
 
     return player, boss
+
+async def get_player_estate(pool, user_id : int):
+    """Return a record of the player's class estate and creates one if it does not exist.
+    asyncpg.Record: user_id, occupation (class), user_name (player's name), prestige
+                    lvl (level), name (estate's name), type (crop type if applicable)
+                    adventure (int time.time()), image (url)
+    """
+    async with pool.acquire() as conn:
+        await conn.execute("""INSERT INTO class_estate (user_id)
+                                VALUES ($1)
+                                ON CONFLICT (user_id)
+                                DO NOTHING""", 
+                                user_id)
+
+        return await conn.fetchrow("""SELECT class_estate.user_id, 
+                                              players.occupation, 
+                                              players.user_name,
+                                              players.prestige,
+                                              players.lvl,
+                                              class_estate.name, 
+                                              class_estate.type,
+                                              class_estate.adventure,
+                                              class_estate.image
+                                        FROM class_estate
+                                        INNER JOIN players
+                                            ON class_estate.user_id = players.user_id
+                                        WHERE class_estate.user_id = $1""",
+                                        user_id)
+
+async def delete_player_estate(pool, user_id : int):
+    """Delete the specified player's class estate."""
+    async with pool.acquire() as conn:
+        await conn.execute('DELETE FROM class_estate WHERE user_id = $1', user_id)
+        await pool.release(conn)
+
+async def farm_crop(pool, user_id : int, crop : str):
+    """Begin farming a crop (Farmer Class Estate). Valid crops are alfalfa and lavender."""
+    async with pool.acquire() as conn:
+        await conn.execute("""INSERT INTO class_estate (user_id, type, adventure)
+                                VALUES ($1, $2, $3)
+                                ON CONFLICT (user_id)
+                                DO UPDATE SET type = $2, adventure = $3""",
+                                user_id, crop, time.time())
+        await pool.release(conn)
+
+async def begin_estate_session(pool, user_id : int):
+    """Begin working (NON-FARMER CLASSES estate)."""
+    async with pool.acquire() as conn:
+        await conn.execute("""INSERT INTO class_estate (user_id, adventure)
+                                VALUES ($1, $2)
+                                ON CONFLICT (user_id)
+                                DO UPDATE SET adventure = $2""",
+                                user_id, time.time())
+        await pool.release(conn)
+
+async def nullify_class_estate(pool, user_id):
+    """Nullify the type and adventure of the type and adventure fields."""
+    async with pool.acquire() as conn:
+        await conn.execute("""INSERT INTO class_estate (user_id)
+                                VALUES ($1)
+                                ON CONFLICT (user_id)
+                                DO UPDATE SET type = NULL, adventure = NULL""",
+                                user_id)
+        await pool.release(conn)
+
+async def rename_estate(pool, user_id, name):
+    """Rename the player's estate."""
+    async with pool.acquire() as conn:
+        await conn.execute("""INSERT INTO class_estate (user_id, name)
+                                VALUES ($1, $2)
+                                ON CONFLICT (user_id)
+                                DO UPDATE SET name = $2""",
+                                user_id, name)
+        await pool.release(conn)
+
+async def change_estate_image(pool, user_id : int, url : str):
+    """Set a player's class estate image."""
+    async with pool.acquire() as conn:
+        await conn.execute("""INSERT INTO class_estate (user_id, image)
+                                VALUES ($1, $2)
+                                ON CONFLICT (user_id)
+                                DO UPDATE SET image = $2""",
+                                user_id, url)
+        await pool.release(conn)

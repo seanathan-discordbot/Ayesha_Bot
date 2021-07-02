@@ -9,8 +9,7 @@ from Utilities import Links, Checks, AssetCreation, PageSourceMaker
 import random
 import math
 import time
-
-import aiohttp
+import json
 
 location_dict = {
     'Aramithea' : {
@@ -120,33 +119,33 @@ class Travel(commands.Cog):
 
         #Calculate xp, gold, and materials based off elapsed time (in hours)
         if elapsed_time < 3600: #Less than 1 hour, ~100 gold/hr, no gravitas
-            gold = math.floor(hours * 100)
+            gold = int(hours * 100)
             mats = random.randint(10,20)
             gravitas = 0
             gravitas_decay = .01
         elif elapsed_time < 10800: #1-3 hrs, ~175 gold/hr, 30 mats/hr, no gravitas
-            gold = math.floor(hours * 175)
-            mats = math.floor(hours * 30)
+            gold = int(hours * 175)
+            mats = int(hours * 30)
             gravitas = 0
             gravitas_decay = .05
         elif elapsed_time < 43200: #3-12 hrs, ~200 gold/hr, 45 mats/hr, 1/3 gravitas/hr
-            gold = math.floor(hours * 265)
-            mats = math.floor(hours * 45)
-            gravitas = math.floor(hours / 3)
+            gold = int(hours * 265)
+            mats = int(hours * 45)
+            gravitas = int(hours / 3)
             gravitas_decay = .1
         elif elapsed_time < 259200: #12hrs - 3 days, ~300 gold/hr, 70 mats/hr, 1/2 gravitas/hr
-            gold = math.floor(hours * 375)
-            mats = math.floor(hours * 70)
-            gravitas = math.floor(hours / 2)
+            gold = int(hours * 375)
+            mats = int(hours * 70)
+            gravitas = int(hours / 2)
             gravitas_decay = .15
         else: #Up to 7 days, ~500 gold/hr, 100 mats/hr, 1 gravitas/hr
-            gold = math.floor(hours * 500)
-            mats = math.floor(hours * 100)
-            gravitas = math.floor(hours)
+            gold = int(hours * 500)
+            mats = int(hours * 100)
+            gravitas = int(hours)
             gravitas_decay = .2
         
-        xp = math.floor(gold / 4 + 50)
-        acolyte_xp = math.floor(xp / 10)
+        xp = int(gold / 4 + 50)
+        acolyte_xp = int(xp / 10)
 
         #Give those materials
         await AssetCreation.giveGold(self.client.pg_con, gold, ctx.author.id)
@@ -183,7 +182,7 @@ class Travel(commands.Cog):
             await AssetCreation.giveMat(self.client.pg_con, 'cacao', mats, ctx.author.id)
         else: #then theyre in the city - only time gravitas is gained as a result of expeditions
             resource = random.choice(['fur', 'bone'])
-            mats = math.floor(mats / 2)
+            mats = int(mats / 2)
             await AssetCreation.giveMat(self.client.pg_con, resource, mats, ctx.author.id)
             await AssetCreation.give_gravitas(self.client.pg_con, ctx.author.id, gravitas)
             city_expedition = True
@@ -196,15 +195,49 @@ class Travel(commands.Cog):
 
         await AssetCreation.setAdventure(self.client.pg_con, None, None, ctx.author.id)
 
+        # Traveler's may also gain an acolyte if their expedition is in the top length bracket 
+        got_acolyte = False
+        if elapsed_time > 259200 and random.randint(1,2) == 1 and await AssetCreation.getClass(self.client.pg_con, ctx.author.id):
+            got_acolyte = True
+            
+            with open(Links.acolyte_list) as f:
+                acolyte_dict = json.load(f)
+
+            weights = [] #Calculate weights based off rarity
+            for acolyte in acolyte_dict:
+                if acolyte_dict[acolyte]['Rarity'] == 5:
+                    weights.append(1)
+                elif acolyte_dict[acolyte]['Rarity'] == 4:
+                    weights.append(5)
+                elif acolyte_dict[acolyte]['Rarity'] == 3:
+                    weights.append(19)
+                elif acolyte_dict[acolyte]['Rarity'] == 2:
+                    weights.append(20)
+                else:
+                    weights.append(1)
+                
+            new_acolyte = random.choices(list(acolyte_dict), weights)[0] #Only gives their name
+
+            is_duplicate = await AssetCreation.checkDuplicate(self.client.pg_con, ctx.author.id, new_acolyte)
+
+            if is_duplicate is not None:
+                await AssetCreation.addAcolyteDuplicate(self.client.pg_con, is_duplicate['instance_id'])
+            else:
+                await AssetCreation.createAcolyte(self.client.pg_con, ctx.author.id, new_acolyte)
+
+
         #Send results of player
         if elapsed_time >= 43200 and city_expedition:
-            await ctx.reply(f'You returned from your urban expedition and received `{gold}` gold, `{xp}` xp, and `{mats}` {resource}.\nYou also gained `{gravitas}` gravitas while campaigning.')
+            output = f'You returned from your urban expedition and received `{gold}` gold, `{xp}` xp, and `{mats}` {resource}.\nYou also gained `{gravitas}` gravitas while campaigning.'
         else:
-            await ctx.reply(f'You returned from your expedition and received `{gold}` gold, `{xp}` xp, and `{mats}` {resource}.\nUnfortunately, you lost `{gravitas_decay}` gravitas while in the wild.')
+            output = f'You returned from your expedition and received `{gold}` gold, `{xp}` xp, and `{mats}` {resource}.\nUnfortunately, you lost `{gravitas_decay}` gravitas while in the wild.'
+
+        if got_acolyte:
+            output += f"\nDuring your trip you befriended a new acolyte: **{new_acolyte}**! Check the `{ctx.prefix}tavern` to recruit them!"
+
+        await ctx.reply(output)
 
         await AssetCreation.checkLevel(self.client.pg_con, ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
-
-        return
 
     #COMMANDS
     @commands.command(brief='<destination>', description='Travel to another area of the map, unlocking a different subset of commands.')
@@ -216,6 +249,7 @@ class Travel(commands.Cog):
         """
         if destination is None:
             locations = self.write()
+            locations = PageSourceMaker.PageMaker.number_pages(locations)
             travel_pages = menus.MenuPages(source=PageSourceMaker.PageMaker(locations), 
                                            clear_reactions_after=True, 
                                            delete_message_after=True)
@@ -284,11 +318,11 @@ class Travel(commands.Cog):
 
         current = int(time.time())
         if current >= adv['adventure']: #Then enough time has passed and the adv is complete
-            low_bound = math.floor((location_dict[adv['destination']]['CD']**1.5)/2500)
-            high_bound = math.floor((location_dict[adv['destination']]['CD']**1.6)/5000)
+            low_bound = int((location_dict[adv['destination']]['CD']**1.5)/2500)
+            high_bound = int((location_dict[adv['destination']]['CD']**1.6)/5000)
             gold = random.randint(low_bound, high_bound)
             xp = random.randint(low_bound, high_bound)
-            acolyte_xp = math.floor(xp / 10)
+            acolyte_xp = int(xp / 10)
             getWeapon = random.randint(1,10)
             if getWeapon == 1:
                 await AssetCreation.createItem(self.client.pg_con, ctx.author.id, random.randint(15, 40), "Common")
@@ -336,11 +370,11 @@ class Travel(commands.Cog):
 
         current = int(time.time())
         if current >= adv['adventure']: #Then enough time has passed and the adv is complete
-            low_bound = math.floor((location_dict[adv['destination']]['CD']**1.5)/2500)
-            high_bound = math.floor((location_dict[adv['destination']]['CD']**1.6)/5000)
+            low_bound = int((location_dict[adv['destination']]['CD']**1.5)/2500)
+            high_bound = int((location_dict[adv['destination']]['CD']**1.6)/5000)
             gold = random.randint(low_bound, high_bound)
             xp = random.randint(low_bound, high_bound)
-            acolyte_xp = math.floor(xp / 10)
+            acolyte_xp = int(xp / 10)
             getWeapon = random.randint(1,10)
             if getWeapon == 1:
                 await AssetCreation.createItem(self.client.pg_con, ctx.author.id, random.randint(15, 40), "Common")
@@ -480,7 +514,13 @@ class Travel(commands.Cog):
             iron = random.randint(25,35)
             silver = random.randint(2,8)
 
-        #Modify rewards given player's weapontype
+        #Modify rewards given player's class and weapontype
+        role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
+        if role == 'Blacksmith':
+            gold *= 2
+            iron *= 2
+            silver *= 2
+
         if await AssetCreation.check_for_map_control_bonus(self.client.pg_con, ctx.author.id):
             gold = int(gold * 1.5)
             iron = int(iron * 1.5)
@@ -622,16 +662,16 @@ class Travel(commands.Cog):
 
     @commands.command(brief='<item id>', description='Upgrade the ATK stat of a weapon.')
     @commands.check(Checks.is_player)
-    @cooldown(1,90,type=BucketType.user)
+    @cooldown(1,10,type=BucketType.user)
     async def upgrade(self, ctx, item_id : int = None):
         """`item_id`: the ID of the item you are upgrading
 
-        Upgrade the ATK stat of a weapon. The cost of upgrading is `3*(ATK+1)` iron and `20*(ATK+1)` gold.
+        Upgrade the ATK stat of a weapon. The cost of upgrading is `3*(ATK+1)` iron and `20*(ATK+1)` gold. This cost is halved if you are a blacksmith.
         Weapons of a rarity can also only be upgraded to a certain value:\n**Common:** 50\n**Uncommon:** 75\n**Rare:** 100\n**Epic:** 125\n**Legendary:** 160
         """
         if item_id is None:
             embed = discord.Embed(title='Upgrade', color=self.client.ayesha_blue)
-            embed.add_field(name='Upgrade an item\'s attack stat by 1.', value='The cost of upgrading scales with the attack of the item. You will have to pay `3*(ATK+1)` iron and `20*(ATK+1)` gold to upgrade an item\'s ATK stat.\nEach rarity also has a maximum ATK:\n**Common:** 50\n**Uncommon:** 75\n**Rare:** 100\n**Epic:** 125\n**Legendary:** 160\n`Upgrade` has a 90 second cooldown.')
+            embed.add_field(name='Upgrade an item\'s attack stat by 1.', value='The cost of upgrading scales with the attack of the item. You will have to pay `3*(ATK+1)` iron and `20*(ATK+1)` gold to upgrade an item\'s ATK stat.\nEach rarity also has a maximum ATK:\n**Common:** 50\n**Uncommon:** 75\n**Rare:** 100\n**Epic:** 125\n**Legendary:** 160\n')
             ctx.command.reset_cooldown(ctx)
             return await ctx.reply(embed=embed)
 
@@ -681,9 +721,14 @@ class Travel(commands.Cog):
                 return
 
         #Ensure they have the ore and gold to upgrade this weapon
-        #Upgrade costs: 3 * (ATK + 1) iron; 20 * (ATK + 1) gold
-        iron_cost = 3 * (item['Attack'] + 1)
-        gold_cost = 20 * (item['Attack'] + 1)
+        #Upgrade costs: 3 * (ATK + 1) iron; 20 * (ATK + 1) gold; halved if blacksmith
+        role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
+        if role == 'Blacksmith':
+            iron_cost = int(1.5 * (item['Attack'] + 1))
+            gold_cost = 10 * (item['Attack'] + 1)
+        else:
+            iron_cost = 3 * (item['Attack'] + 1)
+            gold_cost = 20 * (item['Attack'] + 1)
 
         gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
         iron = await AssetCreation.getPlayerMat(self.client.pg_con, 'iron', ctx.author.id)

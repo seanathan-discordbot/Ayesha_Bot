@@ -13,8 +13,8 @@ import random
 l=list(range(1,101))
 random.shuffle(l)
 two_star=l[0:60]
-three_star=l[60:95]
-four_star=l[95:98]
+three_star=l[60:96]
+four_star=l[96:98]
 one_star=[l[98]]
 five_star=[l[99]]
 
@@ -80,11 +80,12 @@ class Gacha(commands.Cog):
             else: 
                 winner=random.randint(1,100)
 
-                #Determine if reward will be a weapon
+                #Determine if reward will be a weapon - ONLY APPLIES TO < 4* ROLLS
                 reward = random.choices(['weapon', 'acolyte'], [75, 25])
 
                 #Select a random weapon or acolyte
                 if winner in five_star: #If its a five star reset the pity
+                    reward = random.choices(['weapon', 'acolyte'], [50, 50])
                     if reward[0] == 'weapon':
                         item_info = await AssetCreation.createItem(self.client.pg_con, 
                                                                    ctx.author.id, 
@@ -119,6 +120,7 @@ class Gacha(commands.Cog):
                             await self.doDupe(ctx.author.id, name)
 
                     elif winner in four_star:
+                        reward = random.choices(['weapon', 'acolyte'], [50, 50])
                         if reward[0] == 'weapon':
                             item_info = await AssetCreation.createItem(self.client.pg_con, 
                                                                        ctx.author.id, 
@@ -198,7 +200,8 @@ class Gacha(commands.Cog):
             return await ctx.reply('You can only roll up to 10 times at once!')
         
         subtotal = rolls * 100000
-        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal)
+        player_origin = await AssetCreation.getOrigin(self.client.pg_con, ctx.author.id)
+        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal, player_origin)
 
         if await AssetCreation.getGold(self.client.pg_con, ctx.author.id) < cost_info['total']:
             return await ctx.reply('You don\'t have enough gold to roll this many times.')
@@ -345,6 +348,8 @@ class Gacha(commands.Cog):
                        inline=False)
         shop.add_field(name='Rubidic', 
                        value='Do `shop rubidic` to buy this!\nReceive 1 rubidic for 10,000,000 gold.')
+        shop.add_field(name='Sell',
+                       value='Do `shop sell` to sell your excess materials.')
         await ctx.reply(embed=shop)
 
 
@@ -370,7 +375,8 @@ class Gacha(commands.Cog):
         #Make sure player has enough gold for this transaction
         player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
         subtotal = amount * 200
-        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal)
+        player_origin = await AssetCreation.getOrigin(self.client.pg_con, ctx.author.id)
+        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal, player_origin)
 
         if player_gold < cost_info['total']:
             await ctx.reply(f"Buying `{amount}` of this resources costs `{cost_info['total']}` gold. You don\'t have enough gold (you have `{player_gold}`).")
@@ -394,7 +400,8 @@ class Gacha(commands.Cog):
         #Make sure player has enough gold for this transaction
         player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
         subtotal = 500000
-        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal)
+        player_origin = await AssetCreation.getOrigin(self.client.pg_con, ctx.author.id)
+        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal, player_origin)
 
         if player_gold < cost_info['total']:
             await ctx.reply(f"Buying an epic weapon costs `{cost_info['total']}` gold. You don\'t have enough gold (you have `{player_gold}`).")
@@ -428,7 +435,8 @@ class Gacha(commands.Cog):
         #Make sure player has enough gold for this transaction
         player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
         subtotal = 50000
-        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal)
+        player_origin = await AssetCreation.getOrigin(self.client.pg_con, ctx.author.id)
+        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal, player_origin)
 
         if player_gold < cost_info['total']:
             await ctx.reply(f"Buying a rare weapon costs `{cost_info['total']}` gold. You don\'t have enough gold (you have `{player_gold}`).")
@@ -466,7 +474,8 @@ class Gacha(commands.Cog):
 
         player_gold = await AssetCreation.getGold(self.client.pg_con, ctx.author.id)
         subtotal = amount * 10000000
-        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal)
+        player_origin = await AssetCreation.getOrigin(self.client.pg_con, ctx.author.id)
+        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal, player_origin)
 
         if player_gold < cost_info['total']:
             await ctx.reply(f"Buying a rubidic costs `{cost_info['total']}` gold. You don\'t have enough gold (you have `{player_gold}`).")
@@ -509,8 +518,12 @@ class Gacha(commands.Cog):
             return await ctx.reply(f'You only have up to {mat_amount} {material} to sell.')
 
         #Delete mats and give gold
-        subtotal = amount * 20
-        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal)
+        if await AssetCreation.getClass(self.client.pg_con, ctx.author.id) == 'Merchant':
+            subtotal = amount * 30
+        else:
+            subtotal = amount * 20
+        player_origin = await AssetCreation.getOrigin(self.client.pg_con, ctx.author.id)
+        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal, player_origin)
         payout = cost_info['subtotal'] - cost_info['tax_amount']
 
         await AssetCreation.giveGold(self.client.pg_con, payout, ctx.author.id)

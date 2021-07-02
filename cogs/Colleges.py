@@ -5,9 +5,9 @@ from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 from Utilities import Checks, AssetCreation, PageSourceMaker
+from Utilities.PageSourceMaker import PageMaker
 
 import random
-import math
 import aiohttp
 import time
 
@@ -204,6 +204,7 @@ class Colleges(commands.Cog):
         for i in range(0, len(members), 10):
             member_list.append(await write(i, members))
 
+        member_list = PageSourceMaker.PageMaker.number_pages(member_list)
         member_pages = menus.MenuPages(source=PageSourceMaker.PageMaker(member_list), 
                                        clear_reactions_after=True, 
                                        delete_message_after=True)
@@ -227,6 +228,12 @@ class Colleges(commands.Cog):
         chance += level * 2
         if chance < 25: #Failure
             gravitas_loss = random.randint(10,20)
+
+            #Class bonus
+            role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
+            if role == 'Engineer':
+                gravitas_loss += 5
+
             current_gravitas = await AssetCreation.get_gravitas(self.client.pg_con, ctx.author.id)
             if gravitas_loss > current_gravitas:
                 gravitas_loss = current_gravitas
@@ -237,10 +244,20 @@ class Colleges(commands.Cog):
         elif chance > 75: #Success
             gravitas_gain = random.randint(0,3)
 
+            #Class bonus
+            role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
+            if role == 'Engineer':
+                gravitas_gain += 5
+
             await AssetCreation.give_gravitas(self.client.pg_con, ctx.author.id, gravitas_gain)
             await ctx.reply(f'Your political play has fallen on deaf ears! You gained {gravitas_gain} gravitas.')
         else:
             gravitas_gain = random.randint(10,20) + (level * 2)
+
+            #Class bonus
+            role = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
+            if role == 'Engineer':
+                gravitas_gain += 5
 
             await AssetCreation.give_gravitas(self.client.pg_con, ctx.author.id, gravitas_gain)
             await ctx.reply(f'Your maneuver was received with raucous applause from the people of {location}! You gained {gravitas_gain} gravitas from such a well-mannered speech.')
@@ -379,7 +396,7 @@ class Colleges(commands.Cog):
                 if img in file_types:
                     pass
                 else:
-                    await ctx.reply('This is an invalid URL.')
+                    return await ctx.reply('This is an invalid URL.')
 
         except aiohttp.InvalidURL:
             await ctx.reply('This is an invalid URL.')
@@ -600,42 +617,11 @@ class Colleges(commands.Cog):
     @college.command(description='Shows this command.')
     async def help(self, ctx):
         """Get a list of all commands that college members can use."""
-        def write(ctx, start, entries):
-            helpEmbed = discord.Embed(title=f'Ayesha Help: Colleges', 
-                                      description='Colleges are a politically oriented association. Its members gain a passive amount of gravitas depending on its level. They also gain access to the `usurp` command.', 
-                                      color=self.client.ayesha_blue)
-            helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
-            
-            iteration = 0
-            while start < len(entries) and iteration < 5: #Will loop until 5 entries are processed or there's nothing left in the queue
-                if entries[start].brief and entries[start].aliases:
-                    helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', 
-                                        value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', 
-                                        inline=False)
-                elif entries[start].brief and not entries[start].aliases:
-                    helpEmbed.add_field(name=f'{entries[start].name} `{entries[start].brief}`', 
-                                        value=f'{entries[start].description}', 
-                                        inline=False)
-                elif not entries[start].brief and entries[start].aliases:
-                    helpEmbed.add_field(name=f'{entries[start].name}', 
-                                        value=f'Aliases: `{entries[start].aliases}`\n{entries[start].description}', 
-                                        inline=False)
-                else:
-                    helpEmbed.add_field(name=f'{entries[start].name}', 
-                                        value=f'{entries[start].description}', 
-                                        inline=False)
-                iteration += 1
-                start +=1 
-                
-            return helpEmbed
-
-        cmds, embeds = [], []
-        for command in self.client.get_command('college').walk_commands():
-            cmds.append(command)
-        for i in range(0, len(cmds), 5):
-            embeds.append(write(ctx, i, cmds))
-
-        helper = menus.MenuPages(source=PageSourceMaker.PageMaker(embeds), 
+        desc = 'Colleges are a politically oriented association. Its members gain a passive amount of gravitas depending on its level. They also gain access to the `usurp` command.'
+        helper = menus.MenuPages(source=PageMaker(PageMaker.paginate_help(ctx=ctx,
+                                                                          command='college',
+                                                                          help_for='Colleges',
+                                                                          description=desc)), 
                                  clear_reactions_after=True, 
                                  delete_message_after=True)
         await helper.start(ctx)

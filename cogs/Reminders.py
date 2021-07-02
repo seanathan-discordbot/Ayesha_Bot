@@ -4,7 +4,8 @@ import asyncio
 from discord.ext import commands, tasks, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
-from Utilities import Checks, AssetCreation, PageSourceMaker, Links
+from Utilities import AssetCreation, PageSourceMaker
+from Utilities.PageSourceMaker import PageMaker
 
 from datetime import timedelta
 import time
@@ -145,6 +146,7 @@ class Reminders(commands.Cog):
         for i in range(0, len(reminders), 5): #list 5 entries at a time
             remind_pages.append(self.write(i, reminders, ctx.author.display_name)) # Write will create the embeds
 
+        remind_pages = PageSourceMaker.PageMaker.number_pages(remind_pages)
         remind_list = menus.MenuPages(source=PageSourceMaker.PageMaker(remind_pages), 
                                       clear_reactions_after=True, 
                                       delete_message_after=True)
@@ -169,32 +171,40 @@ class Reminders(commands.Cog):
     @remind.command(description='Show this command.')
     async def help(self, ctx):
         """Show all commands related to reminders."""
-        def write(ctx, entries):
-            helpEmbed = discord.Embed(title=f'NguyenBot Help: Reminders', 
-                                      description='We created a simple reminder module to help you plan your expeditions, travels, voting, etc. We recommend using it only for these purposes, as this module is not perfect and other bots (and applications) probably have better systems for doing this. This cog however will fulfill any of your bot-related timer needs.', 
-                                      color=self.client.ayesha_blue)
-            helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
+        desc = 'We created a simple reminder module to help you plan your expeditions, travels, voting, etc. We recommend using it only for these purposes, as this module is not perfect and other bots (and applications) probably have better systems for doing this. This cog however will fulfill any of your bot-related timer needs.'
+        helper = menus.MenuPages(source=PageMaker(PageMaker.paginate_help(ctx=ctx,
+                                                                          command='remind',
+                                                                          help_for='Reminders',
+                                                                          description=desc)), 
+                                 clear_reactions_after=True, 
+                                 delete_message_after=True)
+        await helper.start(ctx)
+        # def write(ctx, entries):
+        #     helpEmbed = discord.Embed(title=f'NguyenBot Help: Reminders', 
+        #                               description='We created a simple reminder module to help you plan your expeditions, travels, voting, etc. We recommend using it only for these purposes, as this module is not perfect and other bots (and applications) probably have better systems for doing this. This cog however will fulfill any of your bot-related timer needs.', 
+        #                               color=self.client.ayesha_blue)
+        #     helpEmbed.set_thumbnail(url=ctx.author.avatar_url)
 
-            for cmd in entries:
-                if cmd.brief and cmd.aliases:
-                    helpEmbed.add_field(name=f'{cmd.name} `{cmd.brief}`', value=f'Aliases: `{cmd.aliases}`\n{cmd.description}', inline=False)
-                elif cmd.brief and not cmd.aliases:
-                    helpEmbed.add_field(name=f'{cmd.name} `{cmd.brief}`', value=f'{cmd.description}', inline=False)
-                elif not cmd.brief and cmd.aliases:
-                    helpEmbed.add_field(name=f'{cmd.name}', value=f'Aliases: `{cmd.aliases}`\n{cmd.description}', inline=False)
-                else:
-                    helpEmbed.add_field(name=f'{cmd.name}', value=f'{cmd.description}', inline=False)
+        #     for cmd in entries:
+        #         if cmd.brief and cmd.aliases:
+        #             helpEmbed.add_field(name=f'{cmd.name} `{cmd.brief}`', value=f'Aliases: `{cmd.aliases}`\n{cmd.description}', inline=False)
+        #         elif cmd.brief and not cmd.aliases:
+        #             helpEmbed.add_field(name=f'{cmd.name} `{cmd.brief}`', value=f'{cmd.description}', inline=False)
+        #         elif not cmd.brief and cmd.aliases:
+        #             helpEmbed.add_field(name=f'{cmd.name}', value=f'Aliases: `{cmd.aliases}`\n{cmd.description}', inline=False)
+        #         else:
+        #             helpEmbed.add_field(name=f'{cmd.name}', value=f'{cmd.description}', inline=False)
                 
-            return helpEmbed
+        #     return helpEmbed
 
-        cmds = []
-        cmds.append(self.client.get_command('remind'))
-        for command in self.client.get_command('remind').walk_commands():
-            cmds.append(command)
+        # cmds = []
+        # cmds.append(self.client.get_command('remind'))
+        # for command in self.client.get_command('remind').walk_commands():
+        #     cmds.append(command)
         
-        helpEmbed = write(ctx, cmds)
+        # helpEmbed = write(ctx, cmds)
 
-        await ctx.reply(embed=helpEmbed)
+        # await ctx.reply(embed=helpEmbed)
 
 def setup(client):
     client.add_cog(Reminders(client))

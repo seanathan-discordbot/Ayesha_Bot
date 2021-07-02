@@ -8,7 +8,6 @@ import logging
 import asyncpg
 
 from Utilities import Links, Checks
-from Utilities.Checks import NoChar
 
 logger = logging.getLogger('discord')
 logger.setLevel(logging.INFO)
@@ -41,6 +40,7 @@ client = commands.Bot(
                       help_command=None, 
                       case_insensitive=True)
 client.ayesha_blue = 0xBEDCF6
+client.recent_voters = []
 
 client.admins = [
     196465885148479489, # Ara

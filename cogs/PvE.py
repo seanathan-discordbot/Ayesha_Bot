@@ -343,7 +343,7 @@ class PvE(commands.Cog):
         }
         rewards = AssetCreation.apply_acolytes_game_end(player, rewards, 'pve')
 
-        if random.randint(1,4) == 1:
+        if random.randint(1,4) == 1 or player['Class'] == 'Merchant':
             rewards['item'] = True
 
             if bounty_level <= 8:
@@ -423,6 +423,23 @@ class PvE(commands.Cog):
             embeds.append(embed)
         return embeds
 
+    def apply_crit(self, player : dict, opponent : dict):
+        """Perform the effects of a critical strike."""                
+        if random.randint(1,100) < player['Crit']:
+            #Calculate damage
+            player['Action'] = 'critically ' + player['Action']
+
+            if player['Class'] == 'Engineer': # Class bonus for engineers
+                player['Damage'] = int(player['Damage'] * 1.75)
+            else:
+                player['Damage'] = int(player['Damage'] * 1.5)
+                    
+            #Apply acolyte effects that activate on crit
+            player, opponent = AssetCreation.apply_acolytes_on_crit(player, opponent)
+            player, opponent = AssetCreation.apply_boss_crit(player, opponent) 
+
+        return player, opponent 
+
     #COMMANDS
     @commands.command(aliases=['pve', 'fight', 'boss'], brief='<level>', description='Fight an enemy for rewards!')
     @commands.check(Checks.is_player)
@@ -435,6 +452,7 @@ class PvE(commands.Cog):
         """
         if level == 0:
             levels = self.showBounties()
+            levels = PageSourceMaker.PageMaker.number_pages(levels)
             pages = menus.MenuPages(source=PageSourceMaker.PageMaker(levels), 
                                     clear_reactions_after=True, 
                                     delete_message_after=True)
@@ -494,13 +512,7 @@ class PvE(commands.Cog):
                 boss['Damage'] = random.randint(int(boss['Attack'] * .9), int(boss['Attack'] * 1.1))
                 
                 if random.randint(1,100) < player1['Crit']:
-                    #Calculate damage
-                    player1['Action'] = 'critically ' + player1['Action']
-                    player1['Damage'] = int(player1['Damage'] * 1.5)
-                    
-                    #Apply acolyte effects that activate on crit
-                    player1, boss = AssetCreation.apply_acolytes_on_crit(player1, boss)
-                    player1, boss = AssetCreation.apply_boss_crit(player1, boss)
+                    player1, boss = self.apply_crit(player1, boss)
 
             elif player1['Action'] == 'blocked':
                 player1['Damage'] = random.randint(int(player1['Attack'] / 20), int(player1['Attack'] / 10))
@@ -509,13 +521,7 @@ class PvE(commands.Cog):
                 boss['Damage'] = random.randint(0, int(boss['Attack'] / 10))
                 
                 if random.randint(1,100) < player1['Crit']:
-                    #Calculate damage
-                    player1['Action'] = 'critically ' + player1['Action']
-                    player1['Damage'] = int(player1['Damage'] * 1.5)
-                    
-                    #Apply acolyte effects that activate on crit
-                    player1, boss = AssetCreation.apply_acolytes_on_crit(player1, boss)
-                    player1, boss = AssetCreation.apply_boss_crit(player1, boss)
+                    player1, boss = self.apply_crit(player1, boss)
 
             elif player1['Action'] == 'parried':
                 player1['Damage'] = random.randint(int(player1['Attack'] * .4), int(player1['Attack'] * .6))
@@ -524,13 +530,7 @@ class PvE(commands.Cog):
                 boss['Damage'] = random.randint(int(boss['Attack'] * .35), int(boss['Attack'] * .55))
                 
                 if random.randint(1,100) < player1['Crit']:
-                    #Calculate damage
-                    player1['Action'] = 'critically ' + player1['Action']
-                    player1['Damage'] = int(player1['Damage'] * 1.5)
-                    
-                    #Apply acolyte effects that activate on crit
-                    player1, boss = AssetCreation.apply_acolytes_on_crit(player1, boss)
-                    player1, boss = AssetCreation.apply_boss_crit(player1, boss)
+                    player1, boss = self.apply_crit(player1, boss)
 
                 player1, boss = AssetCreation.apply_boss_parry(player1, boss)
 
@@ -552,9 +552,17 @@ class PvE(commands.Cog):
             player1, boss = AssetCreation.apply_acolytes_on_turn_end(player1, boss, turn_counter)
             player1, boss = AssetCreation.apply_boss_turn_end(player1, boss, turn_counter)
 
+            if player1['Class'] == 'Butcher':
+                player1['Heal'] *= 2
+            elif player1['Class'] == 'Leatherworker':
+                boss['Damage'] = int(boss['Damage'] * .85)
+
             #Calculate actual combat changes
             player1['HP'] += player1['Heal'] - boss['Damage']
             boss['HP'] += boss['Heal'] - player1['Damage']
+
+            if player1['HP'] > player1['Max_HP']:
+                player1['HP'] = player1['Max_HP']
 
             #Check to see if HP falls below 0
             if boss['HP'] <= 0: #Give player win in event of a tie

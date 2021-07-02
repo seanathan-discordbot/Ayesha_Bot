@@ -82,6 +82,11 @@ class HasBankAccount(commands.CheckFailure):
         self.user = user
         super().__init__(*args, **kwargs)
 
+class IncorrectOccupation(commands.CheckFailure):
+    def __init__(self, occupation, player_class, prefix, *args, **kwargs):
+        self.message = f'This command is exclusive to the **{occupation}** class only, but you are a **{player_class}**. If you wish to change classes, do `{prefix}class {occupation}`.'
+        super().__init__(message=self.message, *args, **kwargs)
+
 async def not_player(ctx):
     async with ctx.bot.pg_con.acquire() as conn:
         result = await conn.fetchrow('SELECT user_id FROM players WHERE user_id = $1', ctx.author.id)
@@ -271,3 +276,43 @@ async def not_has_bank_account(ctx):
             return True
         else:
             raise HasBankAccount(ctx.author, message='Failed not_has_bank_account check.')
+
+async def is_blacksmith(ctx):
+    player_class = await AssetCreation.getClass(ctx.bot.pg_con, ctx.author.id)
+    occupation = 'Blacksmith'
+    if player_class == occupation:
+        return True
+    else:
+        raise IncorrectOccupation(occupation, player_class, ctx.prefix)
+
+async def is_farmer(ctx):
+    player_class = await AssetCreation.getClass(ctx.bot.pg_con, ctx.author.id)
+    occupation = 'Farmer'
+    if player_class == occupation:
+        return True
+    else:
+        raise IncorrectOccupation(occupation, player_class, ctx.prefix)
+
+async def is_hunter(ctx):
+    player_class = await AssetCreation.getClass(ctx.bot.pg_con, ctx.author.id)
+    occupation = 'Hunter'
+    if player_class == occupation:
+        return True
+    else:
+        raise IncorrectOccupation(occupation, player_class, ctx.prefix)
+
+async def is_butcher(ctx):
+    player_class = await AssetCreation.getClass(ctx.bot.pg_con, ctx.author.id)
+    occupation = 'Butcher'
+    if player_class == occupation:
+        return True
+    else:
+        raise IncorrectOccupation(occupation, player_class, ctx.prefix)
+
+async def is_scribe(ctx):
+    player_class = await AssetCreation.getClass(ctx.bot.pg_con, ctx.author.id)
+    occupation = 'Scribe'
+    if player_class == occupation:
+        return True
+    else:
+        raise IncorrectOccupation(occupation, player_class, ctx.prefix)

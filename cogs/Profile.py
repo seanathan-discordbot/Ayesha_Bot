@@ -53,7 +53,7 @@ class Profile(commands.Cog):
                                             AND loc != 'Riverburn'
                                             AND loc != 'Thenuille';""")
                 # Class bonuses: 3 Farmer, 1 Soldier or Scribe
-                await conn.execute("UPDATE players SET gravitas = gravitas + 3 WHERE occupation = 'Farmer';")
+                await conn.execute("UPDATE players SET gravitas = gravitas + 4 WHERE occupation = 'Farmer';")
                 await conn.execute("""
                                     UPDATE players SET
                                         gravitas = gravitas + 1 WHERE occupation = 'Soldier' 

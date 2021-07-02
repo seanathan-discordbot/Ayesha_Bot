@@ -165,12 +165,22 @@ class PvP(commands.Cog):
 
             #Determine action, calculate the damage done
             player1, player2 = self.calc_damage(player1, player2)
-            player2, player1 = self.calc_damage(player2, player1)  
+            player2, player1 = self.calc_damage(player2, player1)
+
+            if player1['Class'] == 'Butcher':
+                player1['Heal'] *= 2  
+            if player2['Class'] == 'Butcher':
+                player2['Heal'] *= 2  
 
             p1taken = int(player2['Damage'] * player1['Taken'])
             p2taken = int(player1['Damage'] * player2['Taken'])
             player1['HP'] = int(player1['HP'] + player1['Heal'] - p1taken)
             player2['HP'] = int(player2['HP'] + player2['Heal'] - p2taken)
+
+            if player1['HP'] > player1['Max_HP']:
+                player1['HP'] = player1['Max_HP']
+            if player2['HP'] > player2['Max_HP']:
+                player2['HP'] = player2['Max_HP']
 
             player1, player2 = AssetCreation.apply_acolytes_on_turn_end(player1, player2, len(battle_turns))
 

@@ -23,7 +23,7 @@ WeaponValues = (
 # 4. Bow
 # 5. Trebuchet
 # 6. Gauntlets
-# 7. Staff
+# 7. Staff -tr
 # 8. Greatsword
 # 9. Axe
 # 10. Sling
@@ -77,25 +77,6 @@ class Items(commands.Cog):
         return embed
     
     #COMMANDS
-    # @commands.command(aliases=['i', 'inv'], description='View your inventory of items')
-    # @commands.check(Checks.is_player)
-    # async def inventory(self, ctx, sort = None):
-    #     """`sort`: the way you want to sort your items. Sort by `Rarity` or `Crit`. Sorts by Attack by default.
-        
-    #     View your inventory of items. Each item has an ID listed next to its name that can be referenced for related commands.
-    #     """
-    #     invpages = []
-    #     inv = await AssetCreation.getAllItemsFromPlayer(self.client.pg_con, ctx.author.id, sort)
-    #     for i in range(0, len(inv), 5): #list 5 entries at a time
-    #         invpages.append(self.write(i, inv, ctx.author.display_name)) # Write will create the embeds
-    #     if len(invpages) == 0:
-    #         await ctx.reply('Your inventory is empty!')
-    #     else:
-    #         inventory = menus.MenuPages(source=PageSourceMaker.PageMaker(invpages), 
-    #                                     clear_reactions_after=True, 
-    #                                     delete_message_after=True)
-    #         await inventory.start(ctx)
-    
     @commands.command(aliases=['i', 'inv'], description='View your inventory of items')
     @commands.check(Checks.is_player)
     async def inventory(self, ctx, *, query = ''):
@@ -187,6 +168,7 @@ class Items(commands.Cog):
         if len(invpages) == 0:
             await ctx.reply('Your inventory is empty!')
         else:
+            invpages = PageSourceMaker.PageMaker.number_pages(invpages)
             inventory = menus.MenuPages(source=PageSourceMaker.PageMaker(invpages), 
                                         clear_reactions_after=True, 
                                         delete_message_after=True)
@@ -250,7 +232,8 @@ class Items(commands.Cog):
         if fodder == await AssetCreation.getEquippedItem(self.client.pg_con, ctx.author.id):
             return await ctx.reply('You cannot use your currently equipped item as fodder material.')
 
-        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, 10000)
+        player_origin = await AssetCreation.getOrigin(self.client.pg_con, ctx.author.id)
+        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, 10000, player_origin)
         if await AssetCreation.getGold(self.client.pg_con, ctx.author.id) < cost_info['total']:
             return await ctx.reply(f"You need at least `{cost_info['total']}` gold to perform this operation.")
 
@@ -321,7 +304,8 @@ class Items(commands.Cog):
         sale_bonus = await AssetCreation.applySaleBonuses(self.client.pg_con, ctx.author.id)
 
         subtotal = int(gold * sale_bonus)
-        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal)
+        player_origin = await AssetCreation.getOrigin(self.client.pg_con, ctx.author.id)
+        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal, player_origin)
         payout = cost_info['subtotal'] - cost_info['tax_amount']
 
         #Delete item and give gold to player
@@ -392,7 +376,8 @@ class Items(commands.Cog):
                 errors = errors + f'`{item_id}` '
 
         subtotal = int(total * sale_bonus) #Apply all bonuses
-        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal)
+        player_origin = await AssetCreation.getOrigin(self.client.pg_con, ctx.author.id)
+        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal, player_origin)
         payout = subtotal - cost_info['tax_amount']
 
         await AssetCreation.giveGold(self.client.pg_con, payout, ctx.author.id)
