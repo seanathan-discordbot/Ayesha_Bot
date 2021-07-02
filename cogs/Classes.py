@@ -427,10 +427,10 @@ class Classes(commands.Cog):
 
         await ctx.reply(f"You cultivated your crops and received `{rewards['gold']}` gold and `{rewards['gravitas']}` gravitas!")
 
-    @farm.command()
+    @farm.command(name='rename')
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_farmer)
-    async def rename(self, ctx, *, name: str):
+    async def farm_rename(self, ctx, *, name : str):
         """`name`: the new name of your farm
         
         Rename your estate.
@@ -441,10 +441,10 @@ class Classes(commands.Cog):
         await AssetCreation.rename_estate(self.client.pg_con, ctx.author.id, name)
         await ctx.reply(f'Your farm is now called {name}.')
 
-    @farm.command(aliases=['icon', 'img'])
+    @farm.command(name='image', aliases=['icon', 'img'])
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_farmer)
-    async def image(self, ctx, url : str):
+    async def farm_image(self, ctx, url : str):
         """`url`: a valid image URL
         
         Change the image displayed when viewing your farm.
@@ -466,8 +466,8 @@ class Classes(commands.Cog):
         await AssetCreation.change_estate_image(self.client.pg_con, ctx.author.id, url)
         await ctx.reply('Image set!')
 
-    @farm.command()
-    async def help(self, ctx):
+    @farm.command(name='help')
+    async def farm_help(self, ctx):
         """View the list of farmer exclusive commands."""
         helper = menus.MenuPages(source=PageMaker(PageMaker.paginate_help(ctx=ctx,
                                                                           command='farm',
@@ -547,10 +547,10 @@ class Classes(commands.Cog):
 
             await ctx.reply(f"**{pet_info['name']}** retrieved the {item['Rarity']} **{item['Name']}** for you! Find it in your `{ctx.prefix}inventory`!")
 
-    @pet.command()
+    @pet.command(name='rename')
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_hunter)
-    async def rename(self, ctx, *, name: str):
+    async def pet_rename(self, ctx, *, name: str):
         """`name`: the new name of your pet
         
         Rename your pet.
@@ -562,10 +562,10 @@ class Classes(commands.Cog):
         await AssetCreation.rename_estate(self.client.pg_con, ctx.author.id, name)
         await ctx.reply(f'Your pet is now named {name}.')
 
-    @pet.command(aliases=['icon', 'img'])
+    @pet.command(name='image', aliases=['icon', 'img'])
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_hunter)
-    async def image(self, ctx, url : str):
+    async def pet_image(self, ctx, url : str):
         """`url`: a valid image URL
         
         Change the image displayed when viewing your pet.
@@ -588,8 +588,8 @@ class Classes(commands.Cog):
         await AssetCreation.change_estate_image(self.client.pg_con, ctx.author.id, url)
         await ctx.reply('Image set!')
 
-    @pet.command()
-    async def help(self, ctx):
+    @pet.command(name='help')
+    async def pet_help(self, ctx):
         """View the list of hunter exclusive commands."""
         helper = menus.MenuPages(source=PageMaker(PageMaker.paginate_help(ctx=ctx,
                                                                           command='pet',
@@ -702,10 +702,10 @@ class Classes(commands.Cog):
         await ctx.reply(f"You cleaned up your shop after working, gaining `{xp}` xp.")
         await AssetCreation.checkLevel(self.client.pg_con, ctx, ctx.author.id, aco1=acolyte1, aco2=acolyte2)
 
-    @butchery.command()
+    @butchery.command(name='rename')
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_butcher)
-    async def rename(self, ctx, *, name: str):
+    async def butchery_rename(self, ctx, *, name: str):
         """`name`: the new name of your butcher shop
         
         Rename your estate.
@@ -716,10 +716,10 @@ class Classes(commands.Cog):
         await AssetCreation.rename_estate(self.client.pg_con, ctx.author.id, name)
         await ctx.reply(f'Your butchery is now called {name}.')
 
-    @butchery.command(aliases=['icon','img'])
+    @butchery.command(name='image', aliases=['icon', 'img'])
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_butcher)
-    async def image(self, ctx, url : str):
+    async def butchery_image(self, ctx, url : str):
         """`url`: a valid image URL
         
         Change the image displayed when viewing your butchery.
@@ -741,8 +741,8 @@ class Classes(commands.Cog):
         await AssetCreation.change_estate_image(self.client.pg_con, ctx.author.id, url)
         await ctx.reply('Image set!')
 
-    @butchery.command()
-    async def help(self, ctx):
+    @butchery.command(name='help')
+    async def butchery_help(self, ctx):
         """View the list of butcher exclusive commands."""
         helper = menus.MenuPages(source=PageMaker(PageMaker.paginate_help(ctx=ctx,
                                                                           command='butchery',
@@ -848,10 +848,10 @@ class Classes(commands.Cog):
 
         await ctx.reply(f"You published your manuscripts, gaining `{gravitas}` gravitas.")
 
-    @scriptorium.command()
+    @scriptorium.command(name='rename')
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_scribe)
-    async def rename(self, ctx, *, name: str):
+    async def scriptorium_rename(self, ctx, *, name: str):
         """`name`: the new name of your scriptorium
         
         Rename your estate.
@@ -862,10 +862,10 @@ class Classes(commands.Cog):
         await AssetCreation.rename_estate(self.client.pg_con, ctx.author.id, name)
         await ctx.reply(f'Your scriptorium is now called {name}.')
 
-    @scriptorium.command(aliases=['icon', 'img'])
+    @scriptorium.command(name='image', aliases=['icon', 'img'])
     @commands.check(Checks.is_player)
     @commands.check(Checks.is_scribe)
-    async def image(self, ctx, url : str):
+    async def scriptorium_image(self, ctx, url : str):
         """`url`: a valid image URL
         
         Change the image displayed when viewing your scriptorium.
@@ -887,8 +887,8 @@ class Classes(commands.Cog):
         await AssetCreation.change_estate_image(self.client.pg_con, ctx.author.id, url)
         await ctx.reply('Image set!')
 
-    @scriptorium.command()
-    async def help(self, ctx):
+    @scriptorium.command(name='help')
+    async def scriptorium_help(self, ctx):
         """View the list of scribe exclusive commands."""
         helper = menus.MenuPages(source=PageMaker(PageMaker.paginate_help(ctx=ctx,
                                                                           command='scriptorium',
