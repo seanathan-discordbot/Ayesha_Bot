@@ -662,7 +662,7 @@ class Travel(commands.Cog):
 
     @commands.command(brief='<item id>', description='Upgrade the ATK stat of a weapon.')
     @commands.check(Checks.is_player)
-    @cooldown(1,90,type=BucketType.user)
+    @cooldown(1,10,type=BucketType.user)
     async def upgrade(self, ctx, item_id : int = None):
         """`item_id`: the ID of the item you are upgrading
 
@@ -671,7 +671,7 @@ class Travel(commands.Cog):
         """
         if item_id is None:
             embed = discord.Embed(title='Upgrade', color=self.client.ayesha_blue)
-            embed.add_field(name='Upgrade an item\'s attack stat by 1.', value='The cost of upgrading scales with the attack of the item. You will have to pay `3*(ATK+1)` iron and `20*(ATK+1)` gold to upgrade an item\'s ATK stat.\nEach rarity also has a maximum ATK:\n**Common:** 50\n**Uncommon:** 75\n**Rare:** 100\n**Epic:** 125\n**Legendary:** 160\n`Upgrade` has a 90 second cooldown.')
+            embed.add_field(name='Upgrade an item\'s attack stat by 1.', value='The cost of upgrading scales with the attack of the item. You will have to pay `3*(ATK+1)` iron and `20*(ATK+1)` gold to upgrade an item\'s ATK stat.\nEach rarity also has a maximum ATK:\n**Common:** 50\n**Uncommon:** 75\n**Rare:** 100\n**Epic:** 125\n**Legendary:** 160\n')
             ctx.command.reset_cooldown(ctx)
             return await ctx.reply(embed=embed)
 

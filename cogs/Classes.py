@@ -11,21 +11,6 @@ import aiohttp
 import time
 import random
 
-# origins = {
-#     'Aramithea' : 'You\'re a metropolitan. Aramithea, the largest city on Rabidus, must have at least a million people, and a niche for everybody',
-#     'Riverburn' : 'The great rival of Aramithea; Will you bring your town to victory?',
-#     'Thenuille' : 'You love the sea; you love exploration; you love trade. From here one can go anywhere, and be anything',
-#     'Mythic Forest' : 'You come from the lands down south, covered in forest. You could probably hit a deer square between the eyes blindfolded.',
-#     'Sunset' : 'Nothing is more peaceful than an autumn afternoon in the prairie.',
-#     'Lunaris' : 'The crossroads of civilization; the battleground of those from the north, west, and east. Your times here have hardened you.',
-#     'Crumidia' : 'The foothills have turned you into a strong warrior. Perhaps you will seek domination over your adversaries?',
-#     'Maritimiala' : 'North of the mountains, the Maritimialan tribes look lustfully upon the fertile plains below. Will you seek integration, or domination?',
-#     'Glakelys' : 'The small towns beyond Riverburn disregard the Aramithean elite. The first line of defense from invasions from Lunaris, the Glakelys are as tribal as they were 300 years ago.'
-# }
-
-# ori = enumerate(origins)
-# ori = list(ori)
-
 class Classes(commands.Cog):
     """Customize your character!"""
 
@@ -184,8 +169,6 @@ class Classes(commands.Cog):
                                 value=job['Weapon'],
                                 inline=False)
 
-                # embed.add_field(name=f'{job}: Say `{ctx.prefix}class {job}` to take this class!', 
-                #                 value=f'{self.client.classes[job]}')
                 entries.append(embed)
 
             entries = PageSourceMaker.PageMaker.number_pages(entries)
