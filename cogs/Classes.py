@@ -103,6 +103,53 @@ class Classes(commands.Cog):
                 'Weapon' : 'Sword, Dagger'
             }
         }
+        self.client.origins = {
+            'Aramithea' : {
+                'Name' : 'Aramithea',
+                'Desc' : 'You\'re a metropolitan. Aramithea, the largest city on Rabidus, must have at least a million people, and a niche for everybody.',
+                'Passive' : '+5 gravitas/day' # Gravitas passives found in Profile.update_gravitas()
+            },
+            'Riverburn' : {
+                'Name' : 'Riverburn',
+                'Desc' : 'The great rival of Aramithea; Will you bring your city to become the center of the kingdom?',
+                'Passive' : '+5 ATK, +3 gravitas/day' # Stat passives found in AssetCreation.get_attack_crit_hp()
+            },
+            'Thenuille' : {
+                'Name' : 'Thenuille',
+                'Desc' : 'You love the sea; you love exploration; you love trade. From here one can go anywhere, and be anything.',
+                'Passive' : '+25 HP, +3 gravitas/day'
+            },  
+            'Mythic Forest' : {
+                'Name' : 'Mythic Forest',
+                'Desc' : 'You come from the lands down south, covered in forest. You could probably hit a deer square between the eyes blindfolded.',
+                'Passive' : '+2 Crit, +1 gravitas/day'
+            },  
+            'Sunset' : {
+                'Name' : 'Sunset',
+                'Desc' : 'Nothing is more peaceful than an autumn afternoon in the prairie.',
+                'Passive' : 'Pay 5% less in taxes.'
+            },  
+            'Lunaris' : {
+                'Name' : 'Lunaris',
+                'Desc' : 'The crossroads of civilization; the battleground of those from the north, west, and east. Your times here have hardened you.',
+                'Passive' : '+50 HP, +1 gravitas/day'
+            },  
+            'Crumidia' : {
+                'Name' : 'Crumidia',
+                'Desc' : 'The foothills have turned you into a strong warrior. Perhaps you will seek domination over your adversaries?',
+                'Passive' : '+10 ATK, +1 gravitas/day'
+            },  
+            'Maritimiala' : {
+                'Name' : 'Maritimiala',
+                'Desc' : 'North of the mountains, the Maritimialan tribes look lustfully upon the fertile plains below. Will you seek integration, or domination?',
+                'Passive' : '+4 Crit'
+            },  
+            'Glakelys' : {
+                'Name' : 'Glakelys',
+                'Desc' : 'The small towns beyond Riverburn disregard the Aramithean elite. The first line of defense from invasions from Lunaris, the Glakelys are as tribal as they were 300 years ago.',
+                'Passive' : '+5 ATK, +25 HP'
+            }
+        }
 
     #EVENTS
     @commands.Cog.listener() # needed to create event in cog
@@ -214,7 +261,10 @@ class Classes(commands.Cog):
         if fodder == await AssetCreation.getEquippedItem(self.client.pg_con, ctx.author.id):
             return await ctx.reply('You cannot use your currently equipped item as fodder material.')
 
-        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, 100000)
+        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, 
+                                                                100000, 
+                                                                await AssetCreation.getOrigin(self.client.pg_con, 
+                                                                                              ctx.author.id))
         if await AssetCreation.getGold(self.client.pg_con, ctx.author.id) < cost_info['total']:
             return await ctx.reply(f"You need at least `{cost_info['total']}` gold to perform this operation.")
 

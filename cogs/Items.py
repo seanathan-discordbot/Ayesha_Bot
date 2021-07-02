@@ -232,7 +232,8 @@ class Items(commands.Cog):
         if fodder == await AssetCreation.getEquippedItem(self.client.pg_con, ctx.author.id):
             return await ctx.reply('You cannot use your currently equipped item as fodder material.')
 
-        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, 10000)
+        player_origin = await AssetCreation.getOrigin(self.client.pg_con, ctx.author.id)
+        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, 10000, player_origin)
         if await AssetCreation.getGold(self.client.pg_con, ctx.author.id) < cost_info['total']:
             return await ctx.reply(f"You need at least `{cost_info['total']}` gold to perform this operation.")
 
@@ -303,7 +304,8 @@ class Items(commands.Cog):
         sale_bonus = await AssetCreation.applySaleBonuses(self.client.pg_con, ctx.author.id)
 
         subtotal = int(gold * sale_bonus)
-        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal)
+        player_origin = await AssetCreation.getOrigin(self.client.pg_con, ctx.author.id)
+        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal, player_origin)
         payout = cost_info['subtotal'] - cost_info['tax_amount']
 
         #Delete item and give gold to player
@@ -374,7 +376,8 @@ class Items(commands.Cog):
                 errors = errors + f'`{item_id}` '
 
         subtotal = int(total * sale_bonus) #Apply all bonuses
-        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal)
+        player_origin = await AssetCreation.getOrigin(self.client.pg_con, ctx.author.id)
+        cost_info = await AssetCreation.calc_cost_with_tax_rate(self.client.pg_con, subtotal, player_origin)
         payout = subtotal - cost_info['tax_amount']
 
         await AssetCreation.giveGold(self.client.pg_con, payout, ctx.author.id)
