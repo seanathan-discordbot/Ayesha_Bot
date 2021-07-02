@@ -1,5 +1,3 @@
-from re import L
-from typing_extensions import get_origin
 import discord
 import asyncio
 
