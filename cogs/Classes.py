@@ -11,19 +11,6 @@ import aiohttp
 import time
 import random
 
-occupations = {
-    'Soldier' : 'You are a retainer of a local lord, trained in the discipline of swordsmanship.\nYour base character ATK is boosted by 20% and you get a bonus 10 ATK.',
-    'Blacksmith' : 'You\'ve spent years as the apprentice of a hardy blacksmith, and now a master in the art of forging.\nYour weapon ATK is boosted by 10% and you get a bonus 10 ATK.',
-    'Farmer' : 'You are a lowly farmer, but farming is no easy job.\nYou gain extra gravitas every day.',
-    'Hunter' : 'The wild is your domain; no game unconquerable.\nYou gain double rewards from hunting.',
-    'Merchant' : 'Screw you, exploiter of others\' labor.\nYou gain 50% increased income from selling items.',
-    'Traveler' : 'The wild forests up north await, as do the raging seas to the south. What will you discover?\nYou gain triple gold from travel and double rewards from foraging.',
-    'Leatherworker' : 'The finest protective gear, saddles, and equipment have your name on it.\nYou have 200 increased HP.',
-    'Butcher' : 'Meat. What would one do without it?\nYou have double healing effectiveness.',
-    'Engineer' : 'Your lord praises the seemingly impossible design of his new manor.\nYou will gain increased rewards from exclusive association commands.',
-    'Scribe' : 'Despite the might of your lord, you\'ve learned a little bit about everything too.\nYou have an additional 10% crit rate.'
-}
-
 origins = {
     'Aramithea' : 'You\'re a metropolitan. Aramithea, the largest city on Rabidus, must have at least a million people, and a niche for everybody',
     'Riverburn' : 'The great rival of Aramithea; Will you bring your town to victory?',
@@ -36,11 +23,6 @@ origins = {
     'Glakelys' : 'The small towns beyond Riverburn disregard the Aramithean elite. The first line of defense from invasions from Lunaris, the Glakelys are as tribal as they were 300 years ago.'
 }
 
-occ = enumerate(occupations)
-occ = list(occ)
-
-# 8. Engineer - buff steal/invest slightly - implemented
-
 ori = enumerate(origins)
 ori = list(ori)
 
@@ -49,36 +31,78 @@ class Classes(commands.Cog):
 
     def __init__(self, client):
         self.client = client
-        self.client.classes = ('Soldier', # 20% bonus to character ATK; 1 gravitas daily
-                                    # Command: 50% more damage from raid attack
-                                    # Weapon Bonus: Spear, Sword [CODE FOUND IN AssetCreation.get_attack_crit_hp()]
-                               'Blacksmith', # Double gold and materials from mine; Half cost from upgrading weapons
-                                    # Command: smith - merge command with +2 ATK and 100k gold cost
-                                    # Weapon Bonus: Greatsword, Gauntlets
-                               'Farmer', # 4 gravitas daily
-                                    # Command: farm - passively gain gold and gravitas
-                                    # Weapon Bonus: Sling, Falx
-                               'Hunter', # Double gold and materials from hunt
-                                    # Command: raise - have a pet that gets you other things
-                                    # Weapon Bonus: Bow, Javelin
-                               'Merchant', # 50% increase gold from selling
-                                    # Command: 50% increased gold from shop sell
-                                    # Weapon Bonus: Dagger, Mace
-                               'Traveler', # Triple gold from traveling, double materials from forage
-                                    # Command: 50% to gain an acolyte from a long expedition
-                                    # Weapon Bonus: Staff, Javelin
-                               'Leatherworker', # 250 more hp
-                                    # Command: Take 15% less damage from every hit in PvE
-                                    # Weapon Bonus: Mace, Axe
-                               'Butcher', # heal double (pve and pvp)
-                                    # Command: slaughter - passively gain xp
-                                    # Weapon Bonus: Axe, Dagger
-                               'Engineer', # Associations: Steal 10% of gold instead of 5, 25% buff to guild invest, gain 5 gravitas from cl usurp
-                                    # Command: Crit hits in PvE and PvP deal 1.75x damage instead of 1.5x
-                                    # Weapon Bonus: Trebuchet, Falx
-                               'Scribe') # 10 Crit; 1 gravitas daily
-                                    # Command: research - passively gain gravitas
-                                    # Weapon Bonus: Sword, Dagger
+        self.client.classes = { # Weapon Bonus: [CODE FOUND IN AssetCreation.get_attack_crit_hp()]
+            'Soldier' : {
+                'Name' : 'Soldier',
+                'Desc' : 'You are a retainer of your local lord, trained in the discipline of swordsmanship.',
+                'Passive' : '20% bonus to character ATK; +1 gravitas/day',
+                'Command' : 'Deal 50% more damage when doing `raid attack`',
+                'Weapon' : 'Spear, Sword'
+            },
+            'Blacksmith' : {
+                'Name' : 'Blacksmith',
+                'Desc' : 'You\'ve spent years as the apprentice of a hardy blacksmith, and now a master in the art of forging.',
+                'Passive' : 'Gain double gold and resources from `mine`, and pay half cost from `upgrade`.',
+                'Command' : 'Exclusive access to the `smith` command. Do `help smith` for more info.',
+                'Weapon' : 'Greatsword, Gauntlets'
+            },
+            'Farmer' : {
+                'Name' : 'Farmer',
+                'Desc' : 'You are a lowly farmer, but farming is no easy job.',
+                'Passive' : '+4 gravitas/day',
+                'Command' : 'Exclusive access to the `farm` command. Do `help farm` for more info.',
+                'Weapon' : 'Sling, Falx'
+            },
+            'Hunter' : {
+                'Name' : 'Hunter',
+                'Desc' : 'The wild is your domain; no game is unconquerable.',
+                'Passive' : 'Gain double gold and resources from `hunt`.',
+                'Command' : 'Exclusive access to the `pet` command. Do `help pet` for more info.',
+                'Weapon' : 'Bow, Javelin'
+            },
+            'Merchant' : {
+                'Name' : 'Merchant',
+                'Desc' : 'Screw you, exploiter of others\' labor.',
+                'Passive' : 'Gain 50% increased gold from the `sell` and `shop sell` command.',
+                'Command' : 'Guaranteed item upon defeating a boss in `bounty`.',
+                'Weapon' : 'Dagger, Mace'
+            },
+            'Traveler' : {
+                'Name' : 'Traveler',
+                'Desc' : 'The wild forests north await, as do the raging seas to the south. What will you discover?',
+                'Passive' : 'Gain triple gold from the `travel` command and double materials from the `forage` command.',
+                'Command' : '50% chance to gain an acolyte from expeditions lasting longer than 72 hours.',
+                'Weapon' : 'Staff, Javelin'
+            },
+            'Leatherworker' : {
+                'Name' : 'Leatherworker',
+                'Desc' : 'The finest protective gear, saddles, and equipment have your name on it.',
+                'Passive' : '250 more HP',
+                'Command' : 'Take 15% less damage from every hit in `bounty` battles.',
+                'Weapon' : 'Mace, Axe'
+            },
+            'Butcher' : {
+                'Name' : 'Butcher',
+                'Desc' : 'Meat. What would one do without it?',
+                'Passive' : '100% increased healing effectiveness in `battle` and `bounty`.',
+                'Command' : 'Exclusive access to the `butchery` command. Do `help butchery` for more info.',
+                'Weapon' : 'Axe, Dagger'
+            },
+            'Engineer' : { # Steal 10% of gold instead of 5, 25% buff to guild invest, gain 5 gravitas from cl usurp
+                'Name' : 'Engineer',
+                'Desc' : 'Your lord praises the seemingly impossible design of his new manor.',
+                'Passive' : 'Gain increased rewards from the special commands of whatever association you are in: `bh steal`, `guild invest`, or `cl usurp`.',
+                'Command' : 'Critical hits in `battle` and `bounty` deal 1.75x damage instead of 1.5x',
+                'Weapon' : 'Trebuchet, Falx'
+            },
+            'Scribe' : {
+                'Name' : 'Scribe',
+                'Desc' : 'Despite the might of your lord, you have learned quite a bit about everything, too.',
+                'Passive' : '+10 Crit; +1 gravitas daily',
+                'Command' : 'Exclusive access to the `scriptorium` command. Do `help scriptorium` for more info.',
+                'Weapon' : 'Sword, Dagger'
+            }
+        }
 
     #EVENTS
     @commands.Cog.listener() # needed to create event in cog
@@ -98,11 +122,23 @@ class Classes(commands.Cog):
             ctx.command.reset_cooldown(ctx)
 
             entries = []
-            for job in occupations:
-                embed = discord.Embed(title='Class Selection Menu', 
+            for job in list(self.client.classes.values()):
+                embed = discord.Embed(title=f"{job['Name']}: Say `{ctx.prefix}class {job['Name']}` to take this class!", 
+                                      description=job['Desc'],
                                       color=self.client.ayesha_blue)
-                embed.add_field(name=f'{job}: Say `{ctx.prefix}class {job}` to take this class!', 
-                                value=f'{occupations[job]}')
+                embed.set_author(name='Class Selection Menu',
+                                 icon_url=ctx.author.avatar_url)
+                
+                embed.add_field(name='Passive Effect',
+                                value=job['Passive'])
+                embed.add_field(name='Exclusive/Empowered Command',
+                                value=job['Command'])
+                embed.add_field(name='Gain 20 ATK for having a weapon of one of these types equipped:',
+                                value=job['Weapon'],
+                                inline=False)
+
+                # embed.add_field(name=f'{job}: Say `{ctx.prefix}class {job}` to take this class!', 
+                #                 value=f'{self.client.classes[job]}')
                 entries.append(embed)
 
             entries = PageSourceMaker.PageMaker.number_pages(entries)
@@ -114,7 +150,7 @@ class Classes(commands.Cog):
         else:
             player_job = player_job.title()
 
-            if player_job not in (occupations):
+            if player_job not in (list(self.client.classes)):
                 return await ctx.reply(f'This is not a valid class. Please do `{ctx.prefix}class` with no arguments to see the list of classes.')
 
             else:

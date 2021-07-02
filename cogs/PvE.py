@@ -343,7 +343,7 @@ class PvE(commands.Cog):
         }
         rewards = AssetCreation.apply_acolytes_game_end(player, rewards, 'pve')
 
-        if random.randint(1,4) == 1:
+        if random.randint(1,4) == 1 or player['Class'] == 'Merchant':
             rewards['item'] = True
 
             if bounty_level <= 8:
