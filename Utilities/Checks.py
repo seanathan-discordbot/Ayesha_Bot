@@ -308,3 +308,11 @@ async def is_butcher(ctx):
         return True
     else:
         raise IncorrectOccupation(occupation, player_class, ctx.prefix)
+
+async def is_scribe(ctx):
+    player_class = await AssetCreation.getClass(ctx.bot.pg_con, ctx.author.id)
+    occupation = 'Scribe'
+    if player_class == occupation:
+        return True
+    else:
+        raise IncorrectOccupation(occupation, player_class, ctx.prefix)
