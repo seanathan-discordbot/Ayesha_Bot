@@ -11,20 +11,20 @@ import aiohttp
 import time
 import random
 
-origins = {
-    'Aramithea' : 'You\'re a metropolitan. Aramithea, the largest city on Rabidus, must have at least a million people, and a niche for everybody',
-    'Riverburn' : 'The great rival of Aramithea; Will you bring your town to victory?',
-    'Thenuille' : 'You love the sea; you love exploration; you love trade. From here one can go anywhere, and be anything',
-    'Mythic Forest' : 'You come from the lands down south, covered in forest. You could probably hit a deer square between the eyes blindfolded.',
-    'Sunset' : 'Nothing is more peaceful than an autumn afternoon in the prairie.',
-    'Lunaris' : 'The crossroads of civilization; the battleground of those from the north, west, and east. Your times here have hardened you.',
-    'Crumidia' : 'The foothills have turned you into a strong warrior. Perhaps you will seek domination over your adversaries?',
-    'Maritimiala' : 'North of the mountains, the Maritimialan tribes look lustfully upon the fertile plains below. Will you seek integration, or domination?',
-    'Glakelys' : 'The small towns beyond Riverburn disregard the Aramithean elite. The first line of defense from invasions from Lunaris, the Glakelys are as tribal as they were 300 years ago.'
-}
+# origins = {
+#     'Aramithea' : 'You\'re a metropolitan. Aramithea, the largest city on Rabidus, must have at least a million people, and a niche for everybody',
+#     'Riverburn' : 'The great rival of Aramithea; Will you bring your town to victory?',
+#     'Thenuille' : 'You love the sea; you love exploration; you love trade. From here one can go anywhere, and be anything',
+#     'Mythic Forest' : 'You come from the lands down south, covered in forest. You could probably hit a deer square between the eyes blindfolded.',
+#     'Sunset' : 'Nothing is more peaceful than an autumn afternoon in the prairie.',
+#     'Lunaris' : 'The crossroads of civilization; the battleground of those from the north, west, and east. Your times here have hardened you.',
+#     'Crumidia' : 'The foothills have turned you into a strong warrior. Perhaps you will seek domination over your adversaries?',
+#     'Maritimiala' : 'North of the mountains, the Maritimialan tribes look lustfully upon the fertile plains below. Will you seek integration, or domination?',
+#     'Glakelys' : 'The small towns beyond Riverburn disregard the Aramithean elite. The first line of defense from invasions from Lunaris, the Glakelys are as tribal as they were 300 years ago.'
+# }
 
-ori = enumerate(origins)
-ori = list(ori)
+# ori = enumerate(origins)
+# ori = list(ori)
 
 class Classes(commands.Cog):
     """Customize your character!"""
@@ -203,7 +203,12 @@ class Classes(commands.Cog):
             else:
                 await AssetCreation.setPlayerClass(self.client.pg_con, player_job, ctx.author.id)
                 await AssetCreation.delete_player_estate(self.client.pg_con, ctx.author.id)
-                await ctx.reply(f'You are now a {player_job}!')
+                fmt = f"You are now a **{player_job}**!\n\n__Your Benefits__\n"
+                fmt += self.client.classes[player_job]['Passive']
+                fmt += "\n" + self.client.classes[player_job]['Command'] + "\n"
+                fmt += f"Gain 20 ATK for having a weapon of one of these types equipped: "
+                fmt += self.client.classes[player_job]['Weapon']
+                await ctx.reply(fmt)
         
     @cooldown(1, 3600, BucketType.user)
     @commands.command(aliases=['background','birthplace'], description='Choose your birthplace.')
@@ -216,10 +221,13 @@ class Classes(commands.Cog):
             ctx.command.reset_cooldown(ctx)
 
             entries = []
-            for place in origins:
-                embed = discord.Embed(title='Background Selection Menu', color=self.client.ayesha_blue)
-                embed.add_field(name=f'{place}: Say `{ctx.prefix}origin {place}` if you like this place!', 
-                                value=f'{origins[place]}')
+            for place in list(self.client.origins.values()):
+                embed = discord.Embed(title=f"{place['Name']}: Say `{ctx.prefix}origin {place['Name']}` if you like this place!",
+                                      description=f"{place['Desc']}\n\n**Passive Effect:** {place['Passive']}",
+                                      color=self.client.ayesha_blue)
+                embed.set_author(name='Background Selection Menu',
+                                 icon_url=ctx.author.avatar_url)          
+
                 entries.append(embed)   
 
             entries = PageSourceMaker.PageMaker.number_pages(entries)
@@ -231,13 +239,15 @@ class Classes(commands.Cog):
         else:
             player_origin = player_origin.title()
 
-            if player_origin not in (origins):
+            if player_origin not in (list(self.client.origins)):
                 await ctx.reply(f'This is not a valid place. Please do `{ctx.prefix}origin` with no arguments to see the list of backgrounds.')
                 return
 
             else:
                 await AssetCreation.setPlayerOrigin(self.client.pg_con, player_origin, ctx.author.id)
-                await ctx.send(f'{ctx.author.mention}, you are from {player_origin}!')
+                fmt = f'{ctx.author.mention}, you are from **{player_origin}**!\n\n__Your Benefits__\n'
+                fmt += self.client.origins[player_origin]['Passive']
+                await ctx.send(fmt)
 
     # -----------------------------------------
     # ----- BLACKSMITH EXCLUSIVE COMMANDS -----
