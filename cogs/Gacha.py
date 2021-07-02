@@ -13,8 +13,8 @@ import random
 l=list(range(1,101))
 random.shuffle(l)
 two_star=l[0:60]
-three_star=l[60:95]
-four_star=l[95:98]
+three_star=l[60:96]
+four_star=l[96:98]
 one_star=[l[98]]
 five_star=[l[99]]
 
@@ -80,11 +80,12 @@ class Gacha(commands.Cog):
             else: 
                 winner=random.randint(1,100)
 
-                #Determine if reward will be a weapon
+                #Determine if reward will be a weapon - ONLY APPLIES TO < 4* ROLLS
                 reward = random.choices(['weapon', 'acolyte'], [75, 25])
 
                 #Select a random weapon or acolyte
                 if winner in five_star: #If its a five star reset the pity
+                    reward = random.choices(['weapon', 'acolyte'], [50, 50])
                     if reward[0] == 'weapon':
                         item_info = await AssetCreation.createItem(self.client.pg_con, 
                                                                    ctx.author.id, 
@@ -119,6 +120,7 @@ class Gacha(commands.Cog):
                             await self.doDupe(ctx.author.id, name)
 
                     elif winner in four_star:
+                        reward = random.choices(['weapon', 'acolyte'], [50, 50])
                         if reward[0] == 'weapon':
                             item_info = await AssetCreation.createItem(self.client.pg_con, 
                                                                        ctx.author.id, 
