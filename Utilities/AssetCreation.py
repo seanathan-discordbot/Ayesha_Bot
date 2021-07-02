@@ -1,3 +1,5 @@
+from re import L
+from typing_extensions import get_origin
 import discord
 import asyncio
 
@@ -236,7 +238,7 @@ async def sellAllItems(pool, user_id : int, rarity : str):
         #Calculate taxes and perform the transaction
         subtotal = random.randint(Weaponvalues[rarity][0], Weaponvalues[rarity][1]) * amount
         subtotal = (subtotal * sale_bonus)
-        cost_info = await calc_cost_with_tax_rate(pool, subtotal)
+        cost_info = await calc_cost_with_tax_rate(pool, subtotal, getOrigin(pool, user_id))
         tax = cost_info['tax_amount']
         payout = subtotal - cost_info['tax_amount']
 
@@ -938,6 +940,11 @@ async def getClass(pool, user_id : int):
     except TypeError:
         return None
 
+async def getOrigin(pool, user_id : int):
+    """Returns the origin of the given player (Optional[str])."""
+    async with pool.acquire() as conn:
+        return await conn.fetchval('SELECT origin FROM players WHERE user_id = $1', user_id)
+
 async def getPlayerCount(pool):
     """Returns the amount of player's in the database (int)."""
     async with pool.acquire() as conn:
@@ -1268,12 +1275,16 @@ async def set_tax_rate(pool, tax_rate : float, setby : int):
         await conn.execute('INSERT INTO tax_rates (tax_rate, setby) VALUES ($1, $2)', tax_rate, setby)
         await pool.release(conn)
 
-async def calc_cost_with_tax_rate(pool, subtotal):
+async def calc_cost_with_tax_rate(pool, subtotal, player_origin):
     """Calculate the new price of something with tax rate included.
     Returns a dict with 'subtotal' (input), 'total', 'tax_rate', 'tax_amount'.
     """
     tax_rate = await get_tax_rate(pool)
-    tax_amount = int(subtotal * tax_rate / 100)
+
+    if player_origin == 'Sunset':
+        tax_amount = int((subtotal * tax_rate / 100) * .95)
+    else:
+        tax_amount = int(subtotal * tax_rate / 100)
 
     return {
         'subtotal' : subtotal,
@@ -1554,6 +1565,7 @@ async def get_attack_crit_hp(pool, user_id : int):
     # -- GET THE GROSS TOTALS FOR STATS FROM ALL SOURCES -- 
     level_attack = 0
     weapon_attack = 0
+    origin_attack = 0
     acolyte_attack = 0
     brotherhood_attack = 0
     crit = 5
@@ -1574,6 +1586,25 @@ async def get_attack_crit_hp(pool, user_id : int):
             weapon_attack += 20
     except (TypeError, KeyError): #no item equipped
         pass
+
+    #Origin Attack is a small bonus for some origins. SOME MIGHT AFFECT HP AND CRIT
+    player_origin = await getOrigin(pool, user_id)
+    if player_origin is not None:
+        if player_origin == 'Riverburn':
+            origin_attack += 5
+        elif player_origin == 'Thenuille':
+            hp += 25
+        elif player_origin == 'Mythic Forest':
+            crit += 2
+        elif player_origin == 'Lunaris':
+            hp += 50
+        elif player_origin == 'Crumidia':
+            origin_attack += 10
+        elif player_origin == 'Maritimiala':
+            crit += 4
+        elif player_origin == 'Glakelys':
+            origin_attack += 5
+            hp += 25
 
     #Acolytes affect all three stats
     acolyte1, acolyte2 = await getAcolyteFromPlayer(pool, user_id)
@@ -1605,7 +1636,7 @@ async def get_attack_crit_hp(pool, user_id : int):
         brotherhood_attack += 5 + (5 * comp_bonus['Level'])
         crit += 1 + comp_bonus['Level']
 
-    attack = level_attack + weapon_attack + acolyte_attack + brotherhood_attack
+    attack = level_attack + weapon_attack + origin_attack + acolyte_attack + brotherhood_attack
 
     # -- ADD UP BONUSES FROM ALL POSSIBLE SOURCES --    
     #Class Attack Bonus
