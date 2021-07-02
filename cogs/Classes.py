@@ -672,6 +672,152 @@ class Classes(commands.Cog):
                                  delete_message_after=True)
         await helper.start(ctx)
 
+    # -------------------------------------
+    # ----- SCRIBE EXCLUSIVE COMMANDS -----
+    # -------------------------------------
+
+    def calculate_scribe_rewards(self, hours, multiplier):
+        """Return gravitas gained given the time passed (hours) and the reward multiplier given."""
+        gravitas = 0
+
+        if hours > 168:
+            hours = 168
+
+        if hours < 24:
+            gravitas = hours * .85
+        elif hours < 72:
+            gravitas = hours
+        else:
+            gravitas = hours * 1.15
+
+        return int(gravitas * multiplier)
+
+    @commands.group(aliases=['sc'], invoke_without_command=True, case_insensitive=True)
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.is_scribe)
+    async def scriptorium(self, ctx):
+        """[SCRIBE EXCLUSIVE] View your scriptorium. Do `%sc help` for related commands.
+        Your butchery functions similar to expeditions, except that you primarily gain gravitas using the `%sc write` command.
+        For up to a week, you will accrue rewards from writing, until you do `%sc publish`.  
+        """
+        #Show the player's butcher shop
+        info = await AssetCreation.get_player_estate(self.client.pg_con, ctx.author.id)
+
+        embed = discord.Embed(title=f"{info['user_name']}'s Scriptortium: {info['name']}",
+                              description=f'This is your estate, where write, copy, and research. You gain gravitas with the expedition-like `{ctx.prefix}sc write` command. Do `{ctx.prefix}sc help` for more information.',
+                              color=self.client.ayesha_blue)
+        
+        if info['adventure'] is not None:
+            hours = (time.time() - info['adventure']) / 3600
+            converted_level = (info['prestige'] * 100) + info['lvl']
+            reward_multiplier = (int(converted_level/20) / 40) + 1 #2.5% increase in rewards for every 20 levels
+            gravitas_preview = self.calculate_scribe_rewards(hours, reward_multiplier)
+
+            embed.add_field(name='Current Rewards',
+                            value=f"{gravitas_preview} Gravitas")
+            embed.add_field(name='Current Session',
+                            value=f"Writing for `{self.calculate_adventure_length(info['adventure'])}`")
+        else:
+            embed.add_field(name='Current Rewards',
+                            value=f"Do `{ctx.prefix}sc write` to start earning!")
+            embed.add_field(name='Current Session',
+                            value=f"Nothing set.")
+
+        try:
+            embed.set_image(url=info['image'])
+            return await ctx.reply(embed=embed)
+        except discord.HTTPException:
+            embed.set_image(url="https://i.imgur.com/eMth0Jg.png")
+            return await ctx.reply(embed=embed)
+
+    @scriptorium.command(aliases=['w','work','copy'])
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.is_scribe)
+    async def write(self, ctx):
+        """Begin writing in your scriptorium, netting you gravitas.
+        Do `%sc publish` anytime within a week of this command to receive your rewards.
+        """
+        #Check to see if an expedition is already being done.
+        info = await AssetCreation.get_player_estate(self.client.pg_con, ctx.author.id)
+
+        if info['adventure'] is not None:
+            return await ctx.reply(f"You have currently been working at your desk for **{self.calculate_adventure_length(info['adventure'])}**. Please do `{ctx.prefix}sc publish` if you wish to end this session.")
+
+        await AssetCreation.begin_estate_session(self.client.pg_con, ctx.author.id)
+        await ctx.reply(f'You have begun working at your scriptorium. You will gain rewards for up to a week, but can stop at any time by doing `{ctx.prefix}sc publish`.')
+
+    @scriptorium.command()
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.is_scribe)
+    async def publish(self, ctx):
+        """Claim your scriptorium rewards."""
+        #Check to see if work is being performed.
+        info = await AssetCreation.get_player_estate(self.client.pg_con, ctx.author.id)
+
+        if info['adventure'] is None:
+            return await ctx.reply(f'You are not currently working your desk. Do `{ctx.prefix}sc write` to do so!')
+
+        #Calculate rewards
+        hours = (time.time() - info['adventure']) / 3600
+        converted_level = (info['prestige'] * 100) + info['lvl']
+        reward_multiplier = (int(converted_level/20) / 40) + 1 #2.5% increase in rewards for every 20 levels
+        gravitas = self.calculate_scribe_rewards(hours, reward_multiplier)
+
+        #Give rewards
+        await AssetCreation.nullify_class_estate(self.client.pg_con, ctx.author.id)
+        await AssetCreation.give_gravitas(self.client.pg_con, ctx.author.id, gravitas)
+
+        await ctx.reply(f"You published your manuscripts, gaining `{gravitas}` gravitas.")
+
+    @scriptorium.command()
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.is_scribe)
+    async def rename(self, ctx, *, name: str):
+        """`name`: the new name of your scriptorium
+        
+        Rename your estate.
+        """
+        if len(name) > 32:
+            return await ctx.reply(f'Your estate name must be at most 32 characters. You gave {len(name)}.')
+
+        await AssetCreation.rename_estate(self.client.pg_con, ctx.author.id, name)
+        await ctx.reply(f'Your scriptorium is now called {name}.')
+
+    @scriptorium.command(aliases=['icon', 'img'])
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.is_scribe)
+    async def image(self, ctx, url : str):
+        """`url`: a valid image URL
+        
+        Change the image displayed when viewing your scriptorium.
+        """
+        if len(url) > 256:
+            return await ctx.reply('Icon URL max 256 characters. Please upload your image to imgur or tinurl for an appropriate link.')
+
+        try:
+            async with aiohttp.ClientSession() as client:
+                resp = await client.get(url)
+                img = resp.headers.get('content-type')
+                if img not in ('image/jpeg', 'image/png', 'image/gif'):
+                    return await ctx.reply('This is an invalid URL.')
+
+        except aiohttp.InvalidURL:
+            return await ctx.reply('This is an invalid URL.')
+
+        #Change icon
+        await AssetCreation.change_estate_image(self.client.pg_con, ctx.author.id, url)
+        await ctx.reply('Image set!')
+
+    @scriptorium.command()
+    async def help(self, ctx):
+        """View the list of scribe exclusive commands."""
+        helper = menus.MenuPages(source=PageMaker(PageMaker.paginate_help(ctx=ctx,
+                                                                          command='scriptorium',
+                                                                          help_for='Scriptorium')), 
+                                 clear_reactions_after=True, 
+                                 delete_message_after=True)
+        await helper.start(ctx)
+
 
 def setup(client):
     client.add_cog(Classes(client))
