@@ -98,6 +98,7 @@ class Misc(commands.Cog):
                 else:
                     cooldowns.append((f'{command.name}', f'{time.strftime("%M:%S", time.gmtime(command.get_cooldown_retry_after(ctx)))}'))
         
+        #Get expedition or travel if applicable
         adv = await AssetCreation.getAdventure(self.client.pg_con, ctx.author.id)
         if adv['adventure'] is not None:
             if adv['adventure'] > int(time.time()):
@@ -112,6 +113,15 @@ class Misc(commands.Cog):
                 time_left = 0   
         else:
             time_left = 0  
+
+        player_class = await AssetCreation.getClass(self.client.pg_con, ctx.author.id)
+        if player_class in ('Farmer', 'Hunter', 'Butcher', 'Scribe'):
+            cls_adv = await AssetCreation.get_player_estate(self.client.pg_con, ctx.author.id)
+            if cls_adv['adventure'] is not None:
+                elapsed_time = int(time.time() - cls_adv['adventure'])
+                leftovers = elapsed_time % 86400
+                duration = time.strftime("%H:%M:%S", time.gmtime(leftovers))
+                output += f"You have been working your estate for `{int(elapsed_time / 86400)}:{duration}`.\n"
 
         #Also see if daily has been used
         # if ctx.author.id in self.claimed_dailies:
