@@ -5,6 +5,7 @@ from discord.ext import commands, menus
 from discord.ext.commands import BucketType, cooldown, CommandOnCooldown
 
 from Utilities import Checks, AssetCreation, Links, PageSourceMaker
+from Utilities.PageSourceMaker import PageMaker
 
 import asyncpg
 import math
@@ -309,26 +310,112 @@ class Profile(commands.Cog):
         #Send response
         await ctx.reply(f"Successfully reset your character! You are now prestige {prestige}!")
 
-    #Add a tutorial command at the end of alpha
     @commands.group(description='Learn the game.', case_insensitive=True, invoke_without_command=True)
     async def tutorial(self, ctx):
         """Learn the game."""
+        p = ctx.prefix
         with open(Links.tutorial, "r") as f:
             tutorial = f.readlines()
 
-        embed1 = discord.Embed(title='Ayesha Tutorial', color=self.client.ayesha_blue)
-        embed1.add_field(name='Welcome to Ayesha Alpha!', 
-                         value=f"{tutorial[1]}\n{tutorial[2]}\n{tutorial[3]}")
+        embed1 = discord.Embed(color=self.client.ayesha_blue)
+        embed1.set_author(name='Ayesha Tutorial: Introduction', icon_url=self.client.user.avatar_url)
+        embed1.set_thumbnail(url=ctx.author.avatar_url)
 
-        embed2 = discord.Embed(title='Ayesha Tutorial', color=self.client.ayesha_blue)
-        embed2.add_field(name='Intro to PvE', 
-                         value=f'{tutorial[6]}\n{tutorial[7]}\n{tutorial[8]}\n{tutorial[9]}')
+        embed1.add_field(name='Welcome to Ayesha, a new Gacha RPG for Discord!',
+                         value=(f"**∘ |** **Create a character** by doing `{p}create <your name>`.\n"
+                                f"**∘ |** **Customize** your playstyle with `{p}class` and `{p}origin`.\n"
+                                f"**∘ |** View your **profile** with the `{p}profile` command!\n"
+                                f"**∘ |** View your **weapons** with the `{p}inventory` command.\n"
+                                f"**∘ |** View your **acolytes** with `{p}tavern`.\n"
+                                f"**∘ |** Do `{p}pve <1-25>` to fight **bosses** and earn **rewards**!\n"
+                                f"**∘ |** Get passive **resources** from `{p}travel` and `{p}expedition.\n`"
+                                f"**∘ |** Make friends in `{p}brotherhood`s, `{p}college`s, or `{p}guild`s.\n\n"
+                                f"Hit the ▶️ for a quick walkthrough!\n"
+                                f"Still stuck? Use the `{p}help` command!"))
 
-        embed3 = discord.Embed(title='Ayesha Tutorial', color=self.client.ayesha_blue)
-        embed3.add_field(name='Intro to Gacha', 
-                         value=f'{tutorial[12]}\n{tutorial[13]}')
+        embed2 = discord.Embed(color=self.client.ayesha_blue)
+        embed2.set_author(name='Ayesha Tutorial: Introduction', icon_url=self.client.user.avatar_url)
+        embed2.set_thumbnail(url=ctx.author.avatar_url)
 
-        tutorial_pages = menus.MenuPages(source=PageSourceMaker.PageMaker([embed1, embed2, embed3]), 
+        embed2.add_field(name="Ayesha's Stat System",
+                         value=(f"**You will be seeing a bunch of terms thrown all over the game. "
+                                f"Here's a quick overview:**\n"
+                                f"**∘ | Gold:** the base currency for Ayesha, used for most anything in the game.\n"
+                                f"**∘ | Rubidics:** rubidics are the **gacha** currency for Ayesha. "
+                                f"That means it is entirely separate from gameplay, and used only for `{p}summon`ing.\n"
+                                f"**∘ | Level:** your character's level, which can be increased by a few important commands.\n"
+                                f"**∘ | Attack:** your character's attack. It can be increased based"
+                                f"off your weapon, acolytes, class, origin, and association.\n"
+                                f"**∘ | Crit:** like Attack, but denoting your critical strike chance.\n"
+                                f"**∘ | HP:** your hit points, used in `{p}pvp` and `{p}pve`.\n"
+                                f"**∘ | Gravitas:** Your **reputation** or **influence** in the bot, "
+                                f"an alternative stat to raise for those not interested by combat.\n\n"
+                                f"Hit the ▶️ for your first steps!\n"
+                                f"Still stuck? Join the `{p}support` server for help!"))
+
+        embed3 = discord.Embed(color=self.client.ayesha_blue)
+        embed3.set_author(name='Ayesha Tutorial: Introduction', icon_url=self.client.user.avatar_url)
+        embed3.set_thumbnail(url=ctx.author.avatar_url)    
+
+        embed3.add_field(name='Quick-Start Guide',
+                         value=(f"**∘ |** Fighting bosses is the fastest way to level up. Try doing `{p}pve 1`.\n"
+                                f"**∘ |** You will notice that you had set Attack, Crit, and HP stats. "
+                                f"There are multiple factors affecting these. The fastest way to increase "
+                                f"your attack is with a better weapon. Do `{p}inventory` and equip "
+                                f"your **Wooden Spear** by doing `{p}equip <ID>`. The ID is the number "
+                                f"listed next to the weapon's name in your inventory."))
+
+        embed3.add_field(name='Introduction to Class and Origin',
+                         value=(f"**∘ |** Now do `{p}class` and `{p}origin`. There are 10 classes "
+                                f"and 9 origins, each with their own niche. Read their effects "
+                                f"carefully, then do `{p}class <Name>` and `{p}origin <Name>` "
+                                f"to take on whichever are your favorites! You can change them "
+                                f"again later."),
+                         inline=False)
+
+        embed4 = discord.Embed(color=self.client.ayesha_blue)
+        embed4.set_author(name='Ayesha Tutorial: Introduction', icon_url=self.client.user.avatar_url)
+        embed4.set_thumbnail(url=ctx.author.avatar_url) 
+
+        embed4.add_field(name='The Gacha System!',
+                         value=(f"**∘ |** To get stronger weapons and acolytes, use the `{p}roll` "
+                                f"command. You can roll up to 10 times at once with `{p}roll 10`.\n"
+                                f"**∘ |** Each summon from the gacha costs **1 rubidic**, Ayesha's "
+                                f"gacha currency. You start off with 10 rolls, but can gain more:\n"
+                                f"**  -** By levelling up (do more `{p}pve`!)\n"
+                                f"**  -** Doing `{p}daily` every 12 hours, for **2** rubidics.\n"
+                                f"**  -** And voting for the bot on the bot list! This will net you "
+                                f"**1** rubidic, but we are listed on two sites (do `{p}vote`). "
+                                f"Voting has the same cooldown as `{p}daily`, so you can do it at the "
+                                f"the same time everyday, twice a day, for **8** rubidics/day!"))
+
+        embed4.add_field(name='Your Friendly Neighborhood Acolyte',
+                         value=(f"**∘ |** Acolytes are the most effective way to increase your ATK, "
+                                f"Crit, and HP, and some give other powerful effects!\n"
+                                f"**∘ |** Acolytes are obtained through gacha. If you've already "
+                                f"pulled some, you can see your list with `{p}tavern`.\n"
+                                f"**∘ |** Like your inventory, acolytes have an ID number, and they "
+                                f"are equipped with the `{p}hire` command. You can have up to 2 "
+                                f"acolytes equipped at any time, hence the slot being '1 or 2.'"),
+                         inline=False)
+
+        embed5 = discord.Embed(title='Thanks for playing!',
+                               description=(f"More tutorials for other aspects of the bot:\n"
+                                            f"**  -** `{p}tutorial acolytes`\n"
+                                            f"**  -** `{p}tutorial items`\n"
+                                            f"**  -** `{p}tutorial pve`\n"
+                                            f"**  -** `{p}tutorial travel`\n\n"
+                                            f"Need help with something? Check out the `{p}help` command!\n\n"
+                                            f"Suggestions? Bugs? Want to meet more players? Join the "
+                                            f"[support server](https://discord.com/api/oauth2/authorize?client_id=767234703161294858&permissions=70347841&scope=bot).\n\n"
+                                            f"Support us by voting on [top.gg](https://top.gg/bot/767234703161294858)!"),
+                               color=self.client.ayesha_blue)
+        embed5.set_author(name='Ayesha Tutorial: Introduction', icon_url=self.client.user.avatar_url)
+        embed5.set_thumbnail(url=ctx.author.avatar_url) 
+
+
+        pages = PageMaker.number_pages([embed1, embed2, embed3, embed4, embed5])
+        tutorial_pages = menus.MenuPages(source=PageSourceMaker.PageMaker(pages), 
                                          clear_reactions_after=True, 
                                          delete_message_after=True)
         await tutorial_pages.start(ctx)
