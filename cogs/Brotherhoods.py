@@ -50,9 +50,17 @@ class Brotherhoods(commands.Cog):
         embed.add_field(name='Level', value=f"{level}")
         embed.add_field(name='EXP Progress', value=f'{progress}')
         embed.add_field(name='Base', value=f"{info['Base']}")
-        embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.", 
-                        value=f"{info['Desc']}",
-                        inline=False)
+
+        if info['Join'] != 'open': # Alert level requirements if open
+            embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.",
+                            value=f"{info['Desc']}", 
+                            inline=False)
+        else:
+            embed.add_field(name=(f"This {info['Type']} is {info['Join']} to new members at or "
+                                  f"above level {info['Min_Level']}."), 
+                            value=f"{info['Desc']}", 
+                            inline=False)
+
         embed.set_footer(text=f"Brotherhood ID: {info['ID']}")
         await ctx.reply(embed=embed)
 
@@ -348,9 +356,17 @@ class Brotherhoods(commands.Cog):
         embed.add_field(name='Level', value=f"{level}")
         embed.add_field(name='EXP Progress', value=f'{progress}')
         embed.add_field(name='Base', value=f"{info['Base']}")
-        embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.", 
-                        value=f"{info['Desc']}",
-                        inline=False)
+
+        if info['Join'] != 'open': # Alert level requirements if open
+            embed.add_field(name=f"This {info['Type']} is {info['Join']} to new members.",
+                            value=f"{info['Desc']}", 
+                            inline=False)
+        else:
+            embed.add_field(name=(f"This {info['Type']} is {info['Join']} to new members at or "
+                                  f"above level {info['Min_Level']}."), 
+                            value=f"{info['Desc']}", 
+                            inline=False)
+
         embed.set_footer(text=f"{info['Type']} ID: {info['ID']}")
         await ctx.reply(embed=embed)
 
@@ -416,6 +432,23 @@ class Brotherhoods(commands.Cog):
             await AssetCreation.unlockGuild(self.client.pg_con, guild['ID'])
             await ctx.reply('Your guild is now open to members. Anyone may join with the `join` command!')
 
+    @brotherhood.command(aliases=['req','set_min_level'])
+    @commands.check(Checks.is_player)
+    @commands.check(Checks.is_guild_leader)
+    async def require(self, ctx, min_level : int):
+        """`min_level`: the level requirement to join this association
+        
+        [LEADER] Set a minimum level for players to join via the 'join' command.
+        Leaders and officers are still able to invite players below this level requirement.
+        """
+        #Make sure the level is possible
+        if min_level < 0 or min_level > 100:
+            return await ctx.reply('You must set the requirement to a valid number [0, 100]')
+
+        guild = await AssetCreation.getGuildFromPlayer(self.client.pg_con, ctx.author.id)
+        await AssetCreation.set_guild_level_requirement(self.client.pg_con, guild['ID'], min_level)
+        await ctx.reply(f"Players must now be at least level {min_level} to join your association.")
+
     @brotherhood.command(brief='<guild id : int>', description='Join the target guild if its open!')
     @commands.check(Checks.is_player)
     @commands.check(Checks.not_in_guild)
@@ -434,15 +467,19 @@ class Brotherhoods(commands.Cog):
         try:
             guild = await AssetCreation.getGuildByID(self.client.pg_con, guild_id)
         except TypeError:
-            await ctx.reply('That guild does not exist.')
-            return
+            return await ctx.reply('That association does not exist.')
 
         if guild['Join'] != 'open':
-            await ctx.reply('This guild is not accepting new members at this time.')
-            return
+            return await ctx.reply('This association is not accepting new members at this time.')
+            
+        # Implement check for minimum level requirement
+        if await AssetCreation.getPrestige(self.client.pg_con, ctx.author.id) <= 0:
+            if await AssetCreation.getLevel(self.client.pg_con, ctx.author.id) < guild['Min_Level']:
+                return await ctx.reply((f"You must be level {guild['Min_Level']} to join "
+                                        "this association without an invitation."))
+
         if not await Checks.target_guild_has_vacancy(self.client.pg_con, guild_id):
-            await ctx.reply('This guild has no open spaces at the moment.')
-            return
+            return await ctx.reply('This association has no open spaces at the moment.')
 
         #Otherwise they join the guild
         await AssetCreation.joinGuild(self.client.pg_con, guild_id, ctx.author.id)

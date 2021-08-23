@@ -235,8 +235,8 @@ async def sellAllItems(pool, user_id : int, rarity : str):
         
         #Calculate taxes and perform the transaction
         subtotal = random.randint(Weaponvalues[rarity][0], Weaponvalues[rarity][1]) * amount
-        subtotal = (subtotal * sale_bonus)
-        cost_info = await calc_cost_with_tax_rate(pool, subtotal, getOrigin(pool, user_id))
+        subtotal = int(subtotal * sale_bonus)
+        cost_info = await calc_cost_with_tax_rate(pool, subtotal, await getOrigin(pool, user_id))
         tax = cost_info['tax_amount']
         payout = subtotal - cost_info['tax_amount']
 
@@ -544,6 +544,12 @@ async def check_last_guild_join(pool, user_id):
         except TypeError: #no join logged
             return timedelta(seconds=99999) #Just return greater than the 86400 second threshold
 
+async def set_guild_level_requirement(pool, guild_id, min_level):
+    """Set the minimum join level for an association."""
+    async with pool.acquire() as conn:
+        await conn.execute("UPDATE guilds SET min_level = $1 WHERE guild_id = $2", 
+                            min_level, guild_id)
+        await pool.release(conn)
 
 async def joinGuild(pool, guild_id, user_id): #DOES NOT VERIFY IF THEY'RE ALREADY IN A GUILD
     """Adds a specific player to a guild."""
@@ -607,7 +613,8 @@ async def remove_brotherhood_champion(pool, guild_id, slot : int):
 
 async def getGuildFromPlayer(pool, user_id : int):
     """Returns a dict containing the info of the guild the specified player is in.
-    Dict: ID, Name, Type, XP, Leader, Desc, Icon, Join, Base"""
+    Dict: ID, Name, Type, XP, Leader, Desc, Icon, Join, Base, Min_Level
+    """
     async with pool.acquire() as conn:
         guild_id = await conn.fetchval('SELECT guild FROM players WHERE user_id = $1', user_id)
         await pool.release(conn) 
@@ -616,7 +623,8 @@ async def getGuildFromPlayer(pool, user_id : int):
 
 async def getGuildByName(pool, name : str):
     """Returns a dict containing the info of the specified guild.
-    Dict: ID, Name, Type, XP, Leader, Desc, Icon, Join, Base"""
+    Dict: ID, Name, Type, XP, Leader, Desc, Icon, Join, Base, Min_Level
+    """
     async with pool.acquire() as conn:
         guild_id = await conn.fetchval('SELECT guild_id FROM guilds WHERE guild_name = $1', name)
 
@@ -624,9 +632,14 @@ async def getGuildByName(pool, name : str):
 
 async def getGuildByID(pool, guild_id : int):
     """Returns a dict containing the info of the specified guild.
-    Dict: ID, Name, Type, XP, Leader, Desc, Icon, Join, Base"""
+    Dict: ID, Name, Type, XP, Leader, Desc, Icon, Join, Base, Min_Level
+    """
     async with pool.acquire() as conn:
-        info = await conn.fetchrow('SELECT guild_id, guild_name, guild_type, guild_xp, leader_id, guild_desc, guild_icon, join_status, base FROM guilds WHERE guild_id = $1', guild_id)
+        info = await conn.fetchrow("""SELECT guild_id, guild_name, guild_type, guild_xp, leader_id, 
+                                             guild_desc, guild_icon, join_status, base, min_level 
+                                      FROM guilds 
+                                      WHERE guild_id = $1""", 
+                                   guild_id)
         await pool.release(conn)
 
     guild = {
@@ -638,7 +651,8 @@ async def getGuildByID(pool, guild_id : int):
         'Desc' : info['guild_desc'],
         'Icon' : info['guild_icon'],
         'Join' : info['join_status'],
-        'Base' : info['base']
+        'Base' : info['base'],
+        'Min_Level' : info['min_level']
     }
 
     return guild
@@ -1561,7 +1575,7 @@ async def get_attack_crit_hp(pool, user_id : int):
     Dict: ATK, Crit, HP
     """
     # -- GET THE GROSS TOTALS FOR STATS FROM ALL SOURCES -- 
-    level_attack = 0
+    level_attack = 10
     weapon_attack = 0
     origin_attack = 0
     acolyte_attack = 0
@@ -1572,7 +1586,8 @@ async def get_attack_crit_hp(pool, user_id : int):
     player_class = await getClass(pool, user_id)
 
     #Level Attack: Level / 2. Pretend each prestige is 100 levels.
-    level_attack = int((await getPrestige(pool, user_id) * 50) + (await getLevel(pool, user_id) / 2))
+    level_attack += int((await getPrestige(pool, user_id) * 50) + (await getLevel(pool, user_id) / 2))
+    hp += int(await getPrestige(pool, user_id) * 20)
 
     #Weapon Attack is the currently equipped weapon, with a +20 bonus depending on class
     try:
