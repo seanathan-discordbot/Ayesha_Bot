@@ -72,7 +72,8 @@ CREATE TABLE public.guilds (
     guild_icon text NOT NULL,
     join_status character varying(8) DEFAULT 'open'::character varying NOT NULL,
     base character varying(15),
-    base_set boolean DEFAULT false
+    base_set boolean DEFAULT false,
+    min_level smallint DEFAULT 0 NOT NULL
 );
 
 
@@ -300,6 +301,43 @@ ALTER TABLE public.brotherhood_champions_id_seq OWNER TO postgres;
 --
 
 ALTER SEQUENCE public.brotherhood_champions_id_seq OWNED BY public.brotherhood_champions.id;
+
+
+--
+-- Name: class_estate; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.class_estate (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    name character varying(32) DEFAULT 'My Practice'::character varying,
+    type character varying(15),
+    adventure bigint,
+    image text
+);
+
+
+ALTER TABLE public.class_estate OWNER TO postgres;
+
+--
+-- Name: class_estate_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
+--
+
+CREATE SEQUENCE public.class_estate_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE public.class_estate_id_seq OWNER TO postgres;
+
+--
+-- Name: class_estate_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
+--
+
+ALTER SEQUENCE public.class_estate_id_seq OWNED BY public.class_estate.id;
 
 
 --
@@ -701,6 +739,13 @@ ALTER TABLE ONLY public.brotherhood_champions ALTER COLUMN id SET DEFAULT nextva
 
 
 --
+-- Name: class_estate id; Type: DEFAULT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.class_estate ALTER COLUMN id SET DEFAULT nextval('public.class_estate_id_seq'::regclass);
+
+
+--
 -- Name: comptroller_bonuses id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -887,6 +932,22 @@ ALTER TABLE ONLY public.brotherhood_champions
 
 ALTER TABLE ONLY public.brotherhood_champions
     ADD CONSTRAINT brotherhood_champions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: class_estate class_estate_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.class_estate
+    ADD CONSTRAINT class_estate_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: class_estate class_estate_user_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.class_estate
+    ADD CONSTRAINT class_estate_user_id_key UNIQUE (user_id);
 
 
 --
