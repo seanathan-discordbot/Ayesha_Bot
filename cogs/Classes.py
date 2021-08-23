@@ -145,6 +145,7 @@ class Classes(commands.Cog):
     @cooldown(1, 3600, BucketType.user)
     @commands.command(name='class', 
                       description='Choose your player class. This can be changed.')
+    @commands.check(Checks.is_player)
     async def change_class(self, ctx, player_job : str = None):
         """`player_job`: the class you want to switch to. To see the list of valid classes, just do `class`.
 
@@ -195,6 +196,7 @@ class Classes(commands.Cog):
         
     @cooldown(1, 3600, BucketType.user)
     @commands.command(aliases=['background','birthplace'], description='Choose your birthplace.')
+    @commands.check(Checks.is_player)
     async def origin(self, ctx, *, player_origin : str = None):
         """`player_origin`: Your birthplace. To see the valid areas, just do `origin`
 
