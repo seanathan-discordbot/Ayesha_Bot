@@ -132,6 +132,9 @@ async def create_db_pool():
     client.pg_con = await asyncpg.create_pool(database=Links.database_name, 
                                               user=Links.database_user, 
                                               password=Links.database_password)
+    client.en_dict = await asyncpg.create_pool(database="dictionary", 
+                                              user=Links.database_user, 
+                                              password=Links.database_password)
 
 client.loop.run_until_complete(create_db_pool())
 
