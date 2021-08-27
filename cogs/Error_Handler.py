@@ -95,6 +95,10 @@ class Error_Handler(commands.Cog):
         if isinstance(error, Checks.IncorrectOccupation):
             await ctx.reply(error.message)
 
+        if isinstance(error, Checks.WordChainError):
+            await ctx.reply((f'There is already a game of word chain being played in this channel. '
+                             f'Please try again in another channel.'))
+
         # --- OTHER ---
 
         if isinstance(error, commands.MaxConcurrencyReached):
@@ -111,10 +115,10 @@ class Error_Handler(commands.Cog):
             else:
                 await ctx.reply(f'You are on cooldown for another `{error.retry_after:.2f}` seconds.')
 
-        try:
-            print(f'{datetime.now()}: {error}\nUser: {ctx.author.id}   | Command: {ctx.command.name}\n\n')
-        except AttributeError:
-            print(f'{datetime.now()}: {error}\nUser: {ctx.author.id}   | Command: {ctx.message.content}\n\n')
+        # try:
+        #     print(f'{datetime.now()}: {error}\nUser: {ctx.author.id}   | Command: {ctx.command.name}\n\n')
+        # except AttributeError:
+        #     print(f'{datetime.now()}: {error}\nUser: {ctx.author.id}   | Command: {ctx.message.content}\n\n')
 
 def setup(client):
     client.add_cog(Error_Handler(client))

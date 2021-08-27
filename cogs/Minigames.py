@@ -2,7 +2,9 @@ import discord
 import asyncio
 
 from discord.ext import commands, menus
+from discord.ext.commands.cooldowns import BucketType
 
+from Utilities import Checks
 from Utilities.PageSourceMaker import PageMaker
 
 import random
@@ -58,7 +60,7 @@ class WordChain:
         Checks to see if a word is valid for use in-game. Also calculates points in Scrabble Mode
     await prompt_join()
         Send message asking players to join the game
-    await end_game()
+    await end_game(used_words : int)
         Ends the game and logs entries in the database
     await input_solo_game(score : int)
         Like end_game(), but only inputs entries in the database for solo mode
@@ -109,8 +111,9 @@ class WordChain:
         1. Word begins with the passed letter
         2. Word is valid (its in the dictionary database)
 
-        Returns the last letter of the word if its valid, otherwise returns None.
-        If type == 'Scrabble', will also calculate points
+        Returns a dict containing 'next' - the last letter of the word if its valid
+            If its invalid, returns None
+            If type == 'Scrabble', 'points' describes the amount of points that word earned
         """
         if not word.startswith(letter):
             return None
@@ -125,10 +128,13 @@ class WordChain:
 
             if len(word_id) > 0:
                 if self.type == 'Scrabble': # Calc points for Scrabble Mode
+                    word_score = 0
                     for char in word:
+                        word_score += point_conversion[char]
                         self.points[player] += point_conversion[char]
+                    return {'next' : word[-1], 'points' : word_score}
 
-                return word[-1]
+                return {'next' : word[-1], 'points' : None}
             else:
                 return None
 
@@ -161,7 +167,7 @@ class WordChain:
         if len(self.players) < 2:
             return await self.ctx.reply('Not enough players joined the game.')
 
-    async def end_game(self):
+    async def end_game(self, word_count : int):
         """End the game"""
         if self.type == 'Scrabble':
             # await self.ctx.send(self.points)
@@ -180,6 +186,8 @@ class WordChain:
             for player in self.players:
                 win_message += f"{player.mention} : {self.points[player]} points\n"
 
+            win_message += f"Players gave a collective {word_count} words."
+
             await self.ctx.send(win_message)
 
             # Input all players into database
@@ -194,7 +202,8 @@ class WordChain:
                     await conn.execute(psql, player.id, self.points[player])
 
         else:
-            await self.ctx.send(f"{self.players[0].mention} wins!")
+            await self.ctx.send((f"{self.players[0].mention} wins!\n"
+                                 f"Players gave a collective {word_count} words."))
 
             # Now input winner into database (Public and Lightning Modes)
             async with self.db.acquire() as conn:
@@ -252,6 +261,8 @@ class WordChain:
         """Begin a public word chain game: Public, Lightning, or Scrabble rulesets."""
         # Let players join game
         await self.prompt_join()
+        if len(self.players) < 2:
+            return
 
         # Give game rules
         mentions = [player.mention for player in self.players]
@@ -261,7 +272,7 @@ class WordChain:
                       f"Word Chain is the ultimate test of your vocabulary. Each player must give "
                       f"a word that *begins* with the *last letter* of the prior person's own "
                       f"word. Each player has **{int(self.timeout)} seconds** to give a valid "
-                      f"word.\n Valid words are English, one string, and have no punctuation. "
+                      f"word.\nValid words are English, one string, and have no punctuation. "
                       f"Players are eliminated when they give an invalid word or time runs out."
                       f"\n\n")
 
@@ -269,7 +280,7 @@ class WordChain:
             game_rules += (f"In **Scrabble Mode**, each word you give will earn you a varying "
                            f"amount of points depending on the rarity of letters used. Try to "
                            f"come up with the longest word! Play continues until someone is "
-                           f"eliminated; the winner is the player with the most points."
+                           f"eliminated; the winner is the player with the most points. "
                            f"Have fun! \n\n"
                            f"__Example:__ happy --> your --> rig --> guy... and so on")
         else:
@@ -287,10 +298,16 @@ class WordChain:
         self.points = {player : 0 for player in self.players}
 
         # Begin game loop
+
         while len(self.players) > 1: # Scrabble mode will break the loop manually
-            prompt = await self.ctx.send((f"{self.players[0].mention}, give me a word beginning "
-                                          f"with **{next_letter}**!"))
-            
+            if len(used_words) > 0 and self.type == 'Scrabble':
+                prompt = await self.ctx.send((f"**{word}** was worth **{validity['points']}** "
+                                            f"points!\n{self.players[0].mention}, give me a word "
+                                            f"beginning with **{next_letter}**!"))
+            else:
+                prompt = await self.ctx.send((f"{self.players[0].mention}, give me a word beginning"
+                                              f" with **{next_letter}**!"))
+
             def word_reader(message):
                 return message.author == self.players[0] and message.channel == self.ctx.channel
 
@@ -302,20 +319,21 @@ class WordChain:
                     await self.ctx.reply(f'Word already used! | You have been eliminated.')
 
                     if self.type == 'Scrabble':
-                        return await self.end_game()
+                        return await self.end_game(len(used_words))
 
                     self.players.pop(0)
 
                 old_letter = next_letter
-                next_letter = await self.valid_word(self.players[0], next_letter, word)
-                if next_letter is not None:
+                validity = await self.valid_word(self.players[0], next_letter, word)
+                if validity is not None:
+                    next_letter = validity['next']
                     used_words.append(word)
                     self.players.append(self.players[0])
                     self.players.pop(0)
                 else:
                     await self.ctx.reply(f'Invalid Word! | You have been eliminated.')
                     if self.type == 'Scrabble':
-                        return await self.end_game()
+                        return await self.end_game(len(used_words))
 
                     self.players.pop(0)
                     next_letter = old_letter
@@ -324,14 +342,14 @@ class WordChain:
                 await self.ctx.reply(f'Out of time! | You have been eliminated.')
 
                 if self.type == 'Scrabble':
-                    return await self.end_game()
+                    return await self.end_game(len(used_words))
 
-                self.players.pop(0)
+                self.players.pop(0)        
 
             # await prompt.delete()
             # await msg.delete()
 
-        await self.end_game()
+        await self.end_game(len(used_words))
 
     async def play_solo(self):
         """Begin a singleplayer word chain game: solo ruleset"""
@@ -365,8 +383,9 @@ class WordChain:
                                           f"Score: {int(len(used_words)/2)}"))
                     return await self.input_solo_game(int(len(used_words)/2))
 
-                next_letter = await self.valid_word(self.host, next_letter, word)
-                if next_letter is not None: # ONLY CASE IN WHICH PLAY CONTINUES
+                validity = await self.valid_word(self.host, next_letter, word)
+                if validity is not None: # ONLY CASE IN WHICH PLAY CONTINUES
+                    next_letter = validity['next']
                     used_words.append(word)
                 else:
                     await self.ctx.reply(f'Invalid Word! | Score: {int(len(used_words)/2)}')
@@ -385,8 +404,8 @@ class WordChain:
                         SELECT word
                         FROM word_list
                         WHERE word LIKE $1
-                        LIMIT 10;
-                        """
+                        LIMIT 300;
+                        """ # Change the limit to adjust difficulty
                 possible_words = await conn.fetch(psql, f"{next_letter}%")
 
             bot_word = random.choice(possible_words)['word']
@@ -399,14 +418,15 @@ class WordChain:
             next_letter = bot_word[-1]
             used_words.append(bot_word)
 
-            await prompt.delete()
-            await msg.delete()
+            # await prompt.delete()
+            # await msg.delete()
 
 class Minigames(commands.Cog):
     """Some fun minigames!"""
 
     def __init__(self, client):
         self.client = client
+        self.active_channels = [] # Prevent multiple games in one channel
 
     #EVENTS
     @commands.Cog.listener() # needed to create event in cog
@@ -445,26 +465,34 @@ class Minigames(commands.Cog):
     @wordchain.command(aliases=['s'])
     async def solo(self, ctx):
         """Play a game of word chain against me!"""
+        self.active_channels.append(ctx.channel)
         new_game = WordChain(self.client, ctx, "Solo", self.client.en_dict)
         await new_game.play_solo()
+        self.active_channels.remove(ctx.channel)
 
     @wordchain.command(aliases=['p','m','multiplayer'])
     async def public(self, ctx):
         """Start a multiplayer game with standard rules."""
+        self.active_channels.append(ctx.channel)
         new_game = WordChain(self.client, ctx, "Public", self.client.en_dict)
         await new_game.play_public()
+        self.active_channels.remove(ctx.channel)
 
     @wordchain.command(aliases=['l'])
     async def lightning(self, ctx):
         """Start a multiplayer game with a shorter time-limit than public."""
+        self.active_channels.append(ctx.channel)
         new_game = WordChain(self.client, ctx, "Lightning", self.client.en_dict)
         await new_game.play_public()
+        self.active_channels.remove(ctx.channel)
 
     @wordchain.command()
     async def scrabble(self, ctx):
         """Start a multiplayer game, gaining points based off letters used."""
+        self.active_channels.append(ctx.channel)
         new_game = WordChain(self.client, ctx, "Scrabble", self.client.en_dict)
         await new_game.play_public()
+        self.active_channels.remove(ctx.channel)
 
     @wordchain.command()
     async def help(self, ctx):
@@ -478,9 +506,25 @@ class Minigames(commands.Cog):
                                  delete_message_after=True)
         await helper.start(ctx)
 
+    @solo.before_invoke
+    @public.before_invoke
+    @lightning.before_invoke
+    @scrabble.before_invoke
+    async def prevent_concurrency(self, ctx):
+        if ctx.channel in self.active_channels:
+            raise Checks.WordChainError
+
     @wordchain.command(aliases=['lb'])
-    async def leaderboard(self, ctx, mode : str):
-        """Placeholder."""
+    async def leaderboard(self, ctx, mode : str = None):
+        """View the word chain leaderboards."""
+        if mode is None:
+            p = ctx.prefix
+            await ctx.reply((f"`{p}wc lb solo` : View the highest scores for solo mode\n"
+                             f"`{p}wc lb scrabble` : View the highest scores for scrabble mode\n"
+                             f"`{p}wc lb public` : See who has the most wins in public mode\n"
+                             f"`{p}wc lb lightning` : See who has the most wins in lightning mode"))
+            return
+
         mode = mode.lower()
 
         if mode == 'scrabble':
@@ -592,13 +636,14 @@ class Minigames(commands.Cog):
             for entry in board:
                 player = await self.client.fetch_user(entry['player'])
                 output += f"**{entry['rank']} | {player.name}#{player.discriminator}**: "
-                output += f"{entry['score']} wins\n"
+                output += f"{entry['win_amount']} wins\n"
 
             embed.add_field(name='Word Chain Public', value=output)
 
             try:
                 embed.add_field(name='Your Personal Best',
-                                value=f"**{user_best['rank']} | You**: {user_best['score']} wins",
+                                value=(f"**{user_best['rank']} | You**: {user_best['win_amount']} "
+                                       f"wins"),
                                 inline=False)
 
                 await ctx.reply(embed=embed)
@@ -614,13 +659,13 @@ class Minigames(commands.Cog):
                             LIMIT 5
                         """
                 psql2 = """
-                            WITH public_ranks AS (
+                            WITH lightning_ranks AS (
                                 SELECT ROW_NUMBER() OVER(ORDER BY win_amount DESC) AS rank, player, 
                                     win_amount
                                 FROM lightning_wins
                             )
                             SELECT rank, player, win_amount
-                            FROM lightning_wins
+                            FROM lightning_ranks
                             WHERE player = $1
                         """
 
@@ -634,19 +679,121 @@ class Minigames(commands.Cog):
             for entry in board:
                 player = await self.client.fetch_user(entry['player'])
                 output += f"**{entry['rank']} | {player.name}#{player.discriminator}**: "
-                output += f"{entry['score']} wins\n"
+                output += f"{entry['win_amount']} wins\n"
 
             embed.add_field(name='Word Chain Lightning', value=output)
 
             try:
                 embed.add_field(name='Your Personal Best',
-                                value=f"**{user_best['rank']} | You**: {user_best['score']} wins",
+                                value=(f"**{user_best['rank']} | You**: {user_best['win_amount']} "
+                                       f"wins"),
                                 inline=False)
 
                 await ctx.reply(embed=embed)
             except TypeError:
                 await ctx.reply(embed=embed)
 
+    @wordchain.command(name='check')
+    async def _check(self, ctx, word : str):
+        """See if a word exists in our database and how many points you'd earn for using it in 
+        scrabble mode!
+        """
+        word = word.lower()
+        psql = """SELECT id FROM word_list WHERE word = $1"""
+
+        async with self.client.en_dict.acquire() as conn:
+            word_id = conn.fetchval(psql, word)
+
+        if word_id is None:
+            return await ctx.reply((f'**{word}** is not currently in our database.\nThink it '
+                                    f'should be? Submit it for review with `%wc add`!'))
+        else:
+            word_score = sum([point_conversion[char] for char in word])
+            await ctx.reply((f"**{word}** is a valid term for use in Word Chain!\nUsing it in "
+                             f"Scrabble Mode would net you **{word_score}** points!"))
+
+    @wordchain.command(aliases=['contest', 'add'])
+    async def submit(self, ctx, word : str = None):
+        """Lost on a word you think should be valid? Submit it here!"""
+        if word is None:
+            await ctx.reply((f"**Lost on a word you think should be valid? Submit it here!**\n\n"
+                             f"Unfortunately, getting every little word in the English language "
+                             f"is difficult. We apologize if you lost your potentially "
+                             f"record-winning game due to using a word that wasn't in our "
+                             f"database.\n\nIf you feel a word should be added in the database, "
+                             f"please do `%wc add <word>` to add it to a list for review. "
+                             f"There are, however, some guidelines to follow: "
+                             f"1. All words are __alphabetic__, meaning each character in that "
+                             f"word is one of the 26 letters. Hyphenated words such as 'x-ray' "
+                             f"have been shortened to xray. Likewise, words with spaces like "
+                             f"'a cappella' are simply 'acappella'.\n"
+                             f"2. All words, even proper nouns, will become lowercase. Common "
+                             f"first names such as 'John' are permissible to be added, but not "
+                             f"last names or company names. Place names are also permissible.\n"
+                             f"3. Commonly used slang terms are currently not included in the "
+                             f"database. They can also be submitted for review.\n"
+                             f"4. The character limit is 32 characters."))
+            return
+
+        # Make sure word could possibly be valid
+        word = word.lower()
+
+        if not word.isalpha():
+            return await ctx.reply('Every character in this word must be one of 26 letters.')
+
+        if len(word) > 32:
+            return await ctx.reply('The character limit is 32 characters.')
+
+        # See if word already exists in database
+        psql = """SELECT id FROM word_list WHERE word = $1"""
+        async with self.client.en_dict.acquire() as conn:
+            if await conn.fetchval(psql, word) is not None:
+                return await ctx.reply('The word you submitted is already in our database.')
+
+            # Add it to list of words to be reviewed
+            psql = """INSERT INTO word_review (word) VALUES ($1)"""
+            await conn.execute(psql, word)
+            await ctx.reply('Your word has been submitted for review.')
+    
+    @wordchain.command(aliases=['aa'])
+    @commands.check(Checks.is_admin)
+    async def admin_add(self, ctx, word : str = None):
+        """There seems to be a little fungus among us."""
+        if word is None:
+            psql = """SELECT * FROM word_review LIMIT 10"""
+            async with self.client.en_dict.acquire() as conn:
+                word_list = await conn.fetch(psql)
+
+            return await ctx.reply(word_list)
+
+        if word.startswith('_reject:'): # _ as failsafe ; reject words in this fashion
+            psql = """DELETE FROM word_review WHERE word = $1"""
+            async with self.client.en_dict.acquire() as conn:
+                await conn.execute(psql, word[8:])
+
+            return await ctx.reply(f"Rejected word '{word[8:]}'")
+
+        # Make sure word could possibly be valid
+        word = word.lower()
+
+        if not word.isalpha():
+            return await ctx.reply('Every character in this word must be one of 26 letters.')
+
+        if len(word) > 32:
+            return await ctx.reply('The character limit is 32 characters.')
+
+        # See if word already exists in database
+        psql = """SELECT id FROM word_list WHERE word = $1"""
+        async with self.client.en_dict.acquire() as conn:
+            if await conn.fetchval(psql, word) is not None:
+                return await ctx.reply('The word you submitted is already in our database.')
+
+            # Add it to list of words to be reviewed
+            psql = """INSERT INTO word_list (word) VALUES ($1)"""
+            psql2 = """DELETE FROM word_review WHERE word = $1"""
+            await conn.execute(psql, word)
+            await conn.execute(psql2, word)
+            await ctx.reply('Added to database.')
 
 def setup(client):
     client.add_cog(Minigames(client))
