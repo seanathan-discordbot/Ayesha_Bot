@@ -87,6 +87,9 @@ class IncorrectOccupation(commands.CheckFailure):
         self.message = f'This command is exclusive to the **{occupation}** class only, but you are a **{player_class}**. If you wish to change classes, do `{prefix}class {occupation}`.'
         super().__init__(message=self.message, *args, **kwargs)
 
+class WordChainError(commands.CommandError):
+    pass
+
 async def not_player(ctx):
     async with ctx.bot.pg_con.acquire() as conn:
         result = await conn.fetchrow('SELECT user_id FROM players WHERE user_id = $1', ctx.author.id)
