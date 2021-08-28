@@ -36,7 +36,7 @@ You can sell an item for a small amount of gold with the `sell` command. You can
 `Upgrade` your weapon in cities and towns at the cost of gold and iron to increase its attack.
 
 -- PVE TUTORIAL -- [38,43]
-PvE has 20 levels. To fight a specific boss, do `pve <boss number>`.
+PvE has 25 levels. To fight a specific boss, do `pve <boss number>`.
 PvE, also known as bounties, utilize all your stats and effects from your character, weapon, acolytes, and brotherhood.
 Likewise, some bosses have increased attack or HP, or a special effect that can buff or nerf your fighting ability. To see more info on each boss, do `pve` without any arguments.
 Some bosses have special effects that may make you rethink how to approach them. You can use the `strategy` command to set how you want to fight: do you want to heal more? do you want to parry more?

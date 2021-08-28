@@ -532,7 +532,7 @@ class Minigames(commands.Cog):
                 psql1 = """
                             SELECT ROW_NUMBER() OVER(ORDER BY score DESC) AS rank, player, score
                             FROM scrabble_wins
-                            LIMIT 5
+                            LIMIT 10
                             """
                 psql2 = """
                             WITH scrabble_ranks AS (
@@ -702,7 +702,7 @@ class Minigames(commands.Cog):
         psql = """SELECT id FROM word_list WHERE word = $1"""
 
         async with self.client.en_dict.acquire() as conn:
-            word_id = conn.fetchval(psql, word)
+            word_id = await conn.fetchval(psql, word)
 
         if word_id is None:
             return await ctx.reply((f'**{word}** is not currently in our database.\nThink it '

@@ -424,19 +424,18 @@ class PvE(commands.Cog):
         return embeds
 
     def apply_crit(self, player : dict, opponent : dict):
-        """Perform the effects of a critical strike."""                
-        if random.randint(1,100) < player['Crit']:
-            #Calculate damage
-            player['Action'] = 'critically ' + player['Action']
+        """Perform the effects of a critical strike.""" 
+        #Calculate damage
+        player['Action'] = 'critically ' + player['Action']
 
-            if player['Class'] == 'Engineer': # Class bonus for engineers
-                player['Damage'] = int(player['Damage'] * 1.75)
-            else:
-                player['Damage'] = int(player['Damage'] * 1.5)
+        if player['Class'] == 'Engineer': # Class bonus for engineers
+            player['Damage'] = int(player['Damage'] * 1.75)
+        else:
+            player['Damage'] = int(player['Damage'] * 1.5)
                     
-            #Apply acolyte effects that activate on crit
-            player, opponent = AssetCreation.apply_acolytes_on_crit(player, opponent)
-            player, opponent = AssetCreation.apply_boss_crit(player, opponent) 
+        #Apply acolyte effects that activate on crit
+        player, opponent = AssetCreation.apply_acolytes_on_crit(player, opponent)
+        player, opponent = AssetCreation.apply_boss_crit(player, opponent) 
 
         return player, opponent 
 
@@ -519,7 +518,7 @@ class PvE(commands.Cog):
                 player1 = AssetCreation.apply_acolytes_with_damage(player1)
 
                 boss['Damage'] = random.randint(0, int(boss['Attack'] / 10))
-                
+
                 if random.randint(1,100) < player1['Crit']:
                     player1, boss = self.apply_crit(player1, boss)
 
