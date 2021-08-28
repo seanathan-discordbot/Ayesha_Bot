@@ -182,6 +182,7 @@ class Classes(commands.Cog):
             player_job = player_job.title()
 
             if player_job not in (list(self.client.classes)):
+                ctx.command.reset_cooldown(ctx)
                 return await ctx.reply(f'This is not a valid class. Please do `{ctx.prefix}class` with no arguments to see the list of classes.')
 
             else:
