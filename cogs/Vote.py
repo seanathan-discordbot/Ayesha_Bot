@@ -47,7 +47,7 @@ class Vote_Handler:
                     },
                     headers = {"Authorization" : Links.DBL_Token}
                     )
-                print(resp.status)
+                # print(resp.status)
 
             await asyncio.sleep(3600 * 24)
 

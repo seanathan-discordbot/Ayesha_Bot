@@ -197,7 +197,7 @@ class Travel(commands.Cog):
 
         # Traveler's may also gain an acolyte if their expedition is in the top length bracket 
         got_acolyte = False
-        if elapsed_time > 259200 and random.randint(1,2) == 1 and await AssetCreation.getClass(self.client.pg_con, ctx.author.id):
+        if elapsed_time > 259200 and random.randint(1,2) == 1 and await AssetCreation.getClass(self.client.pg_con, ctx.author.id) == 'Traveler':
             got_acolyte = True
             
             with open(Links.acolyte_list) as f:
@@ -230,7 +230,7 @@ class Travel(commands.Cog):
         if elapsed_time >= 43200 and city_expedition:
             output = f'You returned from your urban expedition and received `{gold}` gold, `{xp}` xp, and `{mats}` {resource}.\nYou also gained `{gravitas}` gravitas while campaigning.'
         else:
-            output = f'You returned from your expedition and received `{gold}` gold, `{xp}` xp, and `{mats}` {resource}.\nUnfortunately, you lost `{gravitas_decay}` gravitas while in the wild.'
+            output = f'You returned from your expedition and received `{gold}` gold, `{xp}` xp, and `{mats}` {resource}.\nUnfortunately, you lost `{decay_amount}` gravitas while in the wild.'
 
         if got_acolyte:
             output += f"\nDuring your trip you befriended a new acolyte: **{new_acolyte}**! Check the `{ctx.prefix}tavern` to recruit them!"

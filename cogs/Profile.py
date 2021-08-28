@@ -134,7 +134,7 @@ class Profile(commands.Cog):
             gravscheduler.every().day.at("12:00").do(gravitas_func)
             while True:
                 gravscheduler.run_pending()
-                print(f'{date.today()}: Updating gravitas...')
+                # print(f'{date.today()}: Updating gravitas...')
                 await asyncio.sleep(gravscheduler.idle_seconds)
 
         asyncio.ensure_future(daily_gravitas())
@@ -310,12 +310,28 @@ class Profile(commands.Cog):
         #Send response
         await ctx.reply(f"Successfully reset your character! You are now prestige {prestige}!")
 
+    def ty_embed(self, p, avatar_url):
+        """Return an embed with helpful info: list of tutorials, link to support server and voting."""
+        embed = discord.Embed(title='Thanks for playing!',
+                              description=(f"More tutorials for other aspects of the bot:\n"
+                                            f"**  -** `{p}tutorial acolytes` Acolytes, Travel, and levelling them up\n" 
+                                            f"**  -** `{p}tutorial items` Items and improving your character\n"
+                                            f"**  -** `{p}tutorial pve` How to play Ayesha\n"
+                                            f"**  -** `{p}tutorial travel`\n\n"
+                                            f"Need help with something? Check out the `{p}help` command!\n\n"
+                                            f"Suggestions? Bugs? Want to meet more players? Join the "
+                                            f"[support server](https://discord.com/api/oauth2/authorize?client_id=767234703161294858&permissions=70347841&scope=bot).\n\n"
+                                            f"Support us by voting on [top.gg](https://top.gg/bot/767234703161294858)!"),
+                               color=self.client.ayesha_blue)
+        embed.set_author(name='Ayesha Tutorial: Introduction', icon_url=self.client.user.avatar_url)
+        embed.set_thumbnail(url=avatar_url) 
+
+        return embed
+
     @commands.group(description='Learn the game.', case_insensitive=True, invoke_without_command=True)
     async def tutorial(self, ctx):
         """Learn the game."""
         p = ctx.prefix
-        with open(Links.tutorial, "r") as f:
-            tutorial = f.readlines()
 
         embed1 = discord.Embed(color=self.client.ayesha_blue)
         embed1.set_author(name='Ayesha Tutorial: Introduction', icon_url=self.client.user.avatar_url)
@@ -328,7 +344,7 @@ class Profile(commands.Cog):
                                 f"**∘ |** View your **weapons** with the `{p}inventory` command.\n"
                                 f"**∘ |** View your **acolytes** with `{p}tavern`.\n"
                                 f"**∘ |** Do `{p}pve <1-25>` to fight **bosses** and earn **rewards**!\n"
-                                f"**∘ |** Get passive **resources** from `{p}travel` and `{p}expedition.\n`"
+                                f"**∘ |** Get passive **resources** from `{p}travel` and `{p}expedition`.\n"
                                 f"**∘ |** Make friends in `{p}brotherhood`s, `{p}college`s, or `{p}guild`s.\n\n"
                                 f"Hit the ▶️ for a quick walkthrough!\n"
                                 f"Still stuck? Use the `{p}help` command!"))
@@ -399,20 +415,7 @@ class Profile(commands.Cog):
                                 f"acolytes equipped at any time, hence the slot being '1 or 2.'"),
                          inline=False)
 
-        embed5 = discord.Embed(title='Thanks for playing!',
-                               description=(f"More tutorials for other aspects of the bot:\n"
-                                            f"**  -** `{p}tutorial acolytes`\n"
-                                            f"**  -** `{p}tutorial items`\n"
-                                            f"**  -** `{p}tutorial pve`\n"
-                                            f"**  -** `{p}tutorial travel`\n\n"
-                                            f"Need help with something? Check out the `{p}help` command!\n\n"
-                                            f"Suggestions? Bugs? Want to meet more players? Join the "
-                                            f"[support server](https://discord.com/api/oauth2/authorize?client_id=767234703161294858&permissions=70347841&scope=bot).\n\n"
-                                            f"Support us by voting on [top.gg](https://top.gg/bot/767234703161294858)!"),
-                               color=self.client.ayesha_blue)
-        embed5.set_author(name='Ayesha Tutorial: Introduction', icon_url=self.client.user.avatar_url)
-        embed5.set_thumbnail(url=ctx.author.avatar_url) 
-
+        embed5 = self.ty_embed(p, ctx.author.avatar_url)
 
         pages = PageMaker.number_pages([embed1, embed2, embed3, embed4, embed5])
         tutorial_pages = menus.MenuPages(source=PageSourceMaker.PageMaker(pages), 
@@ -423,20 +426,87 @@ class Profile(commands.Cog):
     @tutorial.command(aliases=['acolyte'], description='Learn more about Acolytes!')
     async def Acolytes(self, ctx):
         """Learn the game."""
-        with open(Links.tutorial, "r") as f:
-            tutorial = f.readlines()
+        p = ctx.prefix
 
-        embed1 = discord.Embed(title='Ayesha Tutorial: Acolytes', color=self.client.ayesha_blue)
-        embed1.add_field(name='Welcome to Ayesha Alpha!', value=f"{tutorial[16]}\n{tutorial[17]}\n{tutorial[18]}")
+        embed1 = discord.Embed(color=self.client.ayesha_blue)
+        embed1.set_author(name='Ayesha Tutorial: Acolytes', icon_url=self.client.user.avatar_url)
+        embed1.set_thumbnail(url=ctx.author.avatar_url)
 
-        embed2 = discord.Embed(title='Ayesha Tutorial: Acolytes', color=self.client.ayesha_blue)
-        embed2.add_field(name='The Tavern and Effects', value=f'{tutorial[21]}\n{tutorial[22]}\n{tutorial[23]}')
+        embed1.add_field(name='What are Acolytes?',
+                         value=(f"Acolytes are your friends, teammates who fight alongside you in battle. "
+                                f"They boost your ATK, Crit, and HP, and may have another effect that "
+                                f"enhances your gameplay.\n\n"
+                                f"Acolytes are obtained from the `{p}roll` command. There are five "
+                                f"rarities, from 1⭐ to 5⭐. You have a base 1% chance of rolling "
+                                f"5⭐ on any roll, but are guaranteed to get one on your 80th "
+                                f"summon since your 5⭐ or legendary roll."))
 
-        embed3 = discord.Embed(title='Ayesha Tutorial: Acolytes', color=self.client.ayesha_blue)
-        embed3.add_field(name='Strengthening your Acolytes', 
-                         value=f'{tutorial[26]}\n{tutorial[27]}\n{tutorial[28]}\n{tutorial[29]}')
+        embed2 = discord.Embed(color=self.client.ayesha_blue)
+        embed2.set_author(name='Ayesha Tutorial: Acolytes', icon_url=self.client.user.avatar_url)
+        embed2.set_thumbnail(url=ctx.author.avatar_url)
 
-        tutorial_pages = menus.MenuPages(source=PageSourceMaker.PageMaker([embed1, embed2, embed3]), 
+        embed2.add_field(name='How do I equip my acolytes?',
+                         value=(f"You can view all your acolytes with the `{p}tavern` command.\n\n"
+                                f"It lists each acolyte, its level and stats, and effect if it has one."
+                                f"Next to its name is its ID. To add an acolyte to your team, do"
+                                f"`{p}recruit <ID> <1-2>` to equip it in your 1st or 2nd slot.\n\n"
+                                f"You only have 2 slots for acolytes, so make sure you choose wisely!"))
+
+        embed3 = discord.Embed(color=self.client.ayesha_blue)
+        embed3.set_author(name='Ayesha Tutorial: Acolytes', icon_url=self.client.user.avatar_url)
+        embed3.set_thumbnail(url=ctx.author.avatar_url)
+
+        embed3.add_field(name='How do I strengthen my acolytes?',
+                         value=(f"The first way to level up your acolytes is passively. For every "
+                                f"10 xp you earn, your equipped acolytes will earn 1.\n\n"))
+
+        embed3.add_field(name='The Second Way: Adventure Awaits!',
+                         value=(f"The second, faster way is with the `{p}train` command. But wait! "
+                                f"This will require a long and arduous adventure!\n"
+                                f"If you do `{p}acolyte <Acolyte Name>`, you can see expanded "
+                                f"information about that acolyte."
+                                f"Try `{p}acolyte Ayesha`. You will notice that under the 'Details' "
+                                f"category, it says 'Upgrade Material: Oat'. If you have Ayesha "
+                                f"and want to level her, that means you have to obtain and use oats."
+                                f"In order to do that, there are three commands at your service:\n"
+                                f"**  -** `{p}travel`\n"
+                                f"**  -** `{p}forage`\n"
+                                f"**  -** `{p}expedition`\n"),
+                         inline=False)
+
+        embed4 = discord.Embed(color=self.client.ayesha_blue)
+        embed4.set_author(name='Ayesha Tutorial: Acolytes', icon_url=self.client.user.avatar_url)
+        embed4.set_thumbnail(url=ctx.author.avatar_url)
+
+        embed4.add_field(name='Gathering resources for your acolyte',
+                         value=(f"You now must follow six steps: \n"
+                                f"**  -** Do `{p}travel` and find which location lists oats. Glakelys "
+                                f"has oats, so do `{p}travel Glakelys` and wait a few hours to get "
+                                f"to that location.\n"
+                                f"**  -** Once there, do `{p}arrive` to officially set your location "
+                                f"to Glakelys. You can see it change on your `{p}profile`.\n"
+                                f"**  -** `{p}forage` will actively gain you materials. Alternatively...\n"
+                                f"**  -** `{p}expedition` will place you on a passive adventure "
+                                f"in which you collect these materials over the course of a week. "
+                                f"You can go on expedition for as long as you want. You will gain more "
+                                f"rewards the longer you're gone, but only for up to a week. You can "
+                                f"view the length of your expedition with `{p}cooldowns`. Once finished, "
+                                f"do `{p}arrive` to get all your booty.\n"
+                                f"**  -** `{p}pack` will show you all the resources you hold. Look at "
+                                f"how much oat you have now!\n\n"))
+
+        embed4.add_field(name='And now I can train!',
+                         value=(f"And now, finally, now that you have all the resources you need, NOW "
+                                f"you can `{p}train <Acolyte ID>`. Each training costs you `50` material "
+                                f"and `250` gold, and will net your acolyte 5,000 experience.\n"
+                                f"Seem slow? You can train multiple times at once. For example, "
+                                f"`{p}train 1 100` will train the acolyte with ID:1 100 times!"),
+                         inline=False)
+
+        embed5 = self.ty_embed(p, ctx.author.avatar_url)
+
+        pages = PageMaker.number_pages([embed1, embed2, embed3, embed4, embed5])
+        tutorial_pages = menus.MenuPages(source=PageSourceMaker.PageMaker(pages), 
                                          clear_reactions_after=True, 
                                          delete_message_after=True)
         await tutorial_pages.start(ctx)
@@ -444,36 +514,127 @@ class Profile(commands.Cog):
     @tutorial.command(aliases=['item', 'weapon', 'weapons'], description='Learn more about Items!')
     async def Items(self, ctx):
         """Learn the game."""
-        with open(Links.tutorial, "r") as f:
-            tutorial = f.readlines()
+        p = ctx.prefix
 
-        embed1 = discord.Embed(title='Ayesha Tutorial: Items', color=self.client.ayesha_blue)
-        embed1.add_field(name='Everything on Items', 
-                         value=f"{tutorial[32]}\n{tutorial[33]}\n{tutorial[34]}\n{tutorial[35]}")
+        embed1 = discord.Embed(color=self.client.ayesha_blue)
+        embed1.set_author(name='Ayesha Tutorial: Items', icon_url=self.client.user.avatar_url)
+        embed1.set_thumbnail(url=ctx.author.avatar_url)
 
-        await ctx.reply(embed=embed1)
+        embed1.add_field(name=f"Item Overview",
+                         value=(f"You can have one weapon equipped at any time and are the "
+                                f"easiest way to increase your ATK and Crit stats.\n\n"
+                                f"You can view all your owned weapons with the `{p}inventory` command. "
+                                f"Alongside its Attack, and Crit, each item has an ID, the number "
+                                f"next to its name, which you use when you want to use other "
+                                f"commands on an item."))
+        embed1.add_field(name=f"Weapontype and Rarity",
+                         value=(f"Each weapon also has one of 13 types and one of 5 rarities.\n\n"
+                                f"Equipping a weapon of a certain type might give you a 20 ATK bonus, "
+                                f"depending on your class. The weapontypes associated with your class "
+                                f"can be found in the `{p}class` menu.\n\n"
+                                f"Your weapontype might also affect your rewards from `{p}mine`, "
+                                f"`{p}hunt`, and `{p}forage`.\n\n"
+                                f"You can filter through your inventory by weapontype and rarity. "
+                                f"To see all your maces, do `{p}inventory mace`, and to see all "
+                                f"your epic items, do `{p}inventory epic`. To see all of your "
+                                f"epic maces, do `{p}inventory epic mace`."),
+                         inline=False)
+
+        embed2 = discord.Embed(color=self.client.ayesha_blue)
+        embed2.set_author(name='Ayesha Tutorial: Items', icon_url=self.client.user.avatar_url)
+        embed2.set_thumbnail(url=ctx.author.avatar_url)
+
+        embed2.add_field(name=f"Upgrading Items",
+                         value=(f"Items have a certain range of ATK and Crit based off its rarity, "
+                                f"but the ATK value can be increased up to a point. The first way "
+                                f"is via the `{p}upgrade` command. Upgrading can only be done in "
+                                f"urban areas, and costs you gold and iron. There is also a limit "
+                                f"to the ATK you can upgrade to depending on the item's rarity.\n\n"
+                                f"The `{p}merge` command can boost an item's attack past the limit "
+                                f"of `{p}upgrade`. Merging, however, requires a weaker weapon of "
+                                f"the same weapontype to be destroyed. Blacksmiths can use the "
+                                f"`{p}forge` command, which costs more than `{p}merge`, but "
+                                f"raise the weapon's attack more."))
+        embed2.add_field(name=f"Selling Items",
+                         value=(f"You can sell items you no longer want for gold. "
+                                f"The `{p}sell` command will let you sell any single item. You can "
+                                f"also list multiple IDs with `{p}sellmultiple` or sell all your items "
+                                f"of a specific rarity with `{p}sellall`. None of these commands will "
+                                f"net you more gold per weapon and exist for convenience.\n\n"
+                                f"Alternatively, you can `{p}offer` your unwanted strong weapons "
+                                f"to other players for a price."),
+                         inline=False)
+
+        embed3 = self.ty_embed(p, ctx.author.avatar_url)
+
+        pages = PageMaker.number_pages([embed1, embed2, embed3])
+        tutorial_pages = menus.MenuPages(source=PageSourceMaker.PageMaker(pages), 
+                                         clear_reactions_after=True, 
+                                         delete_message_after=True)
+        await tutorial_pages.start(ctx)
 
     @tutorial.command(description='Learn more about PvE!')
     async def pve(self, ctx):
         """Learn the game."""
-        with open(Links.tutorial, "r") as f:
-            tutorial = f.readlines()
+        # with open(Links.tutorial, "r") as f:
+        #     tutorial = f.readlines()
 
-        embed1 = discord.Embed(title='Ayesha Tutorial: PvE', color=self.client.ayesha_blue)
-        embed1.add_field(name='Everything on PvE', 
-                         value=f"{tutorial[38]}\n{tutorial[39]}\n{tutorial[40]}\n{tutorial[41]}\n{tutorial[42]}\n{tutorial[43]}")
+        # embed1 = discord.Embed(title='Ayesha Tutorial: PvE', color=self.client.ayesha_blue)
+        # embed1.add_field(name='Everything on PvE', 
+        #                  value=f"{tutorial[38]}\n{tutorial[39]}\n{tutorial[40]}\n{tutorial[41]}\n{tutorial[42]}\n{tutorial[43]}")
+        p = ctx.prefix
 
-        await ctx.reply(embed=embed1)
+        embed1 = discord.Embed(color=self.client.ayesha_blue)
+        embed1.set_author(name='Ayesha Tutorial: PvE', icon_url=self.client.user.avatar_url)
+        embed1.set_thumbnail(url=ctx.author.avatar_url)
 
-    @tutorial.command(description='Learn more about Travel!')
-    async def Travel(self, ctx):
+        embed1.add_field(name=f"Everything on PvE",
+                         value=(f"PvE has 25 levels, which can be viewed with `{p}pve`. "
+                                f"To fight a specific boss, do `{p}pve <level>`.\n\n"
+                                f"PvE, also known as bounties, utilize all your stats and effects "
+                                f"from your level, class, origin, weapon, acolytes, and brotherhood. "
+                                f"When you defeat a boss, you will gain lots of gold and xp, and "
+                                f"possibly a weapon. Losing heavily reduces the xp you gain."))
+
+        embed1.add_field(name=f"Strategy",
+                         value=(f"Likewise, some bosses have increased attack or HP, or a special "
+                                f"effect that can buff or nerf your fighting ability. "
+                                f"Some bosses have special effects that may make you rethink how "
+                                f"to approach them. You can use the `strategy` command to set how "
+                                f"you want to fight: do you want to heal more? do you want to parry more?"),
+                         inline=False)
+
+        embed2 = self.ty_embed(p, ctx.author.avatar_url)
+
+        pages = PageMaker.number_pages([embed1, embed2])
+        tutorial_pages = menus.MenuPages(source=PageSourceMaker.PageMaker(pages), 
+                                         clear_reactions_after=True, 
+                                         delete_message_after=True)
+        await tutorial_pages.start(ctx)
+
+    @tutorial.command(description='Learn more about Associations!')
+    async def associations(self, ctx):
         """Learn the game."""
-        with open(Links.tutorial, "r") as f:
-            tutorial = f.readlines()
+        # with open(Links.tutorial, "r") as f:
+        #     tutorial = f.readlines()
 
-        embed1 = discord.Embed(title='Ayesha Tutorial: Travel', color=self.client.ayesha_blue)
-        embed1.add_field(name='Everything on Travel', 
-                         value=f"{tutorial[46]}\n{tutorial[47]}\n{tutorial[48]}\n{tutorial[49]}")
+        # embed1 = discord.Embed(title='Ayesha Tutorial: Travel', color=self.client.ayesha_blue)
+        # embed1.add_field(name='Everything on Travel', 
+        #                  value=f"{tutorial[46]}\n{tutorial[47]}\n{tutorial[48]}\n{tutorial[49]}")
+        p = ctx.prefix
+
+        embed1 = discord.Embed(color=self.client.ayesha_blue)
+        embed1.set_author(name='Ayesha Tutorial: Associations', icon_url=self.client.user.avatar_url)
+        embed1.set_thumbnail(url=ctx.author.avatar_url)
+
+        embed1.add_field(name=f"Associations",
+                         value=(f"Associations are one form of cooperative gameplay on Ayesha. "
+                                f"There are 3 types of associations depending on your playstyle: "
+                                f"**  - Brotherhoods** are combat-oriented."
+                                f"**  - Guilds** are wealth-oriented."
+                                f"**  - Colleges** are politics-oriented.\n\n"
+                                f"You can search up guilds with the `{p}bh info` command, and join "
+                                f"some with `{p}bh join <ID>`, although some are invite-only."))
 
         await ctx.reply(embed=embed1)
 
