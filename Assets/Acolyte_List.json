@@ -57,7 +57,7 @@
         "Effect": "When fighting a boss, your crit is doubled on turn 3.",
         "Mat" : "cacao",
         "Story": "Onions.",
-        "Image": null
+        "Image": "https://i.imgur.com/FiLRkOF.jpg"
     },
     "Ajar": {
         "Name" : "Ajar",
