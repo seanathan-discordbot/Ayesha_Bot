@@ -399,12 +399,57 @@ class WordChain:
             first_turn = False
 
             # Bot first gets all words with the valid letter
+                # NB: This makes for a very interesting dilemma I have not been able to solve
+                # The original solution was to select a couple hundred valid words 
+                    # Python would then select one of these words
+                    # This seems to be the fastest solution, as random.choice() is faster than
+                    # any alternative I could come up with using SQL
+                    # It also allowed me to adjust difficulty by changing the amount of words it
+                    # returned.
+                    # The problem with this solution was that it only used the same limited
+                    # amount of words (although multiplayer games made full use of the database)
+                    # and increasing the amount could quickly eat up more memory
+                # The 'ORDER BY RANDOM() LIMIT 1;' solution in SQL is notoriously slow albeit
+                    # being the simplest solution. The execution time hovered around 95-110 ms
+                    # I am not sure if that would be a major problem.
+                # Finally, I came up with a longer query that reduced the execution time to 85-90 ms
+                    # This query takes advantage of randint()'s relative speed to get
+                        # WITH valid_words AS (
+                        # 	SELECT ROW_NUMBER() OVER(ORDER BY id) AS num, word
+                        # 	FROM word_list
+                        # 	WHERE word LIKE $1
+                        # )
+                        # SELECT word 
+                        # FROM valid_words
+                        # WHERE num >= $2
+                        # LIMIT 1;
+                    # I pass a randint() as $2. This solution requires I find out how many words
+                    # start with each letter, which can be done at bot startup or another interval
+                # My players have expressed interest in upping the difficulty of the solo game
+                # to better test their own vocabularies rather than beating the bot in a game of 
+                # RNG. 
+                # My original solution makes for a fairly easy game, whereas the next two
+                # widen the capabilities of the bot while still being bound by probability
+                # I could possibly make the bot just choose another word if it tries to use one
+                # that has already been used. This opens up several possibilities:
+                    # Use one of the above solutions until a valid word is returned
+                    # Go down the word list in alphabetical order - this is cheap in both the 
+                        # computational and gameplay sense, for better or for worse
+
+                # Stuff like this is why I like working with databases so if you have by some
+                # off-chance read my diary entry and have another solution please let me know :)
+
+                # 9/8/21: I decided to just up the query size from 300 words to 1500
+                # This should theoretically not be memory-heavy yet as an asyncpg.record of 
+                # >25000 words took 250 kb. This is about 8.6 bytes/word or 13.01 kb/search
+                # Use sys.getsizeof() to get the size
+
             async with self.db.acquire() as conn:
                 psql = """
                         SELECT word
                         FROM word_list
                         WHERE word LIKE $1
-                        LIMIT 300;
+                        LIMIT 1500;
                         """ # Change the limit to adjust difficulty
                 possible_words = await conn.fetch(psql, f"{next_letter}%")
 
