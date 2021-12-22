@@ -292,7 +292,7 @@ class WordChain:
         await asyncio.sleep(15)
 
         # Setup game
-        used_words = []
+        used_words = {}
         next_letter = random.choice(self.alphabet)
 
         self.points = {player : 0 for player in self.players}
@@ -327,7 +327,7 @@ class WordChain:
                 validity = await self.valid_word(self.players[0], next_letter, word)
                 if validity is not None:
                     next_letter = validity['next']
-                    used_words.append(word)
+                    used_words[word]=msg.author()
                     self.players.append(self.players[0])
                     self.players.pop(0)
                 else:
@@ -354,7 +354,7 @@ class WordChain:
     async def play_solo(self):
         """Begin a singleplayer word chain game: solo ruleset"""
         # Setup game
-        used_words = []
+        used_words = {}
         next_letter = random.choice(self.alphabet)
 
         # Begin game loop
@@ -386,7 +386,7 @@ class WordChain:
                 validity = await self.valid_word(self.host, next_letter, word)
                 if validity is not None: # ONLY CASE IN WHICH PLAY CONTINUES
                     next_letter = validity['next']
-                    used_words.append(word)
+                    used_words[word]=msg.author()
                 else:
                     await self.ctx.reply(f'Invalid Word! | Score: {int(len(used_words)/2)}')
                     return await self.input_solo_game(int(len(used_words)/2))
